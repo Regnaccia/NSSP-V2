@@ -13,6 +13,7 @@ Riferimenti architetturali primari:
 - `docs/README.md`
 - `docs/charter/V2_CHARTER.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-001.md`
+- `CONTRIBUTING.md`
 
 ## Struttura iniziale
 
