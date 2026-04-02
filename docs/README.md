@@ -1,9 +1,9 @@
-# V2 Documentation
+# ODE Documentation
 
 ## Struttura
 
 ```text
-V2/docs/
+docs/
 ├── archive/          documenti V2 non attivi o superseded
 ├── charter/          scopo, principi e criteri guida della V2
 ├── decisions/        decision log V2 organizzati per tipo

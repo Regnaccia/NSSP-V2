@@ -14,7 +14,6 @@ formalmente separata ma fisicamente concentrata sotto `app/services/`.
 
 La V2 ha bisogno di:
 
-- una cartella dedicata che non interferisca con `V0/` e `V1/`
 - confini visibili anche a livello filesystem e import path
 - contratti minimi tra layer prima di iniziare implementazione e bootstrap
 - una base stabile per i successivi DL su facts, aggregate, rebuild e workflow applicativi
@@ -27,18 +26,16 @@ La V2 adotta una propria convenzione documentale esplicita:
 
 ## Decision
 
-La V2 vive sotto la root:
-
-- `V2/`
+La repository root coincide con la V2.
 
 La documentazione generale V2 vive sotto:
 
-- `V2/docs/`
+- `docs/`
 
 ### 1. Struttura repository V2
 
 ```text
-V2/
+.
 ├── docs/
 │   ├── archive/
 │   ├── charter/
@@ -185,5 +182,5 @@ Regola:
 
 - Questa decisione blocca la struttura minima del repository V2 prima dell'implementazione.
 - I successivi DL dovranno appoggiarsi a questi confini, non ridefinirli implicitamente.
-- La struttura fisica e stata creata nel repository come scaffold iniziale sotto `V2/`, inclusa la documentazione generale in `V2/docs/`.
+- La struttura fisica e stata creata nella repository root, inclusa la documentazione generale in `docs/`.
 - Il prossimo DL naturale riguarda bootstrap backend e contratti di persistenza del core.

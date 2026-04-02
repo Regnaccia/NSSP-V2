@@ -18,8 +18,8 @@ Claude Code
 
 ## Source Documents
 
-- `V2/docs/charter/V2_CHARTER.md`
-- `V2/docs/decisions/ARCH/DL-ARCH-V2-001.md`
+- `docs/charter/V2_CHARTER.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-001.md`
 
 ## Goal
 

@@ -1,11 +1,10 @@
-# NSSP V2
+# ODE V2
 
 Questo repository ospita codice, documentazione e artefatti runtime della V2.
 
 Principi guida:
 
 - `sync`, `core` e `app` devono essere visibili anche nella struttura del codice
-- la V2 vive separata da `V0/` e `V1/`
 - la documentazione generale V2 vive in `docs/`
 
 Riferimenti architetturali primari:

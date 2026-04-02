@@ -365,7 +365,7 @@ Il codice non deve diventare il primo luogo in cui si scoprono le regole del sis
 
 I Decision Log vivono in:
 
-- `V2/docs/decisions/<TIPO>/`
+- `docs/decisions/<TIPO>/`
 
 Convenzioni minime:
 
@@ -385,7 +385,7 @@ Campi minimi di ogni DL:
 
 Regole:
 
-- una decisione ancora non validata resta in `V2/docs/roadmap/POSSIBLE.md`, non diventa un DL approvato
+- una decisione ancora non validata resta in `docs/roadmap/POSSIBLE.md`, non diventa un DL approvato
 - un DL può nascere `Proposed` e diventare poi `Approved`
 - se un DL viene superato, il documento deve indicare chiaramente il successore
 - per ora la V2 non usa la famiglia `DL-OPS`; i temi operativi restano in charter, roadmap e task finché non sono abbastanza chiari da essere fissati come decisione
@@ -460,7 +460,7 @@ I seguenti temi sono considerati aperti e non ancora stabilizzati nel charter:
 - scheduler avanzato guidato da eventi o variazioni facts
 - modalità di integrazione futura con shopfloor data e segnali reparto
 
-Questi elementi vanno tracciati esplicitamente in `V2/docs/roadmap/POSSIBLE.md` finché non vengono promossi a DL o a milestone implementativa confermata.
+Questi elementi vanno tracciati esplicitamente in `docs/roadmap/POSSIBLE.md` finché non vengono promossi a DL o a milestone implementativa confermata.
 
 ## 5.8 Strategia di test
 

@@ -1,4 +1,4 @@
-# Contributing To NSSP V2
+# Contributing To ODE V2
 
 Questo repository ospita la V2 come prodotto e base architetturale autonoma.
 
@@ -15,7 +15,7 @@ Prima di aprire modifiche:
 - `sync/` integra sorgenti esterne e scrive solo dati di sync o metadata di run
 - `core/` contiene fatti canonici, computed facts, aggregate, stati, policy e orchestrazione
 - `app/` espone API e workflow senza reimplementare la logica di dominio
-- ogni decisione architetturale non banale deve lasciare traccia in `docs/decisions/`
+- ogni decisione architetturale non banale deve lasciare traccia in `docs/decisions/ARCH/`
 
 ## Workflow consigliato
 
