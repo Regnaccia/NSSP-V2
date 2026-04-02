@@ -29,8 +29,8 @@ Prima di aprire modifiche:
 - backend Python sotto `backend/src/nssp_v2/`
 - test backend organizzati per scopo in `backend/tests/`
 - documentazione generale in `docs/`
-- roadmap confermata in `docs/roadmap/FUTURE.md`
-- idee aperte o non confermate in `docs/roadmap/POSSIBLE.md`
+- roadmap e note di planning vivono in `docs/roadmap/` quando esistono documenti attivi
+- materiali roadmap ereditati o non piu attivi vanno in `docs/archive/ROADMAP/`
 
 ## Checklist minima prima della PR
 
