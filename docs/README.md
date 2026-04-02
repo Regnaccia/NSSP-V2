@@ -32,10 +32,14 @@ Sottocartelle per tipo:
 
 ## Roadmap
 
+La cartella `roadmap/` resta attiva per futuri documenti roadmap realmente V2.
+
+I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
+
 | File | Contenuto |
 |------|-----------|
-| [roadmap/FUTURE.md](roadmap/FUTURE.md) | Sviluppi confermati, non ancora implementati |
-| [roadmap/POSSIBLE.md](roadmap/POSSIBLE.md) | Ragionamenti aperti, non ancora confermati |
+| [archive/ROADMAP/FUTURE.md](archive/ROADMAP/FUTURE.md) | Roadmap storica ereditata dal contesto precedente |
+| [archive/ROADMAP/POSSIBLE.md](archive/ROADMAP/POSSIBLE.md) | Ragionamenti aperti ereditati dal contesto precedente |
 
 ## Task
 
