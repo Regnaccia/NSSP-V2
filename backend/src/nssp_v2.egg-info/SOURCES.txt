@@ -9,9 +9,17 @@ src/nssp_v2.egg-info/top_level.txt
 src/nssp_v2/app/__init__.py
 src/nssp_v2/app/main.py
 src/nssp_v2/app/api/__init__.py
+src/nssp_v2/app/api/auth.py
 src/nssp_v2/app/api/health.py
+src/nssp_v2/app/deps/__init__.py
+src/nssp_v2/app/deps/auth.py
+src/nssp_v2/app/models/__init__.py
+src/nssp_v2/app/models/access.py
+src/nssp_v2/app/schemas/__init__.py
+src/nssp_v2/app/schemas/auth.py
 src/nssp_v2/core/__init__.py
 src/nssp_v2/shared/__init__.py
 src/nssp_v2/shared/config.py
 src/nssp_v2/shared/db.py
+src/nssp_v2/shared/security.py
 src/nssp_v2/sync/__init__.py

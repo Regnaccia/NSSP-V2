@@ -139,7 +139,7 @@ Nessuna nuova dipendenza.
 
 ### Follow-ups
 
-- TASK-V2-003: prime tabelle source facts — modelli SQLAlchemy, prima migrazione Alembic
+- TASK-V2-003: bootstrap DB interno — modelli SQLAlchemy strutturali, prima migrazione Alembic
 
 ## Completed At
 

@@ -9,3 +9,8 @@ Regole operative:
 - lo stato parte da `Todo`
 - Claude Code aggiorna il file durante o al termine del lavoro
 - a task completato, Claude Code imposta `Status: Completed` e compila la sezione finale di esecuzione
+
+Task attivi:
+
+- `TASK-V2-003-bootstrap-db-interno.md`
+- `TASK-V2-004-browser-auth-and-role-routing.md`

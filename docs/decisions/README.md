@@ -17,3 +17,6 @@ Documenti architetturali attivi:
 - `ARCH/DL-ARCH-V2-001.md`
 - `ARCH/DL-ARCH-V2-002.md`
 - `ARCH/DL-ARCH-V2-003.md`
+- `ARCH/DL-ARCH-V2-004.md`
+- `ARCH/DL-ARCH-V2-005.md`
+- `ARCH/DL-ARCH-V2-006.md`

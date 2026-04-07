@@ -260,7 +260,7 @@ che introduce `docs/guides/BACKEND_BOOTSTRAP_AND_VERIFY.md` come guida standard.
 ### Follow-ups
 
 - TASK-V2-002: hardening verifica riproducibile (completato)
-- TASK-V2-003 naturale: prime tabelle source facts con modelli SQLAlchemy e prima migrazione Alembic
+- TASK-V2-003 naturale: bootstrap DB interno V2, prime tabelle strutturali e prima migrazione Alembic
 
 ## Completed At
 

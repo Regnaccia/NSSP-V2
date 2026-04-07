@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from nssp_v2.shared.config import settings
 from nssp_v2.shared.db import Base
+import nssp_v2.app.models.access  # noqa: F401 — registra i modelli in Base.metadata
 
 config = context.config
 

@@ -1,4 +1,4 @@
-# DL-ARCH-V2-003 - Modello di accesso utente, ruoli e canali client
+# DL-ARCH-V2-003 - Database interno V2 come persistence backbone
 
 ## Status
 Approved
@@ -8,242 +8,197 @@ Approved
 
 ## Context
 
-La V2 deve introdurre presto un primo flusso di autenticazione per mantenere lo sviluppo:
+La V2 ha gia un bootstrap backend minimo:
 
-- incrementale
-- testabile
-- coerente con i confini architetturali gia fissati
+- progetto Python configurato
+- FastAPI avviabile
+- SQLAlchemy e Alembic inizializzati
+- configurazione centralizzata presente
 
-Il bisogno immediato e un login utente su frontend browser che:
+Manca pero ancora una decisione architetturale esplicita sul ruolo del database interno.
 
-- autentica l'utente
-- identifica il suo insieme di ruoli
-- lo reindirizza alle funzioni coerenti con i suoi permessi
+Questa decisione e necessaria prima di implementare:
 
-Ma il browser non e il punto finale del sistema. A breve il progetto dovra supportare anche:
+- autenticazione browser reale
+- tabella utenti e ruoli
+- facts canonici
+- computed facts persistiti
+- stati operativi e aggregate
 
-- client browser
-- client Electron
-- terminali kiosk
+Senza un modello chiaro del DB interno, c'e il rischio di far nascere:
 
-Se il modello nasce centrato solo sul browser o solo sul ruolo singolo, rischia di diventare fragile
-appena entrano in gioco:
+- tabelle introdotte solo per urgenza locale
+- dipendenze premature da sorgenti esterne
+- confusione tra dato tecnico, dato canonico e dato applicativo
+- migrazioni scollegate dalla struttura architetturale V2
 
-- utenti con piu ruoli
-- accessi da client diversi
-- terminali shared o kiosk
-- policy diverse tra accesso nominale e accesso di contesto
+La V2 ha quindi bisogno di fissare in modo esplicito:
 
-La V2 ha quindi bisogno di un modello esplicito che distingua:
-
-- identita utente
-- ruoli e permessi
-- canale di accesso / tipo client
-- routing iniziale applicativo
+- che il DB interno esiste fin dall'inizio come parte strutturale del sistema
+- cosa deve ospitare
+- come si relaziona ai layer `sync`, `core`, `app`
+- quale bootstrap minimo e richiesto prima dei task auth e dominio
 
 ## Decision
 
-La V2 adotta un modello di accesso composto da tre assi distinti:
+La V2 adotta un database interno PostgreSQL come persistence backbone unico del sistema.
 
-1. identita utente
-2. ruoli utente
-3. canale di accesso client
+Il database interno e obbligatorio sin dai primi slice implementativi.
 
-Questi assi non vanno fusi in un solo concetto.
+### 1. Il database interno e il backbone persistente della V2
 
-### 1. Identita utente
+Tutto cio che il sistema V2 deve:
 
-L'identita utente e nominale.
+- ricostruire
+- spiegare
+- verificare
+- far evolvere con migrazioni controllate
 
-Ogni utente ha almeno:
+deve passare dal database interno.
 
-- `id`
-- `username`
-- `password_hash`
-- `attivo`
+Questo include:
 
-L'identita serve a:
+- dati riallineati da sorgenti esterne
+- dati nativi della V2
+- strutture necessarie al funzionamento applicativo
 
-- autenticare la persona
-- tracciare chi ha aperto la sessione
-- supportare audit leggero e ownership applicativa futura
+### 2. Nessun layer di business legge direttamente dalle sorgenti esterne
 
-### 2. Ruoli come insieme, non come campo singolo
-
-Un utente puo avere uno o piu ruoli contemporaneamente.
-
-Il modello V2 assume quindi che il concetto corretto sia:
-
-- `user.roles[]`
-
-non:
-
-- `user.role`
-
-Ruoli iniziali previsti:
-
-- `admin`
-- `produzione`
-- `logistica`
-- `magazzino`
-
-Conseguenza:
-
-- l'autorizzazione backend deve ragionare per membership del ruolo richiesto
-- il frontend non deve assumere un solo ruolo attivo per utente
-- il routing iniziale puo dipendere da una priorita applicativa o da una scelta utente, non da un solo campo hardcoded
-
-### 3. Canale di accesso separato dai ruoli
-
-La modalita con cui l'utente accede al sistema e un concetto separato dai ruoli.
-
-Canali iniziali:
-
-- `browser`
-- `electron`
-- `kiosk`
-
-Il canale di accesso descrive:
-
-- il tipo di client
-- il contesto di esecuzione
-- i vincoli UX e di sicurezza
-
-Non descrive da solo cosa l'utente puo fare.
-
-### 4. Browser-first, ma non browser-centric
-
-La prima implementazione V2 copre solo il canale:
-
-- `browser`
-
-Ma il contratto architetturale deve gia essere estendibile a:
-
-- `electron`
-- `kiosk`
+Le sorgenti esterne, ad esempio EasyJob, non sono lette direttamente da `core` o `app`.
 
 Regola:
 
-- il backend non deve hardcodare comportamento specifico del browser come se fosse l'unico client possibile
-- il frontend browser puo essere il primo client implementato, ma non definisce da solo il modello di accesso
+- `sync` acquisisce e riallinea
+- il risultato viene persistito nel DB interno
+- `core` e `app` lavorano sul DB interno
 
-### 5. Kiosk come accesso di contesto, non login nominale standard
+Questo vale anche quando la sorgente esterna resta la fonte originaria del dato.
 
-Il canale `kiosk` e concettualmente diverso da browser ed Electron.
+### 3. Un solo database, una sola schema PostgreSQL iniziale
 
-Nel kiosk, il sistema deve poter rappresentare:
+La V2 parte con:
 
-- accesso legato a postazione o terminale
-- contesto operativo fisico
-- esperienza senza login nominale continuo
+- un solo database PostgreSQL
+- una sola schema PostgreSQL iniziale, `public`
 
-Per ora il kiosk non viene implementato, ma il modello deve gia lasciargli spazio.
+La separazione tra responsabilita non viene implementata inizialmente tramite piu database o piu schema.
 
-Quindi:
+Viene invece mantenuta tramite:
 
-- il login nominale browser non deve diventare prerequisito architetturale universale
-- il concetto di `client context` o `access context` deve restare modellabile
+- confini di layer nel codice
+- ownership esplicita delle tabelle
+- naming e migrazioni disciplinate
 
-### 6. Sessione di accesso e payload minimo
+Motivazione:
 
-Dopo login riuscito, il sistema deve poter esporre almeno:
+- ridurre complessita prematura
+- mantenere bootstrap e test locali semplici
+- evitare che la separazione architetturale venga delegata a una separazione fisica ancora non necessaria
 
-- identita utente
-- ruoli utente
-- canale di accesso
-- capability o viste iniziali consentite
+### 4. Il DB interno ospita famiglie di dati diverse
 
-Il payload applicativo di sessione deve quindi essere pensato come:
+Nel DB interno V2 convivono famiglie di dati diverse:
 
-- `user`
+- dati di accesso e supporto applicativo
+- dati sync-owned derivati da sorgenti esterne
+- dati core-owned del dominio V2
+- dati tecnici di supporto, quando servono al runtime
+
+Queste famiglie vanno distinte a livello concettuale anche se condividono lo stesso database.
+
+### 5. Primo slice persistente obbligatorio: access control
+
+Prima di implementare il login browser reale, il DB interno deve ospitare almeno il primo slice persistente di accesso:
+
+- `users`
 - `roles`
-- `access_mode`
-- `available_surfaces` o equivalente
+- `user_roles`
 
-Il backend resta fonte di verita per autorizzazione e claims di sessione.
+Il modello deve supportare:
 
-### 7. Routing iniziale guidato da capability, non da pagina fissa
+- utente nominale
+- piu ruoli per utente
+- utente attivo o inattivo
 
-Dopo il login, il frontend non deve fare redirect sulla base di una singola pagina hardcoded per ruolo.
+Questo slice e considerato parte del backbone del sistema, non una scorciatoia temporanea.
 
-Deve invece ragionare su:
+### 6. Ogni cambio strutturale passa da Alembic
 
-- ruoli posseduti
-- superfici disponibili
-- eventuale priorita di default
+Ogni modifica strutturale del DB interno deve passare da:
 
-Strategia iniziale consigliata:
+- modelli SQLAlchemy coerenti
+- migration Alembic esplicita
 
-- se l'utente ha una sola superficie primaria, redirect automatico
-- se l'utente ha piu superfici primarie, landing di scelta
+Non sono ammessi come standard di progetto:
 
-Questo evita di introdurre presto assunzioni fragili per utenti multi-ruolo.
+- schema drift manuale
+- creazione tabelle fuori migrazione
+- bootstrap affidato solo a SQL lanciato a mano
 
-### 8. Confine tra backend e frontend
+### 7. Test e ambienti devono usare database dedicati
 
-Backend:
+La V2 deve distinguere almeno:
 
-- autentica
-- emette la sessione o token
-- espone ruoli e capability consentite
-- applica le guard di autorizzazione
+- database locale di sviluppo
+- database di test
 
-Frontend:
+Regola:
 
-- consuma il profilo di sessione
-- mostra solo le superfici consentite
-- applica il routing iniziale
+- i test non devono dipendere dal DB di sviluppo
+- la configurazione ambiente deve rendere esplicita la URL DB usata
 
-Il frontend non decide i permessi.
+### 8. Il frontend non ha accesso diretto al DB
 
-### 9. Implementazione incrementale richiesta da questo DL
+Il frontend browser, e in futuro Electron o kiosk, non accede mai direttamente al database.
 
-Il primo task guidato da questo DL deve introdurre solo il minimo necessario per il canale `browser`:
+L'accesso avviene solo tramite `app layer` e contratti HTTP espliciti.
 
-- login nominale
-- sessione utente
-- ruoli multipli nel contratto
-- routing iniziale coerente
+### 9. Conseguenza immediata sul piano dei task
 
-Non deve ancora introdurre:
+Prima del task auth browser reale, il progetto deve introdurre un task dedicato al bootstrap DB interno.
 
-- kiosk reale
-- client Electron reale
-- policy di terminal binding complete
+Ordine corretto:
+
+1. bootstrap backend minimo
+2. hardening verifica riproducibile
+3. bootstrap DB interno
+4. auth browser e routing per ruoli
 
 ## Consequences
 
 ### Positive
 
-- il browser puo partire subito senza bloccare il modello futuro
-- utenti multi-ruolo non diventano un edge case tardivo
-- auth e access mode restano concetti puliti e separati
-- kiosk ed Electron avranno spazio architetturale senza refactor prematuro
+- il login utente nasce su una base persistente reale
+- i task successivi possono aggiungere tabelle e migrazioni senza ambiguita
+- il `core` non rischia di accoppiarsi direttamente a EasyJob
+- la strategia di test resta coerente con il charter
 
 ### Negative / Trade-off
 
-- il primo modello auth e leggermente piu astratto di un semplice `role -> page`
-- il frontend iniziale richiede un minimo di logica in piu per il routing
-- alcune scelte concrete su kiosk restano rinviate a DL successivi
+- serve introdurre il DB prima di mostrare valore applicativo visibile all'utente finale
+- aumenta leggermente il lavoro iniziale di setup
+- richiede disciplina immediata su migrazioni e ambienti
 
 ### Impatto sul progetto
 
-Questo DL non introduce ancora workflow di dominio.
+Questo DL non introduce ancora il modello auth completo e non introduce ancora facts di dominio.
 
-Introduce pero il primo contratto di accesso applicativo che dovra essere rispettato da:
+Pero fissa il prerequisito architetturale comune per:
 
-- backend auth
-- guard applicative
-- frontend browser
-- futuri client Electron e kiosk
+- auth
+- sync persistito
+- facts canonici
+- stati operativi
 
 ## Notes
 
-- Questo DL recupera la lezione valida del modello ibrido V1, ma evita di inglobare troppo presto i dettagli di implementazione legacy.
-- Il prossimo task naturale e l'implementazione del primo slice `browser auth` coerente con questo modello.
-- Un DL successivo potra dettagliare il modello kiosk quando il canale diventera attivo.
+- Il DB interno non sostituisce il ruolo delle sorgenti esterne, ma diventa il perimetro operativo unico della V2.
+- La separazione per layer resta nel codice e nella ownership delle tabelle, non in una moltiplicazione precoce di schema PostgreSQL.
+- Il task naturale successivo a questo DL e `TASK-V2-003` per il bootstrap DB interno.
 
 ## References
 
 - `docs/charter/V2_CHARTER.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-001.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-002.md`
+- `backend/src/nssp_v2/shared/db.py`

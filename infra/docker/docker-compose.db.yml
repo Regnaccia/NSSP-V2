@@ -1,0 +1,25 @@
+# PostgreSQL locale per sviluppo V2.
+# Uso: docker compose -f infra/docker/docker-compose.db.yml up -d
+#
+# Avvia un singolo container PostgreSQL 16 con:
+#   - database: nssp_v2
+#   - utente:   postgres
+#   - password: postgres
+#   - porta:    5432 (locale)
+#
+# Corrisponde al DATABASE_URL di default in backend/.env.example
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: nssp_v2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - nssp_v2_db:/var/lib/postgresql/data
+
+volumes:
+  nssp_v2_db:
