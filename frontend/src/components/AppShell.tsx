@@ -32,6 +32,9 @@ const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
   logistica: [
     { path: '/logistica/clienti-destinazioni', label: 'Clienti / Destinazioni' },
   ],
+  produzione: [
+    { path: '/produzione/articoli', label: 'Articoli' },
+  ],
 }
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────

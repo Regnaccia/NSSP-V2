@@ -244,6 +244,8 @@ E prerequisito per:
 
 - Questo DL completa `DL-ARCH-V2-007` sul piano strutturale e `DL-ARCH-V2-008` sul piano runtime.
 - Il contratto e volutamente minimale ma obbligatorio.
+- I casi per singola entita non richiedono un nuovo `DL-ARCH` se applicano semplicemente questo contratto a un nuovo mirror sync.
+- La specifica concreta per entita deve vivere soprattutto nei documenti di mapping tecnico e nei task attuativi.
 
 ## References
 
@@ -252,3 +254,9 @@ E prerequisito per:
 - `docs/decisions/ARCH/DL-ARCH-V2-003.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-007.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-008.md`
+- `docs/integrations/easy/EASY_CLIENTI.md`
+- `docs/integrations/easy/EASY_DESTINAZIONI.md`
+- `docs/integrations/easy/EASY_ARTICOLI.md`
+- `docs/task/TASK-V2-010-sync-clienti-reale.md`
+- `docs/task/TASK-V2-011-sync-destinazioni.md`
+- `docs/task/TASK-V2-018-sync-articoli-reale.md`

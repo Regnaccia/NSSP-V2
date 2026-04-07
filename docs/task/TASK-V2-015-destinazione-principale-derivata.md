@@ -22,6 +22,7 @@ Claude Code
 - `docs/decisions/ARCH/DL-ARCH-V2-010.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-012.md`
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
+- `docs/decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`
 - `docs/task/TASK-V2-012-core-clienti-destinazioni.md`
 - `docs/task/TASK-V2-013-ui-clienti-destinazioni.md`
 

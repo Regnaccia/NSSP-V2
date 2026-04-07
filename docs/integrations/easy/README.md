@@ -29,6 +29,7 @@ File presenti:
 
 | File | Contenuto |
 |------|-----------|
+| [EASY_ARTICOLI.md](EASY_ARTICOLI.md) | Mapping tecnico iniziale di `ANAART` verso il target sync interno `articoli` |
 | [catalog/README.md](catalog/README.md) | Catalogo machine-generated degli schemi Easy in formato JSON |
 | [EASY_CLIENTI.md](EASY_CLIENTI.md) | Mapping tecnico iniziale di `ANACLI` verso il target sync interno `clienti` |
 | [EASY_DESTINAZIONI.md](EASY_DESTINAZIONI.md) | Mapping tecnico iniziale di `POT_DESTDIV` verso il target sync interno `destinazioni` |
@@ -36,7 +37,7 @@ File presenti:
 
 Naming consigliato per le future entita:
 
+- `EASY_ARTICOLI.md`
 - `EASY_CLIENTI.md`
 - `EASY_DESTINAZIONI.md`
 - `EASY_ORDINI.md`
-- `EASY_ARTICOLI.md`

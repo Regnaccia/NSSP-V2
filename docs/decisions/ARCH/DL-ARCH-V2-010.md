@@ -280,6 +280,7 @@ E prerequisito diretto per:
 - Questo DL non sostituisce i mapping Easy: li usa come input stabile.
 - Il primo slice privilegia un modello operativo minimo ma pulito.
 - Campi come `CAP` o un nome destinazione sorgente potranno entrare in slice successivi, dopo estensione del mapping sync.
+- `DL-ARCH-V2-012` raffina questo modello introducendo la regola per cui il cliente va trattato come destinazione principale esplicita nel Core.
 
 ## References
 
@@ -288,6 +289,7 @@ E prerequisito diretto per:
 - `docs/decisions/ARCH/DL-ARCH-V2-007.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-008.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-009.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-012.md`
 - `docs/decisions/UIX/DL-UIX-V2-001.md`
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
 - `docs/integrations/easy/EASY_CLIENTI.md`

@@ -8,6 +8,10 @@ Tipi attivi:
 - `OPS/` riservata a future decisioni operative, oggi vuota
 - `UIX/` decisioni su navigazione, layout e pattern di interfaccia V2
 
+Supporti documentali:
+
+- `UIX/specs/` specifiche dei casi concreti che istanziano i pattern UIX
+
 Regola:
 
 - il file name conserva il prefisso semantico, ad esempio `DL-ARCH-V2-001.md`
@@ -28,9 +32,17 @@ Documenti architetturali attivi:
 - `ARCH/DL-ARCH-V2-010.md`
 - `ARCH/DL-ARCH-V2-011.md`
 - `ARCH/DL-ARCH-V2-012.md`
+- `ARCH/DL-ARCH-V2-013.md`
+- `ARCH/DL-ARCH-V2-014.md`
 
 Documenti UIX attivi:
 
 - `UIX/DL-UIX-V2-001.md`
 - `UIX/DL-UIX-V2-002.md`
 - `UIX/DL-UIX-V2-003.md`
+- `UIX/DL-UIX-V2-004.md`
+
+Spec UIX attive:
+
+- `UIX/specs/UIX_SPEC_ARTICOLI.md`
+- `UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`

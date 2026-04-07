@@ -25,7 +25,13 @@ Task registrati:
 - `TASK-V2-011-sync-destinazioni.md` - completato
 - `TASK-V2-012-core-clienti-destinazioni.md` - completato
 - `TASK-V2-013-ui-clienti-destinazioni.md` - completato
-- `TASK-V2-014-sync-on-demand-clienti-destinazioni.md` - todo
-- `TASK-V2-015-destinazione-principale-derivata.md` - todo
-- `TASK-V2-016-ui-scroll-colonne-clienti-destinazioni.md` - todo
-- `TASK-V2-017-sidebar-navigation-contestuale.md` - todo
+- `TASK-V2-014-sync-on-demand-clienti-destinazioni.md` - completato
+- `TASK-V2-015-destinazione-principale-derivata.md` - completato
+- `TASK-V2-016-ui-scroll-colonne-clienti-destinazioni.md` - completato
+- `TASK-V2-017-sidebar-navigation-contestuale.md` - completato
+- `TASK-V2-018-sync-articoli-reale.md` - completato
+- `TASK-V2-019-core-articoli.md` - completato
+- `TASK-V2-020-ui-articoli.md` - completato
+- `TASK-V2-021-sync-on-demand-articoli.md` - completato
+- `TASK-V2-022-famiglia-articoli.md` - completato
+- `TASK-V2-023-ui-famiglia-articoli.md` - completato

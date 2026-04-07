@@ -1,10 +1,12 @@
 # ODE Roadmap
 
-Questa cartella e riservata alla roadmap attiva del progetto V2.
-
-Al momento non contiene documenti attivi.
+Questa cartella ospita lo stato corrente e la roadmap attiva del progetto V2.
 
 Regola:
 
 - creare qui solo documenti realmente V2 e ancora guida dell'implementazione
 - spostare in `docs/archive/ROADMAP/` i materiali ereditati, superseded o non piu rappresentativi della V2
+
+Documenti attivi:
+
+- `STATUS.md`

@@ -83,6 +83,46 @@ export interface DestinazioneItem {
   is_primary: boolean
 }
 
+// ─── Core slice articoli (DL-ARCH-V2-013) ────────────────────────────────────
+
+/** Voce catalogo famiglie articolo (DL-ARCH-V2-014) */
+export interface FamigliaItem {
+  code: string
+  label: string
+  sort_order: number | null
+}
+
+/** Riga di lista articoli */
+export interface ArticoloItem {
+  codice_articolo: string
+  descrizione_1: string | null
+  descrizione_2: string | null
+  unita_misura_codice: string | null
+  display_label: string
+  famiglia_code: string | null
+  famiglia_label: string | null
+}
+
+/** Dettaglio completo dell'articolo selezionato */
+export interface ArticoloDetail {
+  codice_articolo: string
+  descrizione_1: string | null
+  descrizione_2: string | null
+  unita_misura_codice: string | null
+  source_modified_at: string | null
+  categoria_articolo_1: string | null
+  materiale_grezzo_codice: string | null
+  quantita_materiale_grezzo_occorrente: string | null
+  quantita_materiale_grezzo_scarto: string | null
+  misura_articolo: string | null
+  codice_immagine: string | null
+  contenitori_magazzino: string | null
+  peso_grammi: string | null
+  display_label: string
+  famiglia_code: string | null
+  famiglia_label: string | null
+}
+
 /** Dettaglio completo della destinazione selezionata */
 export interface DestinazioneDetail {
   // Dati Easy read-only — destinazione

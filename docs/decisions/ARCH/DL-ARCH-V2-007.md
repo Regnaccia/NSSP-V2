@@ -162,9 +162,20 @@ E prerequisito per:
 
 - Questo DL e complementare alla policy di sola lettura verso Easy.
 - Il modello privilegia semplicita e chiarezza rispetto a ottimizzazioni premature.
+- I casi per singola entita non richiedono un nuovo `DL-ARCH` salvo che introducano un pattern architetturale nuovo rispetto al modello generale di sync.
+- I casi specifici `clienti`, `destinazioni`, `articoli` devono vivere principalmente in:
+  - documenti di mapping tecnico Easy
+  - task di implementazione
+  - eventuali DL aggiuntivi solo se emerge una regola nuova e riusabile oltre la singola entita
 
 ## References
 
 - `docs/charter/V2_CHARTER.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-001.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-003.md`
+- `docs/integrations/easy/EASY_CLIENTI.md`
+- `docs/integrations/easy/EASY_DESTINAZIONI.md`
+- `docs/integrations/easy/EASY_ARTICOLI.md`
+- `docs/task/TASK-V2-010-sync-clienti-reale.md`
+- `docs/task/TASK-V2-011-sync-destinazioni.md`
+- `docs/task/TASK-V2-018-sync-articoli-reale.md`

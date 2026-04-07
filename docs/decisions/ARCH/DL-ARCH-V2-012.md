@@ -23,6 +23,8 @@ Se questa regola non viene esplicitata nel Core, il rischio e:
 - costringere la UI a dedurre logiche di dominio a partire da `sync_clienti`
 - rendere incompleto l'elenco operativo delle destinazioni
 
+Questo DL nasce come raffinamento del primo slice Core definito in `DL-ARCH-V2-010`, che aveva introdotto il modello `clienti + destinazioni` senza rendere ancora esplicita la principale derivata dal cliente.
+
 ## Decision
 
 La V2 tratta il record cliente in `ANACLI` come una destinazione principale esplicita nel layer Core.
@@ -204,6 +206,7 @@ Deve guidare:
 - La principale e una promozione Core di un concetto gia presente operativamente in Easy.
 - Le destinazioni aggiuntive restano integralmente governate da `POT_DESTDIV`.
 - Il layer `sync` non va alterato per accomodare questa regola.
+- Questo DL non sostituisce `DL-ARCH-V2-010`: ne raffina il perimetro sul tema delle destinazioni operative del cliente.
 
 ## References
 

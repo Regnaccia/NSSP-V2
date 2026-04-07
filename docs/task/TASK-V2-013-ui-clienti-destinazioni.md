@@ -23,6 +23,7 @@ Claude Code
 - `docs/decisions/ARCH/DL-ARCH-V2-010.md`
 - `docs/decisions/UIX/DL-UIX-V2-001.md`
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
+- `docs/decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`
 - `docs/task/TASK-V2-012-core-clienti-destinazioni.md`
 
 ## Goal
@@ -141,6 +142,7 @@ Devono essere riportati:
 Direzione raccomandata:
 
 - trattare `DL-UIX-V2-002` come target UI del primo slice, ma usare solo i campi realmente disponibili dal Core
+- usare `UIX_SPEC_CLIENTI_DESTINAZIONI.md` come riferimento del caso concreto a `3 colonne`
 - se alcuni campi del DL UIX non sono ancora disponibili nel Core, privilegiare il contratto backend reale e aggiornare la documentazione
 - mantenere il layout intenzionale e leggibile, senza ricadere in una tabella annidata unica
 

@@ -1,0 +1,513 @@
+{
+  "table_name": "MAG_REALE",
+  "extracted_at": "2026-04-07T13:41:26.120925+00:00",
+  "source_system": "Easy (EasyJob SQL Server — ELFESQL)",
+  "access_mode": "read-only",
+  "primary_keys": [
+    "ID_MAGREALE"
+  ],
+  "columns": [
+    {
+      "name": "ID_MAGREALE",
+      "data_type": "numeric",
+      "nullable": false,
+      "ordinal_position": 1,
+      "numeric_precision": 10,
+      "numeric_scale": 0,
+      "primary_key": true
+    },
+    {
+      "name": "DEP_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 2,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "ART_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 3,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "ART_DES1",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 4,
+      "max_length": 100,
+      "primary_key": false
+    },
+    {
+      "name": "FLG_ANA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 5,
+      "max_length": 1,
+      "primary_key": false
+    },
+    {
+      "name": "COD_ANA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 6,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_CAR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 7,
+      "numeric_precision": 18,
+      "numeric_scale": 6,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_SCA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 8,
+      "numeric_precision": 18,
+      "numeric_scale": 6,
+      "primary_key": false
+    },
+    {
+      "name": "CAUM_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 9,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "VAL_UNIT",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 10,
+      "numeric_precision": 18,
+      "numeric_scale": 6,
+      "primary_key": false
+    },
+    {
+      "name": "VAL_TOT",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 11,
+      "numeric_precision": 15,
+      "numeric_scale": 2,
+      "primary_key": false
+    },
+    {
+      "name": "MAG_DTREG",
+      "data_type": "datetime",
+      "nullable": true,
+      "ordinal_position": 12,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_DATA",
+      "data_type": "datetime",
+      "nullable": true,
+      "ordinal_position": 13,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_NUM",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 14,
+      "max_length": 30,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_IDCOLL",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 15,
+      "max_length": 60,
+      "primary_key": false
+    },
+    {
+      "name": "FLG_CARSCA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 16,
+      "max_length": 1,
+      "primary_key": false
+    },
+    {
+      "name": "TIPO_DOC",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 17,
+      "max_length": 40,
+      "primary_key": false
+    },
+    {
+      "name": "PEZZI_CAR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 18,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PEZZI_SCA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 19,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PEZZI_VALUN",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 20,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PEZZI_VALTOT",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 21,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "ART_MISURA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 22,
+      "max_length": 20,
+      "primary_key": false
+    },
+    {
+      "name": "ART_DES2",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 23,
+      "max_length": 50,
+      "primary_key": false
+    },
+    {
+      "name": "DES_NOTE",
+      "data_type": "text",
+      "nullable": true,
+      "ordinal_position": 24,
+      "max_length": 2147483647,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_SC1",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 25,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_SC2",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 26,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_SC3",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 27,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_PZ_LORDO",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 28,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "RIPORTO",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 29,
+      "primary_key": false
+    },
+    {
+      "name": "COD_MATR",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 30,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_SC4",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 31,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "MOV_SRL",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 32,
+      "primary_key": false
+    },
+    {
+      "name": "COL_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 33,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "KG_CAR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 34,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "KG_SCA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 35,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_RIGA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 36,
+      "numeric_precision": 20,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "TAG_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 37,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "TAGLIA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 38,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "ART_STAMPA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 39,
+      "max_length": 50,
+      "primary_key": false
+    },
+    {
+      "name": "DESCR_STAMPA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 40,
+      "max_length": 100,
+      "primary_key": false
+    },
+    {
+      "name": "TAG_COL_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 41,
+      "max_length": 20,
+      "primary_key": false
+    },
+    {
+      "name": "PESO_KG",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 42,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "METRI",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 43,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_ETA",
+      "data_type": "datetime",
+      "nullable": true,
+      "ordinal_position": 44,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_ORD",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 45,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_IMP",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 46,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "TRA_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 47,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "ID_CATINO",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 48,
+      "numeric_precision": 10,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_FCA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 49,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_SHIP",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 50,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_SDOG",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 51,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_TRASP_F",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 52,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_ACC_F",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 53,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_TRASP_C",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 54,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_LOGISTICA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 55,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "PRZ_DAZI",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 56,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "FLG_GENE",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 57,
+      "primary_key": false
+    },
+    {
+      "name": "FLG_NEG01",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 58,
+      "primary_key": false
+    },
+    {
+      "name": "FLG_NEG02",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 59,
+      "primary_key": false
+    },
+    {
+      "name": "DESCR_MOV",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 60,
+      "max_length": 100,
+      "primary_key": false
+    }
+  ]
+}

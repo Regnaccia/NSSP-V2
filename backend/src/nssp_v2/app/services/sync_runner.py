@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from nssp_v2.app.schemas.sync import EntityRunResult
+from nssp_v2.sync.articoli.unit import ArticoloSyncUnit
 from nssp_v2.sync.clienti.unit import ClienteSyncUnit
 from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit
 
@@ -29,6 +30,7 @@ from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit
 _UNIT_MAP = {
     "clienti": ClienteSyncUnit,
     "destinazioni": DestinazioneSyncUnit,
+    "articoli": ArticoloSyncUnit,
 }
 
 # ─── Concurrency guard ────────────────────────────────────────────────────────

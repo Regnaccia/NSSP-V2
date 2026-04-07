@@ -85,8 +85,17 @@ export default function App() {
             }
           />
 
+          {/* Produzione — livello secondario: /produzione/articoli (DL-UIX-V2-003) */}
           <Route
-            path="/produzione/*"
+            path="/produzione"
+            element={
+              <ProtectedRoute roles={['produzione']}>
+                <Navigate to="/produzione/articoli" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/produzione/articoli"
             element={
               <ProtectedRoute roles={['produzione']}>
                 <ProduzioneHome />

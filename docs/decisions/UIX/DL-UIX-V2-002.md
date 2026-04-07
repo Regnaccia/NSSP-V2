@@ -1,4 +1,4 @@
-# DL-UIX-V2-002 — Surface logistica clienti/destinazioni a 3 colonne
+# DL-UIX-V2-002 - Pattern standard multi-colonna per menu configurazioni
 
 ## Status
 Approved for initial implementation
@@ -8,189 +8,201 @@ Approved for initial implementation
 
 ## Context
 
-La V2 introduce come primo caso applicativo una rubrica operativa clienti/destinazioni.
+La V2 sta introducendo surface applicative che espongono:
 
-Nel dominio logistico:
+- navigazione su entita o gruppi principali
+- eventuali livelli figli o correlati
+- pannelli di dettaglio o configurazione
 
-- il **cliente** rappresenta l’entità amministrativa
-- la **destinazione** rappresenta l’entità operativa configurabile
+Il primo caso concreto e stato `clienti/destinazioni`, ma il pattern non appartiene solo alla logistica.
 
-La surface deve quindi consentire:
+Lo stesso impianto puo essere riusato anche per:
 
-- navigazione efficiente tra clienti
-- accesso rapido alle destinazioni associate
-- consultazione e prima configurazione della destinazione selezionata
+- anagrafiche configurabili di produzione, come `articoli`
+- future schermate admin o operative con gerarchie naturali
+- casi con nesting differente ma stessa esigenza di consultazione e configurazione progressiva
 
-Una UI basata su tabella annidata cliente → destinazioni è utile per esplorazione,
-ma non è sufficiente come modello finale di configurazione, perché le policy operative
-sono legate soprattutto alla destinazione.
-
-È quindi necessario fissare un layout che separi chiaramente:
-
-- livello di navigazione clienti
-- livello di selezione destinazioni
-- livello di dettaglio/configurazione
+E quindi necessario fissare un pattern UIX generico, stabile e riusabile,
+senza legarlo a una sola surface.
 
 ## Decision
 
-La V2 adotta per la surface logistica clienti/destinazioni un layout a **3 colonne persistenti**:
+La V2 adotta come pattern standard per i menu di configurazione una UI a colonne progressive.
 
-1. **colonna sinistra** → elenco clienti
-2. **colonna centrale** → elenco destinazioni del cliente selezionato
-3. **colonna destra** → scheda configurazione della destinazione selezionata
+Il layout puo usare:
 
-## 1. Ruolo concettuale delle entità
+- `2 colonne`
+- `3 colonne`
+- `4 colonne`
 
-La surface riflette esplicitamente il seguente modello:
+in funzione del nesting reale del caso specifico.
 
-- il **cliente** è il contenitore amministrativo
-- la **destinazione** è l’unità operativa primaria di configurazione
+## 1. Principio generale
 
-Conseguenza:
+Ogni colonna rappresenta un livello di selezione o approfondimento.
 
-- la navigazione parte dal cliente
-- la configurazione avviene sulla destinazione
+Pattern base:
 
-## 2. Colonna sinistra — Elenco clienti
-
-La colonna sinistra mostra l’elenco clienti disponibili.
-
-Funzioni minime:
-
-- lista clienti
-- ricerca/filtro per:
-  - codice cliente
-  - nome/ragione sociale
-- selezione singola cliente
-
-La selezione di un cliente aggiorna la colonna centrale.
-
-## 3. Colonna centrale — Elenco destinazioni
-
-La colonna centrale mostra le destinazioni associate al cliente selezionato.
-
-Funzioni minime:
-
-- elenco destinazioni del cliente
-- selezione singola destinazione
-- visualizzazione sintetica di:
-  - codice destinazione
-  - ragione sociale / nome sede
-  - località essenziale
-  - nickname destinazione, se presente
-
-La selezione di una destinazione aggiorna la colonna destra.
-
-## 4. Colonna destra — Configurazione destinazione
-
-La colonna destra mostra il dettaglio della destinazione selezionata.
-
-Nella prima implementazione la colonna contiene:
-
-### 4.1 Dati anagrafici read-only provenienti da Easy
-
-- codice cliente
-- codice destinazione
-- ragione sociale / nome sede
-- indirizzo
-- CAP
-- città
-- provincia
-
-Questi dati sono visualizzati ma non modificabili.
-
-### 4.2 Primo dato interno configurabile
-
-- `nickname_destinazione`
-
-Il nickname destinazione è:
-
-- interno al sistema
-- separato dai dati Easy
-- usato per leggibilità operativa
-
-## 5. Stato iniziale della surface
-
-Comportamento iniziale:
-
-- se nessun cliente è selezionato, la colonna centrale e la destra restano in stato vuoto guidato
-- alla selezione di un cliente, viene popolata la colonna centrale
-- alla selezione di una destinazione, viene popolata la colonna destra
-
-## 6. Relazione con dati sincronizzati e dati interni
-
-La surface deve distinguere chiaramente:
-
-- dati sincronizzati da Easy (read-only)
-- dati interni applicativi (configurabili)
+1. colonna 1 -> elenco entita principali
+2. colonna 2 -> elementi figli o correlati, se esistono
+3. colonna 3 -> dettaglio o configurazione dell'elemento selezionato
+4. colonna 4 -> pannello avanzato o contesto secondario, solo se realmente necessario
 
 Regola:
 
-- i dati Easy non sono modificabili nella UI
-- i dati interni configurabili sono persistiti nel sistema interno
+> Il numero di colonne deve derivare dal nesting reale del caso, non da una scelta estetica fissa.
 
-## 7. Evoluzione prevista
+## 2. Variazioni ammesse
 
-Questo layout è progettato per supportare estensioni future nella colonna destra, tra cui:
+### 2 colonne
 
-- contatto logistico
-- corrieri abituali
-- spedizione a carico
-- flag avvisi automatici
-- regole di approntamento
+Da usare quando il caso ha:
 
-La prima implementazione deve però restare limitata al solo `nickname_destinazione`
-come configurazione modificabile.
+- un elenco principale
+- un solo pannello di dettaglio o configurazione
 
-## 8. Pattern UI risultante
+Esempio naturale:
 
-La surface adotta quindi il seguente pattern:
+- `articoli -> configurazione articolo`
 
-- **cliente** come livello di raggruppamento e navigazione
-- **destinazione** come livello di configurazione operativa
-- **scheda destra** come spazio di dettaglio e impostazione progressiva
+### 3 colonne
 
-## Esclusions (out of scope)
+Da usare quando il caso ha:
+
+- un elenco principale
+- un secondo livello di selezione
+- un pannello finale di dettaglio o configurazione
+
+Esempio naturale:
+
+- `clienti -> destinazioni -> configurazione destinazione`
+
+### 4 colonne
+
+Da usare solo quando esiste un quarto livello reale e stabile, ad esempio:
+
+- entita principale
+- sotto-entita
+- dettaglio
+- pannello tecnico o configurazione avanzata separata
+
+La quarta colonna non deve essere introdotta per semplice comodita di layout.
+
+## 3. Fonte dati ammessa
+
+Le colonne devono consumare:
+
+- read model Core
+- API backend applicative
+
+Non devono consumare direttamente:
+
+- mirror `sync_*`
+- tabelle tecniche di integrazione
+- logiche di join costruite nel frontend
+
+Regola:
+
+> Il frontend usa contratti Core/API; i mirror sync non sono un contratto UI.
+
+## 4. Relazione tra dati read-only e dati configurabili
+
+Ogni schermata che adotta questo pattern deve distinguere chiaramente:
+
+- dati sincronizzati o derivati in sola lettura
+- dati interni configurabili
+
+Regole:
+
+- i dati provenienti da Easy restano read-only
+- i dati interni modificabili devono essere presentati come tali
+- la UI non deve mescolare semanticamente campi sorgente e campi interni
+
+## 5. Comportamento di selezione
+
+Ogni colonna dipende dalla selezione della colonna precedente.
+
+Comportamenti minimi:
+
+- nessuna selezione -> colonne successive in stato vuoto guidato
+- selezione colonna N -> popola la colonna N+1 se prevista
+- cambio selezione a monte -> reset coerente delle colonne a valle
+
+## 6. Scroll e layout
+
+Il pattern deve supportare colonne con contenuto lungo.
+
+Regole:
+
+- ogni colonna deve poter avere scroll indipendente quando necessario
+- il layout non deve trasformarsi in una singola pagina lunga
+- la leggibilita della selezione corrente deve restare evidente
+
+## 7. Reusability del pattern
+
+`DL-UIX-V2-002` definisce il pattern generale.
+
+I casi specifici devono essere documentati in spec dedicate, ad esempio sotto:
+
+- `docs/decisions/UIX/specs/`
+
+Le spec descrivono:
+
+- quale variante del pattern viene usata (`2`, `3`, `4` colonne)
+- quali entita popolano ogni colonna
+- quali dati sono read-only
+- quali dati sono configurabili
+
+## 8. Prima applicazione e casi futuri
+
+Prima applicazione concreta:
+
+- `clienti/destinazioni` -> variante a `3 colonne`
+
+Caso successivo previsto:
+
+- `articoli` -> variante a `2 colonne`
+
+## Esclusioni (out of scope)
 
 Questo DL NON definisce:
 
 - styling visivo dettagliato
-- comportamento responsive avanzato
-- editing inline massivo
-- bulk actions
-- configurazioni logistiche avanzate oltre il nickname
-- policy di refresh dati runtime
+- comportamento responsive avanzato per ogni breakpoint
+- contenuti specifici di una singola surface
+- policy runtime di refresh o sync
+- contratti backend di dettaglio per un caso concreto
 
 ## Consequences
 
 ### Positive
 
-- separazione chiara tra livello amministrativo e operativo
-- buona leggibilità della navigazione
-- configurazione scalabile nel tempo
-- coerenza con il dominio logistico reale
+- coerenza trasversale tra surface configurative diverse
+- maggiore riuso dei pattern UI senza copiare schermate
+- separazione pulita tra DL UIX generico e casi specifici
 
 ### Negative / Trade-off
 
-- richiede un layout più strutturato rispetto a una semplice tabella
-- introduce stato UI multi-selezione (cliente + destinazione)
-- richiede maggiore disciplina nella gestione delle dipendenze dati
+- richiede disciplina nel non forzare tutti i casi nello stesso numero di colonne
+- impone una documentazione aggiuntiva per i casi specifici
 
 ## Impatto sul progetto
 
 Questo DL diventa riferimento per:
 
-- prima surface logistica clienti/destinazioni
-- task frontend della rubrica operativa
-- future estensioni configurative per destinazione
+- menu configurazioni basati su pattern multi-colonna
+- future surface `produzione`, `logistica` e altre anagrafiche configurabili
+- spec UIX specifiche di ciascun caso
 
 ## Notes
 
-- Questo DL formalizza la destinazione come unità operativa primaria della logistica.
-- Il cliente resta il punto di accesso amministrativo e di raggruppamento.
+- Il pattern e volutamente generico: `2`, `3` o `4` colonne sono varianti dello stesso modello, non soluzioni concorrenti.
+- I casi specifici devono vivere in spec dedicate, non dentro il DL generale.
 
 ## References
 
-- DL-UIX-V2-001 — Navigazione applicativa multi-surface (Sidebar)
-- DL-ARCH-V2-007 — Primo caso applicativo clienti/destinazioni
-- DL-ARCH-V2-008 — Sync Execution Model & Freshness Policy
+- `docs/decisions/UIX/DL-UIX-V2-001.md`
+- `docs/decisions/UIX/DL-UIX-V2-003.md`
+- `docs/decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-010.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-012.md`
