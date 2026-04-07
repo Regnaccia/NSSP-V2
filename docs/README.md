@@ -79,6 +79,7 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-005-admin-access-management.md](task/TASK-V2-005-admin-access-management.md) | Prima surface reale `admin` per gestione utenti, ruoli e stato attivo/inattivo |
 | [task/TASK-V2-006-ui-navigation-refactor.md](task/TASK-V2-006-ui-navigation-refactor.md) | Refactor della navigazione browser verso layout persistente multi-surface con sidebar basata su `available_surfaces` |
 | [task/TASK-V2-007-bootstrap-sync-clienti.md](task/TASK-V2-007-bootstrap-sync-clienti.md) | Primo slice tecnico del layer sync: sync unit `clienti`, target interno, run metadata minimi e verifica di idempotenza |
+| [task/TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md](task/TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md) | Hardening della verifica backend e riallineamento dello scaffolding sync condiviso prima del primo caso applicativo reale |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

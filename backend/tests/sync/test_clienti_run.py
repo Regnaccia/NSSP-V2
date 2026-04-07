@@ -15,7 +15,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from nssp_v2.shared.db import Base
-from nssp_v2.sync.clienti.models import SyncCliente, SyncEntityState, SyncRunLog
+from nssp_v2.sync.clienti.models import SyncCliente
+from nssp_v2.sync.models import SyncEntityState, SyncRunLog
 from nssp_v2.sync.clienti.source import ClienteRecord, FakeClienteSource
 from nssp_v2.sync.clienti.unit import ClienteSyncUnit
 

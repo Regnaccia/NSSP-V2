@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,4 +19,16 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 480  # 8 ore
 
 
-settings = Settings()
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Restituisce l'istanza singleton di Settings.
+
+    L'uso di lru_cache garantisce che Settings() sia istanziato una volta sola
+    e che in test sia possibile sovrascrivere i valori tramite variabili d'ambiente
+    e resettare la cache con get_settings.cache_clear().
+    """
+    return Settings()
+
+
+# Alias backward-compatible per import diretti: `from ... import settings`
+settings = get_settings()

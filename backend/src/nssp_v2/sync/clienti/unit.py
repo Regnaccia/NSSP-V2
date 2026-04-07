@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from nssp_v2.sync.clienti.models import SyncCliente, SyncEntityState, SyncRunLog
+from nssp_v2.sync.clienti.models import SyncCliente
+from nssp_v2.sync.models import SyncEntityState, SyncRunLog
 from nssp_v2.sync.clienti.source import ClienteSourceAdapter
 from nssp_v2.sync.contract import RunMetadata
 

@@ -148,23 +148,23 @@ def test_sync_cliente_codice_cli_is_unique():
 
 
 def test_sync_run_log_tablename():
-    from nssp_v2.sync.clienti.models import SyncRunLog
+    from nssp_v2.sync.models import SyncRunLog
     assert SyncRunLog.__tablename__ == "sync_run_log"
 
 
 def test_sync_run_log_has_required_columns():
-    from nssp_v2.sync.clienti.models import SyncRunLog
+    from nssp_v2.sync.models import SyncRunLog
     cols = {c.name for c in SyncRunLog.__table__.columns}
     assert {"run_id", "entity_code", "started_at", "finished_at", "status",
             "rows_seen", "rows_written", "rows_deleted", "error_message"} <= cols
 
 
 def test_sync_entity_state_tablename():
-    from nssp_v2.sync.clienti.models import SyncEntityState
+    from nssp_v2.sync.models import SyncEntityState
     assert SyncEntityState.__tablename__ == "sync_entity_state"
 
 
 def test_sync_entity_state_has_required_columns():
-    from nssp_v2.sync.clienti.models import SyncEntityState
+    from nssp_v2.sync.models import SyncEntityState
     cols = {c.name for c in SyncEntityState.__table__.columns}
     assert {"entity_code", "last_run_at", "last_success_at", "last_status", "last_error"} <= cols
