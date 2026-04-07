@@ -215,7 +215,7 @@ Nessuna nuova dipendenza runtime. Docker richiesto per il DB locale (non traccia
 ### Assumptions
 
 - Docker disponibile per avviare PostgreSQL locale tramite `docker-compose.db.yml`
-- Il seed usa un hash sha256 placeholder per `password_hash` — TASK-V2-004 sostituirà con bcrypt via passlib
+- Il seed usa uno schema di password temporaneo nel perimetro del task; `TASK-V2-004` ha poi introdotto hashing reale con `bcrypt` diretto
 - `alembic upgrade head` deve essere eseguito da `backend/` con venv attivo e `.env` configurato
 
 ### Known Limits
@@ -227,6 +227,7 @@ Nessuna nuova dipendenza runtime. Docker richiesto per il DB locale (non traccia
 ### Follow-ups
 
 - `TASK-V2-004`: browser auth e routing iniziale per ruoli
+- Verifica successiva documentata in `docs/test/TEST-V2-002-task-003-db-bootstrap-validation.md`
 
 ## Completed At
 

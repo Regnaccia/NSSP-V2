@@ -71,6 +71,7 @@ Regola:
 - `sync` acquisisce e riallinea
 - il risultato viene persistito nel DB interno
 - `core` e `app` lavorano sul DB interno
+- l'accesso a EasyJob e solo read-only; nessuna scrittura verso EasyJob e permessa da V2
 
 Questo vale anche quando la sorgente esterna resta la fonte originaria del dato.
 

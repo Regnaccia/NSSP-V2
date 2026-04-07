@@ -256,8 +256,8 @@ Primo slice auth browser completo. Backend: JWT via python-jose + bcrypt diretto
 
 ### Follow-ups
 
-- Verificare end-to-end con DB attivo: `alembic upgrade head` + seed + `uvicorn` + `npm run dev`
-- Task successivo naturale: prime tabelle source facts (sync EasyJob) o prima superficie applicativa reale
+- Verifica successiva documentata in `docs/test/TEST-V2-003-task-004-browser-auth-validation.md`
+- Task successivo naturale: `TASK-V2-005` sulla surface `admin` coerente con `DL-ARCH-V2-006`
 
 ## Completed At
 

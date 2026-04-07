@@ -10,7 +10,12 @@ Regole operative:
 - Claude Code aggiorna il file durante o al termine del lavoro
 - a task completato, Claude Code imposta `Status: Completed` e compila la sezione finale di esecuzione
 
-Task attivi:
+Task registrati:
 
-- `TASK-V2-003-bootstrap-db-interno.md`
-- `TASK-V2-004-browser-auth-and-role-routing.md`
+- `TASK-V2-001-bootstrap-backend.md` - completato
+- `TASK-V2-002-hardening-verifica-backend.md` - completato
+- `TASK-V2-003-bootstrap-db-interno.md` - completato
+- `TASK-V2-004-browser-auth-and-role-routing.md` - completato
+- `TASK-V2-005-admin-access-management.md` - completato
+- `TASK-V2-006-ui-navigation-refactor.md` - todo
+- `TASK-V2-007-bootstrap-sync-clienti.md` - todo

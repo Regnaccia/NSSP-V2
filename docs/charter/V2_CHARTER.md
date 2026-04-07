@@ -92,6 +92,13 @@ EasyJob fornisce una parte importante dei dati di base, ma la V2 assume che il s
 
 Di conseguenza il sistema è **core-centric**, non **Easy-centric**.
 
+Regola vincolante di progetto:
+
+- l'accesso a EasyJob deve essere esclusivamente in lettura
+- nessun componente della V2 e autorizzato a scrivere su EasyJob
+- nessuna eccezione e ammessa, neppure per sync, correzioni operative, test o script manuali
+- ogni eventuale bisogno di modifica dati deve essere modellato e persistito solo nei sistemi interni V2
+
 ## 2.3 Reparti coinvolti
 
 Il sistema è trasversale ai reparti:
@@ -144,6 +151,10 @@ Regola:
 - `sync` non contiene logica operativa;
 - `core` è il centro semantico del sistema;
 - `app` non reimplementa la logica di dominio.
+
+Regola aggiuntiva vincolante:
+
+- `sync` puo leggere da EasyJob, ma non puo scrivere su EasyJob in nessun caso
 
 ## 3.2 Core fact-centric
 

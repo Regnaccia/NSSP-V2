@@ -78,6 +78,7 @@ Vincoli:
 - non contiene policy operative o decisioni di dominio
 - non crea stati applicativi o workflow utente
 - non dipende da FastAPI, router o componenti frontend
+- puo leggere da EasyJob, ma non puo scrivere su EasyJob in nessun caso
 
 #### `core`
 
