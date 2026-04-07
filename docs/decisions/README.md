@@ -11,3 +11,8 @@ Regola:
 
 - il file name conserva il prefisso semantico, ad esempio `DL-ARCH-V2-001.md`
 - la cartella aggiunge un ordinamento fisico leggibile nel repo
+
+Documenti architetturali attivi:
+
+- `ARCH/DL-ARCH-V2-001.md`
+- `ARCH/DL-ARCH-V2-002.md`

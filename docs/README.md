@@ -9,7 +9,8 @@ docs/
 ├── decisions/        decision log V2 organizzati per tipo
 ├── guides/           guide operative e convenzioni V2
 ├── roadmap/          sviluppi confermati e punti aperti della V2
-└── task/             task di implementazione passati a Claude Code
+├── task/             task di implementazione passati a Claude Code
+└── test/             report di verifica su task, pipeline e controlli manuali
 ```
 
 ## Charter
@@ -28,6 +29,7 @@ Sottocartelle per tipo:
 | File | Contenuto |
 |------|-----------|
 | [decisions/ARCH/DL-ARCH-V2-001.md](decisions/ARCH/DL-ARCH-V2-001.md) | Struttura repository V2 e confini espliciti tra sync, core e app |
+| [decisions/ARCH/DL-ARCH-V2-002.md](decisions/ARCH/DL-ARCH-V2-002.md) | Verifica riproducibile dei task e completion contract |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 
 ## Roadmap
@@ -46,6 +48,12 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | File | Contenuto |
 |------|-----------|
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
+
+## Test
+
+| File | Contenuto |
+|------|-----------|
+| [test/TEST-V2-001-task-pipeline-validation.md](test/TEST-V2-001-task-pipeline-validation.md) | Verifica del primo task backend e della pipeline AI -> task -> codice -> architettura |
 
 ## Archive
 
