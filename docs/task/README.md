@@ -21,5 +21,11 @@ Task registrati:
 - `TASK-V2-007-bootstrap-sync-clienti.md` - completato (bootstrap storico)
 - `TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md` - completato
 - `TASK-V2-009-easy-schema-explorer-and-catalog.md` - completato
-- `TASK-V2-010-sync-clienti-reale.md` - todo
-- `TASK-V2-011-sync-destinazioni.md` - todo
+- `TASK-V2-010-sync-clienti-reale.md` - completato
+- `TASK-V2-011-sync-destinazioni.md` - completato
+- `TASK-V2-012-core-clienti-destinazioni.md` - completato
+- `TASK-V2-013-ui-clienti-destinazioni.md` - completato
+- `TASK-V2-014-sync-on-demand-clienti-destinazioni.md` - todo
+- `TASK-V2-015-destinazione-principale-derivata.md` - todo
+- `TASK-V2-016-ui-scroll-colonne-clienti-destinazioni.md` - todo
+- `TASK-V2-017-sidebar-navigation-contestuale.md` - todo

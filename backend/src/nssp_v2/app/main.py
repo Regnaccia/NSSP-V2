@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from nssp_v2.app.api import admin, auth, health
+from nssp_v2.app.api import admin, auth, health, logistica, sync
 
 app = FastAPI(
     title="ODE OMR V2",
@@ -11,3 +11,5 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(logistica.router, prefix="/api")
+app.include_router(sync.router, prefix="/api")

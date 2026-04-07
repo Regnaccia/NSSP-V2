@@ -49,27 +49,47 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+          {/* Admin — livello secondario: /admin/utenti (DL-UIX-V2-003) */}
           <Route
-            path="/admin/*"
+            path="/admin"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <Navigate to="/admin/utenti" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/utenti"
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminHome />
               </ProtectedRoute>
             }
           />
+
+          {/* Logistica — livello secondario: /logistica/clienti-destinazioni (DL-UIX-V2-003) */}
+          <Route
+            path="/logistica"
+            element={
+              <ProtectedRoute roles={['logistica']}>
+                <Navigate to="/logistica/clienti-destinazioni" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logistica/clienti-destinazioni"
+            element={
+              <ProtectedRoute roles={['logistica']}>
+                <LogisticaHome />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/produzione/*"
             element={
               <ProtectedRoute roles={['produzione']}>
                 <ProduzioneHome />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/logistica/*"
-            element={
-              <ProtectedRoute roles={['logistica']}>
-                <LogisticaHome />
               </ProtectedRoute>
             }
           />

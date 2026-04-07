@@ -8,9 +8,11 @@ Stato coperto:
 - PostgreSQL locale
 - auth browser
 - surface `admin`
+- sync Easy read-only `clienti`
+- sync Easy read-only `destinazioni`
 - build frontend
 
-Aggiornata dopo: `TASK-V2-005`.
+Aggiornata dopo: `TASK-V2-011`.
 
 ## Prerequisiti
 
@@ -33,8 +35,10 @@ python -m venv .venv
 # Linux/macOS
 source .venv/bin/activate
 
-pip install -e ".[dev]"
+pip install -e ".[dev,easy]"
 ```
+
+`easy` installa il supporto `pyodbc` necessario per schema explorer e sync reali verso Easy.
 
 ## 2. Configurazione ambiente
 
@@ -54,11 +58,14 @@ Variabili principali:
 | `JWT_SECRET_KEY` | `change-me-in-production` | da cambiare fuori dal locale |
 | `JWT_ALGORITHM` | `HS256` | algoritmo JWT |
 | `JWT_EXPIRE_MINUTES` | `480` | 8 ore |
+| `EASY_CONNECTION_STRING` | `DRIVER={SQL Server};SERVER=SERVER\SQLEXPRESS;DATABASE=ELFESQL;UID=sa;PWD=CHANGE_ME` | connessione read-only a Easy |
 
-Nota:
+Note:
 
 - se l'ambiente locale contiene variabili incoerenti, il bootstrap puo fallire
-- per le verifiche riproducibili usare sempre `.env` pulito o env vars esplicite
+- per verifiche riproducibili usare `.env` pulito o env vars esplicite
+- `EASY_CONNECTION_STRING` e richiesta solo per schema explorer e sync reali verso Easy
+- nessuna scrittura verso Easy e permessa in nessun caso
 
 ## 3. Bootstrap database locale
 
@@ -96,17 +103,18 @@ cd backend
 alembic upgrade head
 ```
 
-Output atteso corrente:
-
-```text
-INFO  [alembic.runtime.migration] Running upgrade  -> 20260407001, access control tables: users, roles, user_roles
-```
-
 Stato corrente migration:
 
 ```bash
 alembic current
 ```
+
+Le migration attive includono almeno:
+
+- access control (`users`, `roles`, `user_roles`)
+- metadati condivisi del layer `sync`
+- estensione reale `sync_clienti`
+- `sync_destinazioni`
 
 ## 5. Seed iniziale
 
@@ -177,15 +185,11 @@ Payload atteso:
 
 ## 7. Esecuzione test backend
 
+Per la suite unitaria:
+
 ```bash
 cd backend
 pytest tests/unit/ -v
-```
-
-Output atteso corrente:
-
-```text
-25 passed
 ```
 
 La suite copre:
@@ -194,10 +198,41 @@ La suite copre:
 - modelli access control
 - utility security e `available_surfaces`
 - policy "ultimo admin attivo"
+- contratti sync `clienti` e `destinazioni`
 
-I test unit non richiedono DB attivo.
+Per l'intera suite:
 
-## 8. Verifica strutturale rapida
+```bash
+cd backend
+pytest tests -q
+```
+
+## 8. Sync Easy e smoke tecnico
+
+Comandi on demand disponibili:
+
+```bash
+cd backend
+python scripts/sync_clienti.py --source fake
+python scripts/sync_destinazioni.py --source fake
+```
+
+Per usare Easy reale:
+
+```bash
+cd backend
+python scripts/sync_clienti.py
+python scripts/sync_destinazioni.py
+```
+
+Regole operative:
+
+- `sync_clienti` va eseguita prima di `sync_destinazioni`
+- gli script Easy richiedono `EASY_CONNECTION_STRING`
+- gli adapter Easy leggono solo `ANACLI` e `POT_DESTDIV`
+- gli script scrivono solo sul database interno V2
+
+## 9. Verifica strutturale rapida
 
 ```bash
 cd backend
@@ -208,9 +243,12 @@ python -c "from nssp_v2.app.models.access import User, Role, UserRole; print('mo
 python -c "from nssp_v2.shared.security import hash_password, create_access_token; print('security OK')"
 python -c "from nssp_v2.app.api.auth import router; print('auth router OK')"
 python -c "from nssp_v2.app.api.admin import router; print('admin router OK')"
+python -c "from nssp_v2.sync.models import SyncRunLog, SyncEntityState; print('sync shared OK')"
+python -c "from nssp_v2.sync.clienti.unit import ClienteSyncUnit; print('sync clienti OK')"
+python -c "from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit; print('sync destinazioni OK')"
 ```
 
-## 9. Bootstrap frontend
+## 10. Bootstrap frontend
 
 ```bash
 cd frontend
@@ -228,7 +266,7 @@ npm run build
 
 Le chiamate `/api/*` vengono proxate su `http://localhost:8000`.
 
-## 10. Sequenza completa da zero
+## 11. Sequenza completa da zero
 
 ```bash
 # 1. Posizionarsi nella root V2
@@ -240,27 +278,33 @@ docker compose -f infra/docker/docker-compose.db.yml up -d
 cd backend
 python -m venv .venv
 .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -e ".[dev,easy]"
 cp .env.example .env
 
 # 4. Migrazioni + seed
 alembic upgrade head
 python scripts/seed_initial.py
 
-# 5. Test backend
+# 5. Test backend e smoke sync locale
 pytest tests/unit/ -v
+python scripts/sync_clienti.py --source fake
+python scripts/sync_destinazioni.py --source fake
 
 # 6. Avviare backend
 uvicorn nssp_v2.app.main:app --reload
 
-# 7. In un'altra shell, frontend
+# 7. Sync reale Easy (solo se EASY_CONNECTION_STRING e configurata)
+python scripts/sync_clienti.py
+python scripts/sync_destinazioni.py
+
+# 8. In un'altra shell, frontend
 cd ../frontend
 npm install
 npm run build
 npm run dev
 ```
 
-## 11. Smoke flow consigliato
+## 12. Smoke flow consigliato
 
 Verifica manuale minima:
 
@@ -271,3 +315,5 @@ Verifica manuale minima:
 5. creare un utente di test
 6. assegnare almeno un ruolo
 7. verificare visualizzazione delle surfaces derivate
+8. eseguire `sync_clienti` e verificare aggiornamento di `sync_clienti`
+9. eseguire `sync_destinazioni` e verificare aggiornamento di `sync_destinazioni`

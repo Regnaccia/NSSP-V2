@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 ore
 
+    # Connessione a EasyJob — richiesta per sync on demand reale
+    # Formato: DRIVER={SQL Server};SERVER=...;DATABASE=...;UID=...;PWD=...
+    easy_connection_string: str | None = None
+
+    # Soglia di staleness per la freshness policy (DL-ARCH-V2-008 §5)
+    sync_staleness_threshold_minutes: int = 60
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
