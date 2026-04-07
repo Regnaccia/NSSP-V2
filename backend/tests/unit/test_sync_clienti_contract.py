@@ -7,13 +7,15 @@ Verificano:
 - source adapter read-only (nessun metodo write)
 - RunMetadata struttura
 - FakeClienteSource comportamento
+- EasyClienteSource contratto (senza connessione reale)
+- ClienteRecord campi EASY_CLIENTI.md
 """
 
 import inspect
 
 import pytest
 
-from nssp_v2.sync.clienti.source import ClienteRecord, ClienteSourceAdapter, FakeClienteSource
+from nssp_v2.sync.clienti.source import ClienteRecord, ClienteSourceAdapter, EasyClienteSource, FakeClienteSource
 from nssp_v2.sync.clienti.unit import ClienteSyncUnit
 from nssp_v2.sync.contract import (
     ALIGNMENT_STRATEGIES,
@@ -134,7 +136,21 @@ def test_sync_cliente_tablename():
 def test_sync_cliente_has_required_columns():
     from nssp_v2.sync.clienti.models import SyncCliente
     cols = {c.name for c in SyncCliente.__table__.columns}
-    assert {"id", "codice_cli", "ragione_sociale", "attivo", "synced_at"} <= cols
+    # Campi base + campi aggiunti da EASY_CLIENTI.md (TASK-V2-010)
+    assert {
+        "id", "codice_cli", "ragione_sociale", "attivo", "synced_at",
+        "indirizzo", "nazione_codice", "provincia", "telefono_1", "source_modified_at",
+    } <= cols
+
+
+def test_sync_cliente_new_fields_are_nullable():
+    from nssp_v2.sync.clienti.models import SyncCliente
+    nullable_fields = {
+        c.name: c.nullable
+        for c in SyncCliente.__table__.columns
+    }
+    for field in ("indirizzo", "nazione_codice", "provincia", "telefono_1", "source_modified_at"):
+        assert nullable_fields[field] is True, f"Campo '{field}' deve essere nullable"
 
 
 def test_sync_cliente_codice_cli_is_unique():
@@ -168,3 +184,68 @@ def test_sync_entity_state_has_required_columns():
     from nssp_v2.sync.models import SyncEntityState
     cols = {c.name for c in SyncEntityState.__table__.columns}
     assert {"entity_code", "last_run_at", "last_success_at", "last_status", "last_error"} <= cols
+
+
+# ─── ClienteRecord campi EASY_CLIENTI.md ─────────────────────────────────────
+
+def test_cliente_record_required_fields():
+    rec = ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl")
+    assert rec.codice_cli == "C001"
+    assert rec.ragione_sociale == "Alfa Srl"
+
+
+def test_cliente_record_optional_fields_default_none():
+    rec = ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl")
+    assert rec.indirizzo is None
+    assert rec.nazione_codice is None
+    assert rec.provincia is None
+    assert rec.telefono_1 is None
+    assert rec.source_modified_at is None
+
+
+def test_cliente_record_optional_fields_settable():
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc)
+    rec = ClienteRecord(
+        codice_cli="C001",
+        ragione_sociale="Alfa Srl",
+        indirizzo="Via Roma 1",
+        nazione_codice="IT",
+        provincia="MI",
+        telefono_1="02 123456",
+        source_modified_at=ts,
+    )
+    assert rec.indirizzo == "Via Roma 1"
+    assert rec.nazione_codice == "IT"
+    assert rec.provincia == "MI"
+    assert rec.telefono_1 == "02 123456"
+    assert rec.source_modified_at == ts
+
+
+# ─── EasyClienteSource contratto (senza connessione reale) ───────────────────
+
+def test_easy_source_has_no_write_methods():
+    """EasyClienteSource non deve esporre metodi write."""
+    write_keywords = ("write", "insert", "update", "delete", "save", "create", "push", "send")
+    methods = [
+        name for name, _ in inspect.getmembers(EasyClienteSource, predicate=inspect.isfunction)
+        if not name.startswith("_")
+    ]
+    for method in methods:
+        for kw in write_keywords:
+            assert kw not in method.lower(), (
+                f"EasyClienteSource espone un metodo con semantica write: '{method}'"
+            )
+
+
+def test_easy_source_is_subclass_of_adapter():
+    """EasyClienteSource deve implementare ClienteSourceAdapter."""
+    assert issubclass(EasyClienteSource, ClienteSourceAdapter)
+
+
+def test_easy_source_query_is_select_only():
+    """La query usata da EasyClienteSource deve essere SELECT, non write."""
+    query = EasyClienteSource._QUERY.strip().upper()
+    assert query.startswith("SELECT"), "La query deve iniziare con SELECT"
+    for keyword in ("INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE"):
+        assert keyword not in query, f"La query non deve contenere '{keyword}'"

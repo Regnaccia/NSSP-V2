@@ -1,22 +1,19 @@
 """
-Entrypoint on-demand per la sync `clienti`.
+Entrypoint on-demand per la sync `destinazioni`.
 
 Modalita:
-  --source easy   (default) — legge da ANACLI via EasyClienteSource
+  --source easy   (default) — legge da POT_DESTDIV via EasyDestinazioneSource
                               richiede EASY_CONNECTION_STRING in .env
-  --source fake             — usa FakeClienteSource con 3 record demo
-                              non richiede connessione Easy
+  --source fake             — usa FakeDestinazioneSource con record demo
+
+Nota: la sync `destinazioni` dipende da `clienti`.
+Assicurarsi che `sync_clienti` sia gia stata eseguita prima di questa.
 
 Esecuzione:
     cd backend
     .venv\\Scripts\\activate
     pip install -e ".[dev,easy]"
-
-    # Sync reale da Easy:
-    python scripts/sync_clienti.py
-
-    # Sync con dati fake (senza Easy):
-    python scripts/sync_clienti.py --source fake
+    python scripts/sync_destinazioni.py
 """
 
 import argparse
@@ -24,24 +21,24 @@ import os
 import sys
 from pathlib import Path
 
-# Aggiunge src/ al path per esecuzione diretta senza pip install
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from nssp_v2.shared.db import SessionLocal
-from nssp_v2.sync.clienti.source import ClienteRecord, EasyClienteSource, FakeClienteSource
-from nssp_v2.sync.clienti.unit import ClienteSyncUnit
+from nssp_v2.sync.destinazioni.source import (
+    DestinazioneRecord,
+    EasyDestinazioneSource,
+    FakeDestinazioneSource,
+)
+from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit
 
-# ─── Fixture dati demo (--source fake) ───────────────────────────────────────
-
-DEMO_CLIENTI = [
-    ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl", provincia="MI"),
-    ClienteRecord(codice_cli="C002", ragione_sociale="Beta Spa", nazione_codice="IT"),
-    ClienteRecord(codice_cli="C003", ragione_sociale="Gamma & C", telefono_1="0123 456789"),
+DEMO_DESTINAZIONI = [
+    DestinazioneRecord(codice_destinazione="D001", codice_cli="C001", citta="Milano", provincia="MI"),
+    DestinazioneRecord(codice_destinazione="D002", codice_cli="C001", citta="Roma", provincia="RM"),
+    DestinazioneRecord(codice_destinazione="D003", codice_cli="C002", citta="Torino", provincia="TO"),
 ]
 
 
 def _get_easy_connection_string() -> str:
-    """Legge EASY_CONNECTION_STRING da env vars o da .env locale."""
     conn_str = os.environ.get("EASY_CONNECTION_STRING")
     if conn_str:
         return conn_str
@@ -58,29 +55,29 @@ def _get_easy_connection_string() -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sync clienti on-demand")
+    parser = argparse.ArgumentParser(description="Sync destinazioni on-demand")
     parser.add_argument(
         "--source", choices=["easy", "fake"], default="easy",
-        help="Sorgente dati: 'easy' (default, richiede EASY_CONNECTION_STRING) o 'fake'"
+        help="Sorgente dati: 'easy' (default) o 'fake'"
     )
     args = parser.parse_args()
 
     if args.source == "fake":
-        source = FakeClienteSource(DEMO_CLIENTI)
-        print("=== Sync clienti — on demand (FakeClienteSource) ===")
-        print(f"Sorgente: fake ({len(DEMO_CLIENTI)} record demo)")
+        source = FakeDestinazioneSource(DEMO_DESTINAZIONI)
+        print("=== Sync destinazioni — on demand (FakeDestinazioneSource) ===")
+        print(f"Sorgente: fake ({len(DEMO_DESTINAZIONI)} record demo)")
     else:
         try:
             conn_str = _get_easy_connection_string()
         except RuntimeError as exc:
             print(f"ERRORE: {exc}", file=sys.stderr)
             sys.exit(1)
-        source = EasyClienteSource(conn_str)
-        print("=== Sync clienti — on demand (EasyClienteSource) ===")
-        print("Sorgente: Easy ANACLI (read-only)")
+        source = EasyDestinazioneSource(conn_str)
+        print("=== Sync destinazioni — on demand (EasyDestinazioneSource) ===")
+        print("Sorgente: Easy POT_DESTDIV (read-only)")
     print()
 
-    unit = ClienteSyncUnit()
+    unit = DestinazioneSyncUnit()
 
     with SessionLocal() as session:
         meta = unit.run(session, source)

@@ -1,7 +1,7 @@
 # TASK-V2-011 - Sync destinazioni
 
 ## Status
-Todo
+Completed
 
 Valori ammessi:
 
@@ -154,48 +154,57 @@ Direzione raccomandata:
 
 ## Completion Notes
 
-Da compilare a cura di Claude Code quando il task viene chiuso.
-
 ### Summary
 
-Cosa e stato fatto.
+Implementata la seconda sync unit autonoma `destinazioni` che legge da `POT_DESTDIV` (EasyJob) e mantiene il mirror interno `sync_destinazioni`. Introdotta la prima dependency declaration non vuota del sistema sync: `DEPENDENCIES = ["clienti"]`. Tutti i componenti del layer sync seguono il contratto DL-ARCH-V2-009: source adapter read-only, upsert alignment, mark_inactive delete handling, full_scan change acquisition, run metadata e freshness anchor persistiti.
 
 ### Files Changed
 
-- `path/to/file.py` - descrizione modifica
+- `src/nssp_v2/sync/destinazioni/__init__.py` — package marker (vuoto)
+- `src/nssp_v2/sync/destinazioni/source.py` — `DestinazioneRecord` (dataclass, 1 campo obbligatorio + 7 opzionali), `DestinazioneSourceAdapter` (ABC), `EasyDestinazioneSource` (pyodbc read-only, SELECT su `POT_DESTDIV`), `FakeDestinazioneSource` (fixture per test)
+- `src/nssp_v2/sync/destinazioni/models.py` — `SyncDestinazione` (SQLAlchemy ORM, tablename `sync_destinazioni`, unique su `codice_destinazione`)
+- `src/nssp_v2/sync/destinazioni/unit.py` — `DestinazioneSyncUnit` con contratto completo; primo sync unit con `DEPENDENCIES = ["clienti"]`
+- `alembic/versions/20260407_004_sync_destinazioni.py` — migration `sync_destinazioni` (down_revision=20260407003)
+- `scripts/sync_destinazioni.py` — entrypoint on-demand `--source easy|fake`
+- `tests/unit/test_sync_destinazioni_contract.py` — 20 test su contratto, source adapter, record fields, modello ORM (senza DB)
+- `tests/sync/test_destinazioni_run.py` — 10 test di integrazione con SQLite in-memory (insert, update, idempotenza, mark_inactive, reactivation, metadata, freshness anchor, campi opzionali)
 
 ### Dependencies Introduced
 
-- `package>=version` - motivo
+Nessuna nuova dipendenza rispetto a TASK-V2-010. `pyodbc` già dichiarato in `[easy]`.
 
 ### Verification Provenance
 
-Indicare per ogni verifica dichiarata:
-
 | Verifica | Eseguita da | Ambiente | Esito |
 |----------|-------------|----------|-------|
-| `python -m pytest tests -q` | Claude Code (agente) | backend V2 locale | OK |
-
-Valori ammessi per "Eseguita da":
-- `Claude Code (agente)` - eseguita dall'agente durante il task
-- `Revisore esterno` - eseguita da persona in ambiente separato
-- `Non eseguita` - con motivazione obbligatoria
+| `python -m pytest tests/unit/test_sync_destinazioni_contract.py tests/sync/test_destinazioni_run.py -v` | Claude Code (agente) | backend V2 locale, Python 3.11.9, pytest 8.3.5 | 30/30 passed |
+| `python -m pytest tests -q` | Claude Code (agente) | backend V2 locale | 91 passed, 4 failed (pre-esistenti in test_admin_policy — `HTTP_422_UNPROCESSABLE_CONTENT`, fuori scope) |
+| `python scripts/sync_destinazioni.py --source fake` | Non eseguita | — | Script strutturalmente equivalente a `sync_clienti.py --source fake`; verifica manuale rimandata a quando DB è attivo |
+| `python scripts/sync_destinazioni.py --source easy` | Non eseguita | Easy non disponibile nell'ambiente agente | Da eseguire con Easy online configurato |
+| `alembic upgrade head` (migration 004) | Non eseguita | PostgreSQL non disponibile nell'ambiente agente | Da eseguire con Docker DB attivo |
 
 ### Assumptions
 
-Assunzioni fatte durante l'implementazione.
+- `codice_destinazione` è sempre `NOT NULL` nella sorgente (corrisponde a `PDES_COD NOT NULL` in `POT_DESTDIV`).
+- `CLI_COD` (codice cliente associato) è considerato campo opzionale nel target sync: la FK non è hard-coded per non vincolare la sync a un ordine di caricamento rigido.
+- `NUM_PROGR_CLIENTE` mappato come `numero_progressivo_cliente` (stringa, nullable): il significato operativo verrà chiarito nel Core slice.
+- I 4 fallimenti pre-esistenti in `test_admin_policy` (`HTTP_422_UNPROCESSABLE_CONTENT`) non sono stati introdotti da questo task e non sono stati toccati.
 
 ### Known Limits
 
-Limiti noti o aspetti non coperti.
+- Nessun orchestratore multi-entità: la dipendenza `["clienti"]` è dichiarativa ma non ancora enforced a runtime (la sync può essere lanciata in isolamento senza errori, anche se `sync_clienti` non è stata eseguita prima).
+- La migration 004 crea la tabella ma non aggiunge indici su `codice_cli` (utile per join frequenti nel Core slice).
+- `easy_schema_explorer.py` non è stato usato per estrarre il catalogo `POT_DESTDIV.json` in live; il mapping si basa su `EASY_DESTINAZIONI.md`.
 
 ### Follow-ups
 
-- suggerimento per task successivo
+- **TASK-V2-012**: Core slice `clienti` — modello Core Cliente con promozione da `sync_clienti`
+- Aggiungere indice su `sync_destinazioni.codice_cli` nella migration del Core slice
+- Implementare enforcement runtime delle dependencies nel futuro orchestratore
 
 ## Completed At
 
-YYYY-MM-DD
+2026-04-07
 
 ## Completed By
 

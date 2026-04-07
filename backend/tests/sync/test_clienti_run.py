@@ -169,3 +169,55 @@ def test_freshness_anchor_updated_on_second_run(session):
     state2_ts = session.get(SyncEntityState, "clienti").last_success_at
 
     assert state2_ts >= state1_ts
+
+
+# ─── Nuovi campi EASY_CLIENTI.md (TASK-V2-010) ───────────────────────────────
+
+def test_upsert_persists_optional_fields(session):
+    """I campi opzionali vengono scritti correttamente nel target."""
+    from datetime import datetime, timezone
+    ts = datetime(2026, 1, 15, 10, 0, 0)
+    records = [ClienteRecord(
+        codice_cli="C001",
+        ragione_sociale="Alfa Srl",
+        indirizzo="Via Roma 1",
+        nazione_codice="IT",
+        provincia="MI",
+        telefono_1="02 123456",
+        source_modified_at=ts,
+    )]
+    source = FakeClienteSource(records)
+    unit = ClienteSyncUnit()
+    unit.run(session, source)
+
+    row = session.query(SyncCliente).filter_by(codice_cli="C001").one()
+    assert row.indirizzo == "Via Roma 1"
+    assert row.nazione_codice == "IT"
+    assert row.provincia == "MI"
+    assert row.telefono_1 == "02 123456"
+    assert row.source_modified_at == ts
+
+
+def test_upsert_updates_optional_fields_on_second_run(session):
+    """I campi opzionali vengono aggiornati a ogni run."""
+    rec1 = ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl", provincia="MI")
+    rec2 = ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl", provincia="RM")
+    unit = ClienteSyncUnit()
+    unit.run(session, FakeClienteSource([rec1]))
+    unit.run(session, FakeClienteSource([rec2]))
+
+    row = session.query(SyncCliente).filter_by(codice_cli="C001").one()
+    assert row.provincia == "RM"
+    assert session.query(SyncCliente).count() == 1
+
+
+def test_upsert_nullable_fields_can_become_none(session):
+    """Un campo opzionale precedentemente valorizzato puo tornare None."""
+    rec1 = ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl", telefono_1="02 111")
+    rec2 = ClienteRecord(codice_cli="C001", ragione_sociale="Alfa Srl", telefono_1=None)
+    unit = ClienteSyncUnit()
+    unit.run(session, FakeClienteSource([rec1]))
+    unit.run(session, FakeClienteSource([rec2]))
+
+    row = session.query(SyncCliente).filter_by(codice_cli="C001").one()
+    assert row.telefono_1 is None

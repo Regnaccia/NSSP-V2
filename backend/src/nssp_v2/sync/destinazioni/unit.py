@@ -1,13 +1,13 @@
 """
-Sync unit `clienti` — prima sync unit della V2 (DL-ARCH-V2-009).
+Sync unit `destinazioni` (DL-ARCH-V2-009).
 
 Contratto dichiarato esplicitamente (DL-ARCH-V2-009 §2–§8):
-- ENTITY_CODE:          "clienti"
-- SOURCE_IDENTITY_KEY:  "codice_cli"  (= CLI_COD in ANACLI/EasyJob)
+- ENTITY_CODE:          "destinazioni"
+- SOURCE_IDENTITY_KEY:  "codice_destinazione"  (= PDES_COD in POT_DESTDIV/EasyJob)
 - ALIGNMENT_STRATEGY:   "upsert"
 - CHANGE_ACQUISITION:   "full_scan"
 - DELETE_HANDLING:      "mark_inactive"
-- DEPENDENCIES:         []  (nessuna: clienti non dipende da altre sync unit)
+- DEPENDENCIES:         ["clienti"]  (DL-ARCH-V2-009 §8, EASY_DESTINAZIONI.md §Dependencies)
 """
 
 import uuid
@@ -15,44 +15,45 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from nssp_v2.sync.clienti.models import SyncCliente
+from nssp_v2.sync.destinazioni.models import SyncDestinazione
+from nssp_v2.sync.destinazioni.source import DestinazioneSourceAdapter
 from nssp_v2.sync.models import SyncEntityState, SyncRunLog
-from nssp_v2.sync.clienti.source import ClienteSourceAdapter
 from nssp_v2.sync.contract import RunMetadata
 
 
-class ClienteSyncUnit:
-    """Sync unit per l'entita `clienti`.
+class DestinazioneSyncUnit:
+    """Sync unit per l'entita `destinazioni`.
 
     Responsabilita:
-    - acquisisce clienti dalla sorgente (read-only)
-    - allinea il target interno sync_clienti via upsert
-    - marca inattivi i clienti non piu presenti in sorgente
+    - acquisisce destinazioni dalla sorgente (read-only)
+    - allinea il target interno sync_destinazioni via upsert
+    - marca inattive le destinazioni non piu presenti in sorgente
     - persiste run metadata e aggiorna freshness anchor
 
     Non implementa logiche di business.
     Non modifica ne legge il modello Core.
+    Dipende da `clienti` (deve essere sincronizzata dopo).
     """
 
     # ─── Contratto obbligatorio DL-ARCH-V2-009 ───────────────────────────────
 
-    ENTITY_CODE = "clienti"
-    SOURCE_IDENTITY_KEY = "codice_cli"
+    ENTITY_CODE = "destinazioni"
+    SOURCE_IDENTITY_KEY = "codice_destinazione"
     ALIGNMENT_STRATEGY = "upsert"
     CHANGE_ACQUISITION = "full_scan"
     DELETE_HANDLING = "mark_inactive"
-    DEPENDENCIES: list[str] = []
+    DEPENDENCIES: list[str] = ["clienti"]
 
     # ─── Esecuzione ──────────────────────────────────────────────────────────
 
-    def run(self, session: Session, source: ClienteSourceAdapter) -> RunMetadata:
-        """Esegue la sync `clienti`.
+    def run(self, session: Session, source: DestinazioneSourceAdapter) -> RunMetadata:
+        """Esegue la sync `destinazioni`.
 
         Idempotente: piu esecuzioni con la stessa sorgente producono lo stesso stato.
 
         Args:
             session:  sessione SQLAlchemy aperta dall'invocante
-            source:   adapter read-only per la sorgente clienti
+            source:   adapter read-only per la sorgente destinazioni
 
         Returns:
             RunMetadata con l'esito dell'esecuzione
@@ -70,42 +71,43 @@ class ClienteSyncUnit:
             meta.rows_seen = len(records)
             now = datetime.now(timezone.utc)
 
-            # Carica i codici gia presenti nel target interno
-            existing: dict[str, SyncCliente] = {
-                obj.codice_cli: obj
-                for obj in session.query(SyncCliente).all()
+            existing: dict[str, SyncDestinazione] = {
+                obj.codice_destinazione: obj
+                for obj in session.query(SyncDestinazione).all()
             }
 
             seen_codes: set[str] = set()
 
             for rec in records:
-                seen_codes.add(rec.codice_cli)
-                obj = existing.get(rec.codice_cli)
+                seen_codes.add(rec.codice_destinazione)
+                obj = existing.get(rec.codice_destinazione)
                 if obj is None:
-                    obj = SyncCliente(
+                    obj = SyncDestinazione(
+                        codice_destinazione=rec.codice_destinazione,
                         codice_cli=rec.codice_cli,
-                        ragione_sociale=rec.ragione_sociale,
+                        numero_progressivo_cliente=rec.numero_progressivo_cliente,
                         indirizzo=rec.indirizzo,
                         nazione_codice=rec.nazione_codice,
+                        citta=rec.citta,
                         provincia=rec.provincia,
                         telefono_1=rec.telefono_1,
-                        source_modified_at=rec.source_modified_at,
                         attivo=True,
                         synced_at=now,
                     )
                     session.add(obj)
                 else:
-                    obj.ragione_sociale = rec.ragione_sociale
+                    obj.codice_cli = rec.codice_cli
+                    obj.numero_progressivo_cliente = rec.numero_progressivo_cliente
                     obj.indirizzo = rec.indirizzo
                     obj.nazione_codice = rec.nazione_codice
+                    obj.citta = rec.citta
                     obj.provincia = rec.provincia
                     obj.telefono_1 = rec.telefono_1
-                    obj.source_modified_at = rec.source_modified_at
                     obj.attivo = True
                     obj.synced_at = now
                 meta.rows_written += 1
 
-            # Delete handling: mark_inactive per codici non piu presenti in sorgente
+            # Delete handling: mark_inactive per destinazioni non piu in sorgente
             for codice, obj in existing.items():
                 if codice not in seen_codes and obj.attivo:
                     obj.attivo = False
@@ -138,7 +140,6 @@ class ClienteSyncUnit:
         *,
         success: bool,
     ) -> None:
-        """Persiste run log e aggiorna freshness anchor."""
         log = SyncRunLog(
             run_id=meta.run_id,
             entity_code=meta.entity_code,

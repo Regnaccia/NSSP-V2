@@ -1,7 +1,7 @@
 # TASK-V2-010 - Sync clienti reale
 
 ## Status
-Todo
+Completed
 
 Valori ammessi:
 
@@ -156,48 +156,55 @@ Direzione raccomandata:
 
 ## Completion Notes
 
-Da compilare a cura di Claude Code quando il task viene chiuso.
-
 ### Summary
 
-Cosa e stato fatto.
+Sync `clienti` allineata al mapping `EASY_CLIENTI.md`. `ClienteRecord` esteso con 5 campi opzionali (`indirizzo`, `nazione_codice`, `provincia`, `telefono_1`, `source_modified_at`). Aggiunto `EasyClienteSource` — adapter read-only verso `ANACLI` tramite pyodbc, con normalizzazione tecnica consentita (trim + stringa vuota → None). `SyncCliente` aggiornato con le stesse colonne. `unit.py` aggiornato per propagare tutti i campi nell'upsert. Script `sync_clienti.py` refactored: usa `EasyClienteSource` per default, `--source fake` per esecuzione senza Easy. Migrazione `20260407_003` aggiunge le 5 colonne nullable a `sync_clienti`. `pytest tests -q` → **65 passed in 2.63s**, zero errori.
 
 ### Files Changed
 
-- `path/to/file.py` - descrizione modifica
+- `backend/src/nssp_v2/sync/clienti/source.py` — aggiornato: `ClienteRecord` con 5 campi nullable da `EASY_CLIENTI.md`; aggiunto `EasyClienteSource` (pyodbc, read-only, normalizzazione tecnica); `_strip_or_none()` helper
+- `backend/src/nssp_v2/sync/clienti/models.py` — aggiornato: `SyncCliente` con 5 nuove colonne nullable
+- `backend/src/nssp_v2/sync/clienti/unit.py` — aggiornato: loop upsert propaga tutti i campi del record
+- `backend/alembic/versions/20260407_003_sync_clienti_fields.py` — creato: migrazione additive (5 colonne nullable)
+- `backend/scripts/sync_clienti.py` — aggiornato: `--source easy` (default) / `--source fake`
+- `backend/tests/unit/test_sync_clienti_contract.py` — aggiornato: test nuovi campi `SyncCliente`, test `ClienteRecord` campi opzionali, test `EasyClienteSource` contratto read-only (no connessione reale)
+- `backend/tests/sync/test_clienti_run.py` — aggiornato: 3 nuovi test per campi opzionali (persist, update, nullable→None)
 
 ### Dependencies Introduced
 
-- `package>=version` - motivo
+Nessuna nuova dipendenza. `pyodbc` era già stato introdotto in TASK-V2-009 come extras `[easy]`.
 
 ### Verification Provenance
 
-Indicare per ogni verifica dichiarata:
-
 | Verifica | Eseguita da | Ambiente | Esito |
 |----------|-------------|----------|-------|
-| `python -m pytest tests -q` | Claude Code (agente) | backend V2 locale | OK |
-
-Valori ammessi per "Eseguita da":
-- `Claude Code (agente)` - eseguita dall'agente durante il task
-- `Revisore esterno` - eseguita da persona in ambiente separato
-- `Non eseguita` - con motivazione obbligatoria
+| `python -m pytest tests -q` | Claude Code (agente) | venv `.venv` locale backend | 65 passed in 2.63s |
+| `python scripts/sync_clienti.py` (Easy reale) | Non eseguita | richiede `alembic upgrade head` + EASY_CONNECTION_STRING + Easy online | da verificare con DB e Easy attivi |
+| `python scripts/sync_clienti.py --source fake` | Non eseguita | richiede `alembic upgrade head` + PostgreSQL | da verificare con DB attivo |
 
 ### Assumptions
 
-Assunzioni fatte durante l'implementazione.
+- `readonly=True` in pyodbc garantisce a livello driver che non vengano eseguite operazioni write — nessun INSERT/UPDATE/DELETE è possibile dalla connessione (comportamento standard SQL Server ODBC)
+- `CLI_DTMO` viene letto come `datetime` e scritto senza timezone (`DateTime(timezone=False)`) perché SQL Server datetime non ha timezone info — coerente con il tipo sorgente
+- La migrazione `20260407_003` è additive (solo `ADD COLUMN`) — sicura da applicare su `sync_clienti` esistente senza perdita dati
+- La normalizzazione `stringa vuota → None` è tecnica e non business: il campo vuoto in Easy non ha significato operativo diverso da NULL nel target interno
 
 ### Known Limits
 
-Limiti noti o aspetti non coperti.
+- `python scripts/sync_clienti.py` non verificato da agente con Easy reale (richiede accesso rete a `SERVER\SQLEXPRESS`)
+- La migrazione `20260407_003` non applicata da agente (richiede PostgreSQL attivo)
+- `readonly=True` non è supportato da tutti i driver ODBC — se il driver ignora il parametro, la garanzia write-protection resta solo a livello di query (SELECT-only in `_QUERY`)
+- `CLI_RAG2` non incluso in questo slice (documentato come open question in `EASY_CLIENTI.md`)
 
 ### Follow-ups
 
-- suggerimento per task successivo
+- Verificare `alembic upgrade head` e `python scripts/sync_clienti.py` con DB e Easy attivi
+- Aggiornare `ANACLI.json` con lo schema reale estratto da `easy_schema_explorer.py --table ANACLI`
+- Task successivo naturale: sync `destinazioni` (introduce dipendenza da `clienti` nella dependency declaration)
 
 ## Completed At
 
-YYYY-MM-DD
+2026-04-07
 
 ## Completed By
 
