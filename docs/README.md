@@ -55,6 +55,7 @@ Sottocartelle per tipo:
 |------|-----------|
 | [integrations/README.md](integrations/README.md) | Indice della documentazione tecnica per le integrazioni esterne V2 |
 | [integrations/easy/README.md](integrations/easy/README.md) | Documentazione tecnica delle entita Easy lette in read-only |
+| [integrations/easy/catalog/README.md](integrations/easy/catalog/README.md) | Catalogo machine-generated degli schemi Easy in formato JSON |
 | [integrations/easy/EASY_ENTITY_MAPPING_TEMPLATE.md](integrations/easy/EASY_ENTITY_MAPPING_TEMPLATE.md) | Template per documentare una mappatura Easy verso il target sync interno V2 |
 
 ## Roadmap
@@ -78,8 +79,11 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-004-browser-auth-and-role-routing.md](task/TASK-V2-004-browser-auth-and-role-routing.md) | Primo slice auth browser con ruoli multipli e routing iniziale coerente |
 | [task/TASK-V2-005-admin-access-management.md](task/TASK-V2-005-admin-access-management.md) | Prima surface reale `admin` per gestione utenti, ruoli e stato attivo/inattivo |
 | [task/TASK-V2-006-ui-navigation-refactor.md](task/TASK-V2-006-ui-navigation-refactor.md) | Refactor della navigazione browser verso layout persistente multi-surface con sidebar basata su `available_surfaces` |
-| [task/TASK-V2-007-bootstrap-sync-clienti.md](task/TASK-V2-007-bootstrap-sync-clienti.md) | Primo slice tecnico del layer sync: sync unit `clienti`, target interno, run metadata minimi e verifica di idempotenza |
+| [task/TASK-V2-007-bootstrap-sync-clienti.md](task/TASK-V2-007-bootstrap-sync-clienti.md) | Bootstrap tecnico storico della sync `clienti`, basato su sorgente fake e usato per validare il modello sync |
 | [task/TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md](task/TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md) | Hardening della verifica backend e riallineamento dello scaffolding sync condiviso prima del primo caso applicativo reale |
+| [task/TASK-V2-009-easy-schema-explorer-and-catalog.md](task/TASK-V2-009-easy-schema-explorer-and-catalog.md) | Script read-only per estrarre lo schema tecnico delle tabelle Easy in JSON e popolare il catalogo documentale |
+| [task/TASK-V2-010-sync-clienti-reale.md](task/TASK-V2-010-sync-clienti-reale.md) | Sync reale `clienti` da `ANACLI` verso il target interno V2, usando il mapping documentato e un adapter Easy read-only |
+| [task/TASK-V2-011-sync-destinazioni.md](task/TASK-V2-011-sync-destinazioni.md) | Sync reale `destinazioni` da `POT_DESTDIV`, con dipendenza esplicita da `clienti` e target interno dedicato |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

@@ -17,6 +17,9 @@ Task registrati:
 - `TASK-V2-003-bootstrap-db-interno.md` - completato
 - `TASK-V2-004-browser-auth-and-role-routing.md` - completato
 - `TASK-V2-005-admin-access-management.md` - completato
-- `TASK-V2-006-ui-navigation-refactor.md` - todo
-- `TASK-V2-007-bootstrap-sync-clienti.md` - todo
-- `TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md` - todo
+- `TASK-V2-006-ui-navigation-refactor.md` - completato
+- `TASK-V2-007-bootstrap-sync-clienti.md` - completato (bootstrap storico)
+- `TASK-V2-008-hardening-backend-verifica-and-sync-scaffolding.md` - completato
+- `TASK-V2-009-easy-schema-explorer-and-catalog.md` - completato
+- `TASK-V2-010-sync-clienti-reale.md` - todo
+- `TASK-V2-011-sync-destinazioni.md` - todo

@@ -23,6 +23,11 @@ dev = [
     "pytest>=8.0",
     "httpx>=0.27",
 ]
+easy = [
+    # Driver ODBC per la connessione a Easy (SQL Server su SERVER\SQLEXPRESS)
+    # Richiede il driver ODBC SQL Server installato sul sistema (Windows: incluso, Linux: msodbcsql18)
+    "pyodbc>=5.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

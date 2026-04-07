@@ -30,6 +30,11 @@ Claude Code
 
 Preparare il primo slice tecnico del layer `sync` implementando una sync unit minima per l'entita `clienti`, verificabile end-to-end senza dipendere da Easy online.
 
+Nota di stato:
+
+Questo task resta il bootstrap tecnico storico della sync `clienti`.
+La sync reale verso Easy e ora demandata a `TASK-V2-010`.
+
 ## Context
 
 La V2 ha gia:

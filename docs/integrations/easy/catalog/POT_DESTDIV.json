@@ -1,0 +1,266 @@
+{
+  "table_name": "POT_DESTDIV",
+  "extracted_at": "2026-04-07T11:45:48.219662+00:00",
+  "source_system": "Easy (EasyJob SQL Server — ELFESQL)",
+  "access_mode": "read-only",
+  "primary_keys": [
+    "PDES_COD"
+  ],
+  "columns": [
+    {
+      "name": "PDES_COD",
+      "data_type": "varchar",
+      "nullable": false,
+      "ordinal_position": 1,
+      "max_length": 6,
+      "primary_key": true
+    },
+    {
+      "name": "POT_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 2,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_RAG1",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 3,
+      "max_length": 55,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_RAG2",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 4,
+      "max_length": 55,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_IND",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 5,
+      "max_length": 55,
+      "primary_key": false
+    },
+    {
+      "name": "NAZ_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 6,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "CITTA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 7,
+      "max_length": 60,
+      "primary_key": false
+    },
+    {
+      "name": "CAP",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 8,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "PROV",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 9,
+      "max_length": 2,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_PERS",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 10,
+      "max_length": 50,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_TEL1",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 11,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_TEL2",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 12,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_FAX1",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 13,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_FAX2",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 14,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_EMAIL",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 15,
+      "max_length": 250,
+      "primary_key": false
+    },
+    {
+      "name": "CLI_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 16,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "COD_DEST",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 17,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "TAR_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 18,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "CODICE_MILABB",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 19,
+      "max_length": 13,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_STD",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 20,
+      "primary_key": false
+    },
+    {
+      "name": "NUM_PROGR_CLIENTE",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 21,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "ARISTEA_CODICE",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 22,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "ARISTEA_UTENTE",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 23,
+      "max_length": 1,
+      "primary_key": false
+    },
+    {
+      "name": "COLL_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 24,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "PITTA_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 25,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "NOTE_DDT",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 26,
+      "max_length": 100,
+      "primary_key": false
+    },
+    {
+      "name": "COD_UNIVOCO",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 27,
+      "max_length": 7,
+      "primary_key": false
+    },
+    {
+      "name": "COD_DESTDIV",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 28,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "PDES_IND2",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 29,
+      "max_length": 55,
+      "primary_key": false
+    },
+    {
+      "name": "DIC_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 30,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "ABI_NS",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 31,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "ABI_VS",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 32,
+      "max_length": 10,
+      "primary_key": false
+    }
+  ]
+}
