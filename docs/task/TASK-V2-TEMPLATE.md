@@ -58,22 +58,83 @@ Spiegare il problema e il perche del task.
 - test o verifiche attese
 - documenti da aggiornare
 
+## Environment Bootstrap
+
+Comandi minimi per preparare l'ambiente di verifica del task in modo riproducibile.
+
+Esempio per backend:
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[dev]"
+```
+
+Se il task non introduce codice eseguibile, indicare esplicitamente: `N/A`.
+
+## Verification Commands
+
+Comandi da eseguire per verificare l'acceptance criteria del task.
+
+Esempio:
+
+```bash
+pytest tests/unit/ -v
+```
+
+Specificare output atteso o exit code atteso.
+
 ## Implementation Notes
 
 Note opzionali per chi esegue il task.
+
+---
 
 ## Completion Notes
 
 Da compilare a cura di Claude Code quando il task viene chiuso.
 
-- summary:
-- files_changed:
-- verification:
-- followups:
+### Summary
+
+Cosa è stato fatto.
+
+### Files Changed
+
+- `path/to/file.py` — descrizione modifica
+
+### Dependencies Introduced
+
+- `pacchetto>=versione` — motivo
+
+### Verification Provenance
+
+Indicare per ogni verifica dichiarata:
+
+| Verifica | Eseguita da | Ambiente | Esito |
+|----------|-------------|----------|-------|
+| `pytest tests/unit/ -v` | Claude Code (agente) | venv locale task | 2 passed |
+
+Valori ammessi per "Eseguita da":
+- `Claude Code (agente)` — eseguita dall'agente durante il task
+- `Revisore esterno` — eseguita da persona in ambiente separato
+- `Non eseguita` — con motivazione obbligatoria
+
+### Assumptions
+
+Assunzioni fatte durante l'implementazione.
+
+### Known Limits
+
+Limiti noti o aspetti non coperti.
+
+### Follow-ups
+
+- suggerimento per task successivo
 
 ## Completed At
 
-YYYY-MM-DD HH:MM
+YYYY-MM-DD
 
 ## Completed By
 

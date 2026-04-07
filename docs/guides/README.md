@@ -2,9 +2,6 @@
 
 Questa cartella ospita guide e convenzioni operative specifiche della V2.
 
-Esempi attesi:
-
-- setup locale V2
-- convenzioni backend
-- convenzioni frontend
-- playbook di test e rebuild
+| File | Contenuto |
+|------|-----------|
+| [BACKEND_BOOTSTRAP_AND_VERIFY.md](BACKEND_BOOTSTRAP_AND_VERIFY.md) | Installazione backend, avvio server, esecuzione test in ambiente pulito |

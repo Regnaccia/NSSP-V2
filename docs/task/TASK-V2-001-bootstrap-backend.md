@@ -208,23 +208,59 @@ Claude Code deve produrre:
 
 ## Completion Notes
 
-- summary: Bootstrap backend minimo completato. Progetto Python installabile, FastAPI avviabile, config centralizzata, DB bootstrap SQLAlchemy 2.0, Alembic configurato, 2 test unit passanti.
-- files_changed:
-  - `backend/pyproject.toml` — project config, dipendenze, pytest config
-  - `backend/.env.example` — variabili d'ambiente con default documentati
-  - `backend/alembic.ini` — configurazione Alembic (URL override in env.py)
-  - `backend/alembic/env.py` — env Alembic, URL da shared/config, target Base.metadata
-  - `backend/alembic/script.py.mako` — template migrazioni standard
-  - `backend/src/nssp_v2/shared/config.py` — Settings via pydantic-settings, .env support
-  - `backend/src/nssp_v2/shared/db.py` — engine, SessionLocal, Base, get_session()
-  - `backend/src/nssp_v2/app/main.py` — FastAPI app con router health
-  - `backend/src/nssp_v2/app/api/health.py` — GET /health, GET /ready
-  - `__init__.py` per shared, core, sync, app, app/api, tests e sotto-cartelle test
-  - `backend/tests/unit/test_health.py` — 2 test su /health e /ready
-- verification: `pytest tests/unit/test_health.py -v` → 2 passed in 1.28s
-- followups:
-  - Scrivere DL-ARCH-V2-002 su contratto persistenza core (Base, modelli, convenzioni) prima di TASK-V2-002
-  - TASK-V2-002 naturale: prime tabelle source facts (articoli, ordini, righe_ordine) con modelli SQLAlchemy e prima migrazione Alembic
+### Summary
+
+Bootstrap backend minimo completato. Progetto Python installabile, FastAPI avviabile, config centralizzata, DB bootstrap SQLAlchemy 2.0, Alembic configurato, 2 test unit passanti.
+
+### Files Changed
+
+- `backend/pyproject.toml` — project config, dipendenze, pytest config
+- `backend/.env.example` — variabili d'ambiente con default documentati
+- `backend/alembic.ini` — configurazione Alembic (URL override in env.py)
+- `backend/alembic/env.py` — env Alembic, URL da shared/config, target Base.metadata
+- `backend/alembic/script.py.mako` — template migrazioni standard
+- `backend/src/nssp_v2/shared/config.py` — Settings via pydantic-settings, .env support
+- `backend/src/nssp_v2/shared/db.py` — engine, SessionLocal, Base, get_session()
+- `backend/src/nssp_v2/app/main.py` — FastAPI app con router health
+- `backend/src/nssp_v2/app/api/health.py` — GET /health, GET /ready
+- `__init__.py` per shared, core, sync, app, app/api, tests e sotto-cartelle test
+- `backend/tests/unit/test_health.py` — 2 test su /health e /ready
+
+### Dependencies Introduced
+
+- `fastapi>=0.115`
+- `uvicorn[standard]>=0.34`
+- `sqlalchemy>=2.0`
+- `alembic>=1.15`
+- `pydantic-settings>=2.0`
+- `psycopg2-binary>=2.9`
+- `pytest>=8.0` (dev)
+- `httpx>=0.27` (dev)
+
+### Verification Provenance
+
+| Verifica | Eseguita da | Ambiente | Esito |
+|----------|-------------|----------|-------|
+| `pytest tests/unit/test_health.py -v` | Claude Code (agente) | venv locale `.venv` creato durante task | 2 passed in 1.28s |
+| Verifica runtime indipendente | Non eseguita | — | TEST-V2-001: pass con riserva per assenza dipendenze nell'ambiente del revisore |
+
+Nota: la lacuna di riproducibilità evidenziata in TEST-V2-001 è stata affrontata in TASK-V2-002,
+che introduce `docs/guides/BACKEND_BOOTSTRAP_AND_VERIFY.md` come guida standard.
+
+### Assumptions
+
+- venv creato nella cartella `backend/.venv` — non tracciato da git
+- PostgreSQL non richiesto per i test di bootstrap
+
+### Known Limits
+
+- nessuna verifica Alembic eseguita (richiede DB attivo)
+- i layer `core/` e `sync/` restano vuoti — da popolare nei task successivi
+
+### Follow-ups
+
+- TASK-V2-002: hardening verifica riproducibile (completato)
+- TASK-V2-003 naturale: prime tabelle source facts con modelli SQLAlchemy e prima migrazione Alembic
 
 ## Completed At
 

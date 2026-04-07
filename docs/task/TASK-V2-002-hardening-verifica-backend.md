@@ -1,7 +1,7 @@
 # TASK-V2-002 - Hardening verifica riproducibile backend
 
 ## Status
-Todo
+Completed
 
 Valori ammessi:
 
@@ -101,16 +101,49 @@ Direzione raccomandata:
 
 ## Completion Notes
 
-Da compilare a cura di Claude Code quando il task viene chiuso.
+### Summary
 
-- summary:
-- files_changed:
-- verification:
-- followups:
+Guida bootstrap backend creata, template task aggiornato con sezioni di verifica riproducibile, TASK-V2-001 aggiornato retrospettivamente. Scoperto e corretto un bug nel `pyproject.toml` (`setuptools.backends.legacy:build` non disponibile nella versione setuptools del venv) — corretto con `setuptools.build_meta`, backend ora installabile e verificabile end-to-end in ambiente pulito.
+
+### Files Changed
+
+- `docs/guides/BACKEND_BOOTSTRAP_AND_VERIFY.md` — creato: guida completa con comandi bootstrap, avvio server, test, Alembic
+- `docs/guides/README.md` — aggiornato: indice con link alla guida
+- `backend/README.md` — aggiornato: sezione "Bootstrap rapido" con comandi minimi
+- `docs/task/TASK-V2-TEMPLATE.md` — aggiornato: aggiunge sezioni `Environment Bootstrap`, `Verification Commands`, `Verification Provenance` (con tabella e valori ammessi), `Assumptions`, `Known Limits`
+- `docs/task/TASK-V2-001-bootstrap-backend.md` — aggiornato retrospettivamente: Completion Notes ristrutturate con le nuove sezioni, nota esplicita sulla lacuna risolta
+- `backend/pyproject.toml` — corretto: `build-backend = "setuptools.build_meta"` (era `setuptools.backends.legacy:build`, non compatibile)
+
+### Dependencies Introduced
+
+Nessuna nuova dipendenza.
+
+### Verification Provenance
+
+| Verifica | Eseguita da | Ambiente | Esito |
+|----------|-------------|----------|-------|
+| `python -c "from nssp_v2.app.main import app; print('app OK')"` | Claude Code (agente) | venv `.venv` locale backend | OK |
+| `python -c "from nssp_v2.shared.config import settings; print('config OK')"` | Claude Code (agente) | venv `.venv` locale backend | OK |
+| `python -c "from nssp_v2.shared.db import Base; print('db OK')"` | Claude Code (agente) | venv `.venv` locale backend | OK |
+| `pytest tests/unit/ -v` | Claude Code (agente) | venv `.venv` locale backend | 2 passed in 0.75s |
+
+### Assumptions
+
+- il venv viene creato nella cartella `backend/.venv` — non tracciato da git
+- i comandi della guida usano sintassi Windows (`.venv\Scripts\activate`); Linux/macOS richiedono `source .venv/bin/activate`
+
+### Known Limits
+
+- la guida non copre ancora il setup PostgreSQL per i test di integrazione (non richiesto da questo task)
+- verifica indipendente da revisore esterno non eseguita
+
+### Follow-ups
+
+- TASK-V2-003: prime tabelle source facts — modelli SQLAlchemy, prima migrazione Alembic
 
 ## Completed At
 
-YYYY-MM-DD HH:MM
+2026-04-07
 
 ## Completed By
 
