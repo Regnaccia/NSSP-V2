@@ -9,6 +9,7 @@ import LogisticaHome from '@/pages/surfaces/LogisticaHome'
 import MagazzinoHome from '@/pages/surfaces/MagazzinoHome'
 import ProduzioneHome from '@/pages/surfaces/ProduzioneHome'
 import FamigliePage from '@/pages/surfaces/FamigliePage'
+import ProduzioniPage from '@/pages/surfaces/ProduzioniPage'
 
 /**
  * Redirect iniziale dopo login (DL-UIX-V2-001 §4).
@@ -108,6 +109,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['produzione']}>
                 <FamigliePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/produzione/produzioni"
+            element={
+              <ProtectedRoute roles={['produzione']}>
+                <ProduzioniPage />
               </ProtectedRoute>
             }
           />

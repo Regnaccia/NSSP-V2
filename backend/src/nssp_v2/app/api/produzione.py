@@ -1,11 +1,13 @@
 """
-Router surface produzione — Core slice articoli (TASK-V2-020, TASK-V2-022).
+Router surface produzione — Core slice articoli + produzioni (TASK-V2-020, TASK-V2-022, TASK-V2-030).
 
 Endpoint:
-  GET   /api/produzione/articoli                       — lista articoli attivi
-  GET   /api/produzione/articoli/{codice}              — dettaglio articolo
-  GET   /api/produzione/famiglie                       — catalogo famiglie
-  PATCH /api/produzione/articoli/{codice}/famiglia     — imposta famiglia articolo
+  GET   /api/produzione/articoli                                  — lista articoli attivi
+  GET   /api/produzione/articoli/{codice}                         — dettaglio articolo
+  GET   /api/produzione/famiglie                                  — catalogo famiglie
+  PATCH /api/produzione/articoli/{codice}/famiglia                — imposta famiglia articolo
+  GET   /api/produzione/produzioni                                — lista produzioni (attive + storiche)
+  PATCH /api/produzione/produzioni/{id_dettaglio}/forza-completata — override flag forza_completata
 
 Tutti gli endpoint richiedono autenticazione Bearer.
 Il Core non espone mai i target sync_* grezzi.
@@ -16,6 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from nssp_v2.app.deps.auth import get_current_user
+from nssp_v2.core.produzioni import ProduzioneItem, list_produzioni, set_forza_completata
 from nssp_v2.core.articoli import (
     ArticoloDetail,
     ArticoloItem,
@@ -33,6 +36,11 @@ from nssp_v2.core.articoli import (
 from nssp_v2.shared.db import get_session
 
 router = APIRouter(prefix="/produzione", tags=["produzione"])
+
+
+class SetForzaCompletataRequest(BaseModel):
+    bucket: str
+    forza_completata: bool
 
 
 class SetFamigliaRequest(BaseModel):
@@ -131,6 +139,36 @@ def get_famiglie(
 ):
     """Catalogo famiglie articolo attive, ordinate per sort_order."""
     return list_famiglie(session)
+
+
+@router.get("/produzioni", response_model=list[ProduzioneItem])
+def get_produzioni(
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Lista produzioni (attive + storiche) con bucket e stato_produzione computato."""
+    return list_produzioni(session)
+
+
+@router.patch("/produzioni/{id_dettaglio}/forza-completata", response_model=ProduzioneItem)
+def patch_forza_completata(
+    id_dettaglio: int,
+    body: SetForzaCompletataRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Imposta il flag forza_completata per una produzione.
+
+    body.bucket: "active" | "historical"
+    body.forza_completata: true | false
+    404 se id_dettaglio + bucket non trovati nel mirror.
+    """
+    try:
+        item = set_forza_completata(session, id_dettaglio, body.bucket, body.forza_completata)
+        session.commit()
+        return item
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.patch(

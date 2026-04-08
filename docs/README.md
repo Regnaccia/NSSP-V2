@@ -51,6 +51,7 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-012.md](decisions/ARCH/DL-ARCH-V2-012.md) | Regola Core per trattare il cliente come destinazione principale esplicita, unificata alle destinazioni aggiuntive nel read model operativo |
 | [decisions/ARCH/DL-ARCH-V2-013.md](decisions/ARCH/DL-ARCH-V2-013.md) | Primo Core `articoli` minimale come proiezione applicativa dei dati di `sync_articoli`, separato dal mirror e pronto per alimentare la UI |
 | [decisions/ARCH/DL-ARCH-V2-014.md](decisions/ARCH/DL-ARCH-V2-014.md) | `Famiglia articolo` come prima entita interna di produzione, con catalogo controllato V2 e associazione agli articoli |
+| [decisions/ARCH/DL-ARCH-V2-015.md](decisions/ARCH/DL-ARCH-V2-015.md) | Primo Core `produzioni` aggregato da mirror attivi/storici, con `bucket`, `stato_produzione` computato e override interno `forza_completata` |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -59,6 +60,7 @@ Sottocartelle per tipo:
 | [decisions/UIX/specs/README.md](decisions/UIX/specs/README.md) | Indice delle specifiche UIX dei casi concreti che applicano i pattern generali |
 | [decisions/UIX/specs/UIX_SPEC_ARTICOLI.md](decisions/UIX/specs/UIX_SPEC_ARTICOLI.md) | Specifica della variante a `2 colonne` per il caso `articoli`, con lista completa a sinistra e configurazione a destra |
 | [decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md](decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md) | Specifica della variante a `3 colonne` per la surface logistica clienti/destinazioni |
+| [decisions/UIX/specs/UIX_SPEC_PRODUZIONI.md](decisions/UIX/specs/UIX_SPEC_PRODUZIONI.md) | Specifica della variante a `2 colonne` per la surface `produzioni`, con lista a sinistra e dettaglio read-only a destra |
 
 ## Guides
 
@@ -77,6 +79,7 @@ Sottocartelle per tipo:
 | [integrations/easy/EASY_ARTICOLI.md](integrations/easy/EASY_ARTICOLI.md) | Mapping curato della tabella `ANAART` verso il target interno `sync_articoli` |
 | [integrations/easy/EASY_CLIENTI.md](integrations/easy/EASY_CLIENTI.md) | Mapping curato della tabella `ANACLI` verso il target interno `sync_clienti` |
 | [integrations/easy/EASY_DESTINAZIONI.md](integrations/easy/EASY_DESTINAZIONI.md) | Mapping curato della tabella `POT_DESTDIV` verso il target interno `sync_destinazioni` |
+| [integrations/easy/EASY_PRODUZIONI.md](integrations/easy/EASY_PRODUZIONI.md) | Mapping curato delle sorgenti `DPRE_PROD` e `SDPRE_PROD` verso mirror sync separati per produzioni attive e storiche |
 | [integrations/easy/EASY_ENTITY_MAPPING_TEMPLATE.md](integrations/easy/EASY_ENTITY_MAPPING_TEMPLATE.md) | Template per documentare una mappatura Easy verso il target sync interno V2 |
 
 ## Roadmap
@@ -126,6 +129,13 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-025-ui-tabella-famiglia-articoli.md](task/TASK-V2-025-ui-tabella-famiglia-articoli.md) | Vista dedicata alla tabella `famiglie articolo`, separata dalla configurazione del singolo articolo |
 | [task/TASK-V2-026-gestione-famiglie-articoli.md](task/TASK-V2-026-gestione-famiglie-articoli.md) | Gestione minima del catalogo famiglie: inserimento nuove famiglie e attivazione/disattivazione |
 | [task/TASK-V2-027-flag-considera-in-produzione-famiglie.md](task/TASK-V2-027-flag-considera-in-produzione-famiglie.md) | Aggiunta del flag booleano `considera_in_produzione` nel catalogo famiglie e gestione UI dedicata |
+| [task/TASK-V2-028-sync-produzioni-attive.md](task/TASK-V2-028-sync-produzioni-attive.md) | Mirror sync read-only delle produzioni attive da `DPRE_PROD` verso `sync_produzioni_attive` |
+| [task/TASK-V2-029-sync-produzioni-storiche.md](task/TASK-V2-029-sync-produzioni-storiche.md) | Mirror sync read-only delle produzioni storiche da `SDPRE_PROD` verso `sync_produzioni_storiche` |
+| [task/TASK-V2-030-core-produzioni-bucket-e-stato.md](task/TASK-V2-030-core-produzioni-bucket-e-stato.md) | Primo Core `produzioni` aggregato, con `bucket`, computed fact `stato_produzione` e flag interno `forza_completata` |
+| [task/TASK-V2-031-ui-produzioni.md](task/TASK-V2-031-ui-produzioni.md) | Prima surface browser `produzioni` a `2 colonne`, consultiva e basata sul Core aggregato |
+| [task/TASK-V2-032-sync-on-demand-produzioni.md](task/TASK-V2-032-sync-on-demand-produzioni.md) | Trigger `sync on demand` backend-controlled per la surface `produzioni`, coerente con il pattern gia usato in logistica e articoli |
+| [task/TASK-V2-033-forza-completata-produzioni.md](task/TASK-V2-033-forza-completata-produzioni.md) | Prima gestione operativa del flag interno `forza_completata` nella surface `produzioni` |
+| [task/TASK-V2-034-performance-produzioni-active-default.md](task/TASK-V2-034-performance-produzioni-active-default.md) | Hardening prestazionale della surface `produzioni`: default `active`, filtro `bucket` server-side e paginazione backend |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

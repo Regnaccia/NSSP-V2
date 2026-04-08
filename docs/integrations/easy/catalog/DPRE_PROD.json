@@ -1,0 +1,267 @@
+{
+  "table_name": "DPRE_PROD",
+  "extracted_at": "2026-04-08T05:50:47.361567+00:00",
+  "source_system": "Easy (EasyJob SQL Server — ELFESQL)",
+  "access_mode": "read-only",
+  "primary_keys": [],
+  "columns": [
+    {
+      "name": "ID_DETTAGLIO",
+      "data_type": "numeric",
+      "nullable": false,
+      "ordinal_position": 1,
+      "numeric_precision": 10,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "CLI_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 2,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "CLI_RAG1",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 3,
+      "max_length": 55,
+      "primary_key": false
+    },
+    {
+      "name": "ART_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 4,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "ART_DESCR",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 5,
+      "max_length": 100,
+      "primary_key": false
+    },
+    {
+      "name": "NUM_PROGR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 6,
+      "numeric_precision": 10,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_QTOR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 7,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_DAPR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 8,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_QTEV",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 9,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_ORAPR",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 10,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DATA_PROD",
+      "data_type": "datetime",
+      "nullable": true,
+      "ordinal_position": 11,
+      "primary_key": false
+    },
+    {
+      "name": "MAT_COD",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 12,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "MM_PEZZO",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 13,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_NEC",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 14,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_DISP",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 15,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "QTA_MANC",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 16,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "ART_MISURA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 17,
+      "max_length": 20,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_NUM",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 18,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "NR_RIGA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 19,
+      "numeric_precision": 10,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "MP_DAUSARE",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 20,
+      "numeric_precision": 18,
+      "numeric_scale": 5,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_EVAS",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 21,
+      "primary_key": false
+    },
+    {
+      "name": "COD_IMM",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 22,
+      "max_length": 1,
+      "primary_key": false
+    },
+    {
+      "name": "STAMPATO",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 23,
+      "primary_key": false
+    },
+    {
+      "name": "COD_RIGA",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 24,
+      "max_length": 25,
+      "primary_key": false
+    },
+    {
+      "name": "DOC_RIGA",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 25,
+      "numeric_precision": 18,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "SCRITTO",
+      "data_type": "bit",
+      "nullable": true,
+      "ordinal_position": 26,
+      "primary_key": false
+    },
+    {
+      "name": "CAT_ART6",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 27,
+      "max_length": 6,
+      "primary_key": false
+    },
+    {
+      "name": "ART_DES2",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 28,
+      "max_length": 150,
+      "primary_key": false
+    },
+    {
+      "name": "NUM_ORDINE",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 29,
+      "max_length": 10,
+      "primary_key": false
+    },
+    {
+      "name": "RIGA_ORDINE",
+      "data_type": "numeric",
+      "nullable": true,
+      "ordinal_position": 30,
+      "numeric_precision": 18,
+      "numeric_scale": 0,
+      "primary_key": false
+    },
+    {
+      "name": "NOTE_ARTICOLO",
+      "data_type": "varchar",
+      "nullable": true,
+      "ordinal_position": 31,
+      "max_length": 55,
+      "primary_key": false
+    }
+  ]
+}

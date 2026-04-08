@@ -35,6 +35,7 @@ const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
   produzione: [
     { path: '/produzione/articoli', label: 'Articoli' },
     { path: '/produzione/famiglie', label: 'Famiglie' },
+    { path: '/produzione/produzioni', label: 'Produzioni' },
   ],
 }
 

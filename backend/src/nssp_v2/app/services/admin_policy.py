@@ -29,6 +29,6 @@ def assert_not_last_active_admin(
     remaining = [uid for uid in active_admin_user_ids if uid != target_user_id]
     if not remaining:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=422,
             detail="Impossibile: sarebbe rimosso l'ultimo admin attivo",
         )

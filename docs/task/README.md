@@ -39,3 +39,10 @@ Task registrati:
 - `TASK-V2-025-ui-tabella-famiglia-articoli.md` - completato
 - `TASK-V2-026-gestione-famiglie-articoli.md` - completato
 - `TASK-V2-027-flag-considera-in-produzione-famiglie.md` - completato
+- `TASK-V2-028-sync-produzioni-attive.md` - completato
+- `TASK-V2-029-sync-produzioni-storiche.md` - completato
+- `TASK-V2-030-core-produzioni-bucket-e-stato.md` - completato
+- `TASK-V2-031-ui-produzioni.md` - completato
+- `TASK-V2-032-sync-on-demand-produzioni.md` - completato
+- `TASK-V2-033-forza-completata-produzioni.md` - completato
+- `TASK-V2-034-performance-produzioni-active-default.md` - todo

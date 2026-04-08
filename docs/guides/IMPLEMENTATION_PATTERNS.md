@@ -172,6 +172,29 @@ Regola:
 
 > Se una classificazione interna ha vita propria, va trattata come catalogo di riferimento e non solo come enum nascosto nella UI.
 
+## Pattern 10 - Mirror separati, aggregazione nel Core, computed fact con override
+
+Quando una stessa entita logica arriva da sorgenti o bucket distinti, il pattern corretto e:
+
+1. mantenere mirror sync separati
+2. aggregare solo nel `core`
+3. esporre nel `core` un `bucket` applicativo
+4. introdurre computed fact nel `core`, non nel `sync`
+5. gestire eventuali correzioni manuali come override interni
+
+Primo caso emerso:
+
+- `produzioni`
+  - `sync_produzioni_attive`
+  - `sync_produzioni_storiche`
+  - `bucket = active | historical`
+  - `stato_produzione`
+  - `forza_completata`
+
+Regola:
+
+> Se la distinzione nasce dalla sorgente, i mirror restano separati; se la vista deve essere unificata, l'aggregazione e i computed fact nascono nel `core`.
+
 ## Quando riusare questi pattern
 
 Questi pattern vanno riusati soprattutto per:
@@ -197,6 +220,7 @@ Non vanno applicati in modo automatico se:
 - `docs/decisions/ARCH/DL-ARCH-V2-011.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-013.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-014.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-015.md`
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
 - `docs/decisions/UIX/DL-UIX-V2-004.md`
 - `docs/decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`

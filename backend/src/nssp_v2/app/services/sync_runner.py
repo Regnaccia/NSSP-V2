@@ -24,6 +24,8 @@ from nssp_v2.app.schemas.sync import EntityRunResult
 from nssp_v2.sync.articoli.unit import ArticoloSyncUnit
 from nssp_v2.sync.clienti.unit import ClienteSyncUnit
 from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit
+from nssp_v2.sync.produzioni_attive.unit import ProduzioneAttivaSyncUnit
+from nssp_v2.sync.produzioni_storiche.unit import ProduzioneStoricaSyncUnit
 
 # ─── Mappa entity_code → sync unit class ──────────────────────────────────────
 
@@ -31,6 +33,8 @@ _UNIT_MAP = {
     "clienti": ClienteSyncUnit,
     "destinazioni": DestinazioneSyncUnit,
     "articoli": ArticoloSyncUnit,
+    "produzioni_attive": ProduzioneAttivaSyncUnit,
+    "produzioni_storiche": ProduzioneStoricaSyncUnit,
 }
 
 # ─── Concurrency guard ────────────────────────────────────────────────────────

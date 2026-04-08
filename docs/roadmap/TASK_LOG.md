@@ -43,3 +43,9 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-025` | Completed | UI dedicata alla tabella `famiglie articolo` |
 | `TASK-V2-026` | Completed | Inserimento nuove famiglie e toggle attivo/disattivo |
 | `TASK-V2-027` | Completed | Flag booleano `considera_in_produzione` nel catalogo famiglie |
+| `TASK-V2-028` | Completed | Sync produzioni attive da `DPRE_PROD` |
+| `TASK-V2-029` | Completed | Sync produzioni storiche da `SDPRE_PROD` |
+| `TASK-V2-030` | Completed | Core `produzioni` con bucket, stato computato e override |
+| `TASK-V2-031` | Completed | UI `produzioni` consultiva a 2 colonne |
+| `TASK-V2-032` | Completed | Sync on demand `produzioni` backend-controlled |
+| `TASK-V2-033` | Completed | Gestione operativa del flag `forza_completata` |

@@ -9,6 +9,7 @@ La V2 ha completato il bootstrap architetturale principale e ha chiuso due strea
 
 - `logistica`
 - `produzione/articoli`
+- `produzioni`
 
 Sono oggi disponibili:
 
@@ -27,12 +28,18 @@ Sono oggi disponibili:
 - vista dedicata al catalogo `famiglie articolo`
 - gestione minima del catalogo famiglie
 - flag `considera_in_produzione` nel catalogo famiglie
+- mapping tecnico iniziale `produzioni` da Easy (`DPRE_PROD` / `SDPRE_PROD`)
+- sync reale Easy read-only per `produzioni_attive` e `produzioni_storiche`
+- Core `produzioni` con `bucket`, `stato_produzione` e `forza_completata`
+- UI browser `produzioni` consultiva a `2 colonne`
+- sync on demand backend-controlled per `produzioni`
+- prima gestione operativa del flag `forza_completata`
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-014`
+- `ARCH/` fino a `DL-ARCH-V2-015`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -51,7 +58,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-027`
+- `TASK-V2-001` -> `TASK-V2-033`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -73,10 +80,18 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-025` UI tabella famiglia articoli
 - `TASK-V2-026` gestione famiglie articoli
 - `TASK-V2-027` flag considera in produzione famiglie
+- `TASK-V2-028` sync produzioni attive
+- `TASK-V2-029` sync produzioni storiche
+- `TASK-V2-030` Core produzioni
+- `TASK-V2-031` UI produzioni
+- `TASK-V2-032` sync on demand produzioni
+- `TASK-V2-033` gestione operativa `forza_completata`
 
 ## Task aperti
 
-Nessun task attualmente aperto nel flusso documentato.
+Aperti:
+
+- `TASK-V2-034` performance `produzioni` con default `active`
 
 ## Gap noti
 
@@ -88,9 +103,8 @@ Nessun task attualmente aperto nel flusso documentato.
 
 Ordine pragmatico raccomandato:
 
-1. definire il prossimo slice di dominio o di configurazione
-2. riusare i pattern consolidati documentati in `docs/guides/IMPLEMENTATION_PATTERNS.md`
-3. aprire un nuovo `DL` solo se emerge un concetto veramente strutturale
+1. completare `TASK-V2-034` su filtro `bucket` server-side e default `active`
+2. valutare poi filtri o refinement UI specifici della surface `produzioni`
 
 ## Notes
 

@@ -133,6 +133,23 @@ export interface ArticoloDetail {
   famiglia_label: string | null
 }
 
+// ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────
+
+/** Produzione aggregata (attiva o storica) con bucket e stato computato */
+export interface ProduzioneItem {
+  id_dettaglio: number
+  bucket: 'active' | 'historical'
+  cliente_ragione_sociale: string | null
+  codice_articolo: string | null
+  descrizione_articolo: string | null
+  numero_documento: string | null
+  numero_riga_documento: number | null
+  quantita_ordinata: string | null
+  quantita_prodotta: string | null
+  stato_produzione: 'attiva' | 'completata'
+  forza_completata: boolean
+}
+
 /** Dettaglio completo della destinazione selezionata */
 export interface DestinazioneDetail {
   // Dati Easy read-only — destinazione
