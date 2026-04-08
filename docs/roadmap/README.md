@@ -10,3 +10,4 @@ Regola:
 Documenti attivi:
 
 - `STATUS.md`
+- `TASK_LOG.md`

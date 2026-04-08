@@ -237,3 +237,43 @@ def test_set_famiglia_idempotente(session):
 
     assert session.query(CoreArticoloConfig).count() == 1
     assert session.get(CoreArticoloConfig, "ART001").famiglia_code == "barre"
+
+
+# ─── Validazione famiglia inattiva ────────────────────────────────────────────
+
+def test_set_famiglia_inattiva_raises(session):
+    _seed_famiglie(session)
+    session.add(_articolo("ART001"))
+    # Disattiva "barre"
+    fam = session.query(ArticoloFamiglia).filter_by(code="barre").one()
+    fam.is_active = False
+    session.commit()
+
+    with pytest.raises(ValueError, match="non è attiva"):
+        set_famiglia_articolo(session, "ART001", "barre")
+
+
+def test_set_famiglia_inesistente_raises(session):
+    _seed_famiglie(session)
+    session.add(_articolo("ART001"))
+    session.commit()
+
+    with pytest.raises(ValueError, match="non trovata"):
+        set_famiglia_articolo(session, "ART001", "famiglia_inesistente")
+
+
+def test_set_famiglia_none_non_valida(session):
+    """Rimuovere l'associazione (None) non richiede validazione — sempre consentito."""
+    _seed_famiglie(session)
+    session.add(_articolo("ART001"))
+    session.commit()
+    set_famiglia_articolo(session, "ART001", "barre")
+    session.commit()
+
+    # Deve funzionare anche se "barre" fosse inattiva
+    fam = session.query(ArticoloFamiglia).filter_by(code="barre").one()
+    fam.is_active = False
+    session.commit()
+    set_famiglia_articolo(session, "ART001", None)  # nessuna eccezione
+    session.commit()
+    assert session.get(CoreArticoloConfig, "ART001").famiglia_code is None

@@ -14,20 +14,29 @@ API pubblica:
     - set_famiglia_articolo
 """
 
-from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem
+from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem, FamigliaRow
 from nssp_v2.core.articoli.queries import (
+    create_famiglia,
     get_articolo_detail,
     list_articoli,
     list_famiglie,
+    list_famiglie_catalog,
     set_famiglia_articolo,
+    toggle_famiglia_active,
+    toggle_famiglia_considera_produzione,
 )
 
 __all__ = [
     "ArticoloItem",
     "ArticoloDetail",
     "FamigliaItem",
+    "FamigliaRow",
     "list_articoli",
     "get_articolo_detail",
     "list_famiglie",
+    "list_famiglie_catalog",
+    "create_famiglia",
+    "toggle_famiglia_active",
+    "toggle_famiglia_considera_produzione",
     "set_famiglia_articolo",
 ]

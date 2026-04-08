@@ -73,7 +73,12 @@ In particolare il primo caso applicativo oggi copre:
 
 ## Task aperti
 
-Nessun task attualmente aperto nel flusso documentato.
+Previsti come prossimi passi:
+
+- `TASK-V2-024` filtro famiglia articoli
+- `TASK-V2-025` UI tabella famiglia articoli
+- `TASK-V2-026` gestione famiglie articoli
+- `TASK-V2-027` flag considera in produzione famiglie
 
 ## Gap noti
 
@@ -86,8 +91,10 @@ Nessun task attualmente aperto nel flusso documentato.
 Ordine pragmatico raccomandato:
 
 1. definire il prossimo slice di dominio o di configurazione
-2. riusare i pattern consolidati documentati in `docs/guides/IMPLEMENTATION_PATTERNS.md`
-3. aprire un nuovo `DL` o `TASK` solo se introduce un nuovo pattern o un nuovo stream concreto
+2. `TASK-V2-024`
+3. `TASK-V2-025`
+4. `TASK-V2-026`
+5. `TASK-V2-027`
 
 ## Notes
 

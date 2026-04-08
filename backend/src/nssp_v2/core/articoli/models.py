@@ -33,6 +33,7 @@ class ArticoloFamiglia(Base):
     label: Mapped[str] = mapped_column(String(128), nullable=False)
     sort_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    considera_in_produzione: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class CoreArticoloConfig(Base):

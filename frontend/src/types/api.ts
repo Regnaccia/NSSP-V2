@@ -85,11 +85,21 @@ export interface DestinazioneItem {
 
 // ─── Core slice articoli (DL-ARCH-V2-013) ────────────────────────────────────
 
-/** Voce catalogo famiglie articolo (DL-ARCH-V2-014) */
+/** Voce catalogo famiglie articolo — picker (solo attive) */
 export interface FamigliaItem {
   code: string
   label: string
   sort_order: number | null
+}
+
+/** Riga tabella gestione famiglie — tutte, con conteggio articoli */
+export interface FamigliaRow {
+  code: string
+  label: string
+  sort_order: number | null
+  is_active: boolean
+  considera_in_produzione: boolean
+  n_articoli: number
 }
 
 /** Riga di lista articoli */

@@ -87,7 +87,7 @@ class ArticoloDetail(BaseModel):
 class FamigliaItem(BaseModel):
     """Voce del catalogo famiglie articolo.
 
-    Usata dall'endpoint GET /api/produzione/famiglie.
+    Usata dall'endpoint GET /api/produzione/famiglie (picker — solo attive).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -95,3 +95,19 @@ class FamigliaItem(BaseModel):
     code: str
     label: str
     sort_order: int | None
+
+
+class FamigliaRow(BaseModel):
+    """Riga della tabella di gestione famiglie articolo.
+
+    Usata dall'endpoint GET /api/produzione/famiglie/catalog (tutte, con conteggio).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    label: str
+    sort_order: int | None
+    is_active: bool
+    considera_in_produzione: bool
+    n_articoli: int

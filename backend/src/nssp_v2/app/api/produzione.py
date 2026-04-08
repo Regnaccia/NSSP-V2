@@ -20,10 +20,15 @@ from nssp_v2.core.articoli import (
     ArticoloDetail,
     ArticoloItem,
     FamigliaItem,
+    FamigliaRow,
+    create_famiglia,
     get_articolo_detail,
     list_articoli,
     list_famiglie,
+    list_famiglie_catalog,
     set_famiglia_articolo,
+    toggle_famiglia_active,
+    toggle_famiglia_considera_produzione,
 )
 from nssp_v2.shared.db import get_session
 
@@ -32,6 +37,12 @@ router = APIRouter(prefix="/produzione", tags=["produzione"])
 
 class SetFamigliaRequest(BaseModel):
     famiglia_code: str | None = None
+
+
+class CreateFamigliaRequest(BaseModel):
+    code: str
+    label: str
+    sort_order: int | None = None
 
 
 @router.get("/articoli", response_model=list[ArticoloItem])
@@ -59,6 +70,60 @@ def get_articolo(
     return detail
 
 
+@router.get("/famiglie/catalog", response_model=list[FamigliaRow])
+def get_famiglie_catalog(
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Tabella completa famiglie (attive e inattive) con conteggio articoli assegnati."""
+    return list_famiglie_catalog(session)
+
+
+@router.post("/famiglie", response_model=FamigliaRow, status_code=status.HTTP_201_CREATED)
+def post_famiglia(
+    body: CreateFamigliaRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Crea una nuova famiglia articolo. 422 se code duplicato o label vuota."""
+    try:
+        row = create_famiglia(session, body.code, body.label, body.sort_order)
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.patch("/famiglie/{code}/active", response_model=FamigliaRow)
+def patch_famiglia_active(
+    code: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Inverte is_active della famiglia. 404 se non trovata."""
+    try:
+        row = toggle_famiglia_active(session, code)
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.patch("/famiglie/{code}/considera-produzione", response_model=FamigliaRow)
+def patch_famiglia_considera_produzione(
+    code: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Inverte considera_in_produzione della famiglia. 404 se non trovata."""
+    try:
+        row = toggle_famiglia_considera_produzione(session, code)
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
 @router.get("/famiglie", response_model=list[FamigliaItem])
 def get_famiglie(
     _: dict = Depends(get_current_user),
@@ -83,5 +148,8 @@ def patch_famiglia(
     Non modifica mai sync_articoli.
     famiglia_code=null rimuove l'associazione.
     """
-    set_famiglia_articolo(session, codice_articolo, body.famiglia_code)
-    session.commit()
+    try:
+        set_famiglia_articolo(session, codice_articolo, body.famiglia_code)
+        session.commit()
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))

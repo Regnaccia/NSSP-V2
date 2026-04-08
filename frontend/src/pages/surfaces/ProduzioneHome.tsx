@@ -107,11 +107,22 @@ function FreshnessBar({
 
 // ─── Colonna sinistra: lista articoli ─────────────────────────────────────────
 
+type FamilyFilter = 'all' | 'unconfigured' | string  // string = famiglia_code
+
+function matchesFamilyFilter(articolo: ArticoloItem, familyFilter: FamilyFilter): boolean {
+  if (familyFilter === 'all') return true
+  if (familyFilter === 'unconfigured') return articolo.famiglia_code === null
+  return articolo.famiglia_code === familyFilter
+}
+
 function ColonnaArticoli({
   articoli,
   loading,
   filter,
   onFilterChange,
+  familyFilter,
+  onFamilyFilterChange,
+  famiglie,
   selected,
   onSelect,
 }: {
@@ -119,14 +130,19 @@ function ColonnaArticoli({
   loading: boolean
   filter: string
   onFilterChange: (v: string) => void
+  familyFilter: FamilyFilter
+  onFamilyFilterChange: (v: FamilyFilter) => void
+  famiglie: FamigliaItem[]
   selected: string | null
   onSelect: (codice: string) => void
 }) {
-  const filtered = articoli.filter((a) => matchesSearch(a, filter))
+  const filtered = articoli
+    .filter((a) => matchesFamilyFilter(a, familyFilter))
+    .filter((a) => matchesSearch(a, filter))
 
   return (
     <div className="w-72 shrink-0 border-r flex flex-col overflow-hidden">
-      {/* Header + ricerca */}
+      {/* Header + ricerca + filtro famiglia */}
       <div className="px-3 py-3 border-b space-y-2 shrink-0">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Articoli
@@ -138,7 +154,20 @@ function ColonnaArticoli({
           onChange={(e) => onFilterChange(e.target.value)}
           className={inputCls}
         />
-        {filter.trim() && (
+        <select
+          value={familyFilter}
+          onChange={(e) => onFamilyFilterChange(e.target.value as FamilyFilter)}
+          className={inputCls}
+        >
+          <option value="all">Tutte le famiglie</option>
+          <option value="unconfigured">Non configurati</option>
+          {famiglie.map((f) => (
+            <option key={f.code} value={f.code}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        {(filter.trim() || familyFilter !== 'all') && (
           <p className="text-xs text-muted-foreground">
             {filtered.length} risultat{filtered.length === 1 ? 'o' : 'i'}
           </p>
@@ -331,6 +360,7 @@ export default function ProduzioneHome() {
   const [articoli, setArticoli] = useState<ArticoloItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
+  const [familyFilter, setFamilyFilter] = useState<FamilyFilter>('all')
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<ArticoloDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -435,6 +465,9 @@ export default function ProduzioneHome() {
           loading={loading}
           filter={filter}
           onFilterChange={setFilter}
+          familyFilter={familyFilter}
+          onFamilyFilterChange={setFamilyFilter}
+          famiglie={famiglie}
           selected={selected}
           onSelect={(codice) =>
             setSelected((prev) => (prev === codice ? null : codice))

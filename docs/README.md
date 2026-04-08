@@ -80,6 +80,7 @@ La cartella `roadmap/` raccoglie stato e roadmap attiva della V2.
 | File | Contenuto |
 |------|-----------|
 | [roadmap/STATUS.md](roadmap/STATUS.md) | Snapshot di stato del progetto: perimetro completato, task aperti e prossima sequenza consigliata |
+| [roadmap/TASK_LOG.md](roadmap/TASK_LOG.md) | Log minimale dei task V2 svolti, con una sintesi breve per task |
 
 I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 
@@ -115,6 +116,10 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-021-sync-on-demand-articoli.md](task/TASK-V2-021-sync-on-demand-articoli.md) | Trigger `sync on demand` backend-controlled per la surface `articoli`, con action UI dedicata e senza introdurre ancora scheduler automatico |
 | [task/TASK-V2-022-famiglia-articoli.md](task/TASK-V2-022-famiglia-articoli.md) | Prima entita interna del dominio `articoli`: catalogo famiglie controllato V2 e associazione configurabile articolo -> famiglia |
 | [task/TASK-V2-023-ui-famiglia-articoli.md](task/TASK-V2-023-ui-famiglia-articoli.md) | Integrazione nella surface `articoli` del primo campo configurabile interno `famiglia`, mantenendo separati dati Easy read-only e dato interno modificabile |
+| [task/TASK-V2-024-filtro-famiglia-articoli.md](task/TASK-V2-024-filtro-famiglia-articoli.md) | Filtro famiglia nella lista articoli, con supporto a `Tutti`, `Non configurati` e famiglie specifiche |
+| [task/TASK-V2-025-ui-tabella-famiglia-articoli.md](task/TASK-V2-025-ui-tabella-famiglia-articoli.md) | Vista dedicata alla tabella `famiglie articolo`, separata dalla configurazione del singolo articolo |
+| [task/TASK-V2-026-gestione-famiglie-articoli.md](task/TASK-V2-026-gestione-famiglie-articoli.md) | Gestione minima del catalogo famiglie: inserimento nuove famiglie e attivazione/disattivazione |
+| [task/TASK-V2-027-flag-considera-in-produzione-famiglie.md](task/TASK-V2-027-flag-considera-in-produzione-famiglie.md) | Aggiunta del flag booleano `considera_in_produzione` nel catalogo famiglie e gestione UI dedicata |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

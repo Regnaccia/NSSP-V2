@@ -38,6 +38,7 @@ Contiene:
 
 - elenco completo articoli
 - campo ricerca articolo
+- filtro famiglia articolo
 - selezione singola articolo
 
 Requisiti UX minimi:
@@ -45,6 +46,18 @@ Requisiti UX minimi:
 - lista scrollabile in modo indipendente
 - ricerca sempre visibile e usabile con liste lunghe
 - evidenza chiara dell'articolo selezionato
+
+#### Filtro famiglia (TASK-V2-024)
+
+Posizionato nella colonna sinistra, sotto il campo ricerca. Opzioni:
+
+- `Tutte le famiglie` — mostra tutti gli articoli
+- `Non configurati` — solo articoli senza famiglia assegnata (`famiglia_code = null`)
+- una opzione per ogni famiglia del catalogo interno
+
+Il filtro si combina con la ricerca: la ricerca opera sul subset già filtrato per famiglia.
+Il filtro è client-side; nessuna modifica al contratto Core/API è necessaria perché `famiglia_code`
+è già esposto in `ArticoloItem`.
 
 ### Colonna 2 - Configurazione articolo
 
