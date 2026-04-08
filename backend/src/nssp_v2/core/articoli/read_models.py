@@ -45,6 +45,7 @@ class ArticoloDetail(BaseModel):
     """Dettaglio completo di un articolo — popola la colonna destra della UI.
 
     Dati Easy da sync_articoli + dati interni V2 (DL-ARCH-V2-014 §5).
+    Giacenza calcolata da core_inventory_positions (DL-ARCH-V2-016, TASK-V2-038).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -82,6 +83,10 @@ class ArticoloDetail(BaseModel):
     # Famiglia articolo interna (DL-ARCH-V2-014) — nullable nel primo slice
     famiglia_code: str | None
     famiglia_label: str | None
+
+    # Giacenza canonica (DL-ARCH-V2-016, TASK-V2-038) — None se nessun movimento registrato
+    on_hand_qty: Decimal | None = None
+    giacenza_computed_at: datetime | None = None
 
 
 class FamigliaItem(BaseModel):

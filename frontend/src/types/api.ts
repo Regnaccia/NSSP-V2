@@ -131,9 +131,21 @@ export interface ArticoloDetail {
   display_label: string
   famiglia_code: string | null
   famiglia_label: string | null
+  /** Giacenza netta canonica (DL-ARCH-V2-016) — null se nessun movimento registrato */
+  on_hand_qty: string | null
+  /** Timestamp del calcolo giacenza */
+  giacenza_computed_at: string | null
 }
 
 // ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────
+
+/** Risposta paginata della lista produzioni (TASK-V2-034) */
+export interface ProduzioniPaginata {
+  items: ProduzioneItem[]
+  total: number
+  limit: number
+  offset: number
+}
 
 /** Produzione aggregata (attiva o storica) con bucket e stato computato */
 export interface ProduzioneItem {

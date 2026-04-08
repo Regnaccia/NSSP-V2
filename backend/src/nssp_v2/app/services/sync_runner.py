@@ -24,6 +24,7 @@ from nssp_v2.app.schemas.sync import EntityRunResult
 from nssp_v2.sync.articoli.unit import ArticoloSyncUnit
 from nssp_v2.sync.clienti.unit import ClienteSyncUnit
 from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit
+from nssp_v2.sync.mag_reale.unit import MagRealeSyncUnit
 from nssp_v2.sync.produzioni_attive.unit import ProduzioneAttivaSyncUnit
 from nssp_v2.sync.produzioni_storiche.unit import ProduzioneStoricaSyncUnit
 
@@ -35,6 +36,7 @@ _UNIT_MAP = {
     "articoli": ArticoloSyncUnit,
     "produzioni_attive": ProduzioneAttivaSyncUnit,
     "produzioni_storiche": ProduzioneStoricaSyncUnit,
+    "mag_reale": MagRealeSyncUnit,
 }
 
 # ─── Concurrency guard ────────────────────────────────────────────────────────

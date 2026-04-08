@@ -71,6 +71,10 @@ Disponibile:
 - UI consultiva a `2 colonne`
 - sync on demand backend-controlled
 - prima gestione operativa di `forza_completata`
+- default lista su `active`
+- storico disponibile solo in modo esplicito
+- filtro `stato_produzione`
+- ricerca per `codice_articolo` e `numero_documento`
 
 ## Mirror sync attivi
 
@@ -100,9 +104,13 @@ Pattern gia validati:
 
 ## Prossimo passo naturale
 
-Il prossimo step strutturale aperto e:
+Non ci sono task aperti nello stream documentato.
 
-- `TASK-V2-034` per rendere la vista `produzioni` sostenibile su dataset grandi, con default `active` e storico solo esplicito
+Il prossimo candidato naturale emerso dalla documentazione e:
+
+- `MAG_REALE`, come primo caso `append-only + incremental sync + rebuild periodico`
+- `inventory_positions`, come prima computed fact canonica di giacenza per articolo
+- esposizione della giacenza nella surface `articoli` per validazione visiva
 
 ## References
 

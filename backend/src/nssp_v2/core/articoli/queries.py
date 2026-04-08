@@ -17,6 +17,7 @@ from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
 from sqlalchemy import func
 
 from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem, FamigliaRow
+from nssp_v2.core.inventory_positions.models import CoreInventoryPosition
 from nssp_v2.sync.articoli.models import SyncArticolo
 
 
@@ -136,6 +137,11 @@ def get_articolo_detail(
     famiglia_code = config.famiglia_code if config is not None else None
     famiglia = famiglie.get(famiglia_code) if famiglia_code else None
 
+    # Giacenza canonica (DL-ARCH-V2-016) — None se nessun movimento registrato
+    inv = session.query(CoreInventoryPosition).filter(
+        CoreInventoryPosition.article_code == art.codice_articolo.strip().upper()
+    ).first()
+
     return ArticoloDetail(
         codice_articolo=art.codice_articolo,
         descrizione_1=art.descrizione_1,
@@ -155,6 +161,8 @@ def get_articolo_detail(
         ),
         famiglia_code=famiglia_code,
         famiglia_label=famiglia.label if famiglia else None,
+        on_hand_qty=inv.on_hand_qty if inv is not None else None,
+        giacenza_computed_at=inv.computed_at if inv is not None else None,
     )
 
 

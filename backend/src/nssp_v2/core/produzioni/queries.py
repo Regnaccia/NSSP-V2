@@ -10,6 +10,7 @@ Regole:
 
 from decimal import Decimal
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from nssp_v2.core.produzioni.models import CoreProduzioneOverride
@@ -63,9 +64,122 @@ def _build_item(sync_obj, bucket: str, overrides: dict[tuple, "CoreProduzioneOve
     )
 
 
+# ─── Query builder con filtri ─────────────────────────────────────────────────
+
+def _build_query_attive(session: Session, stato: str | None, q: str | None):
+    """Costruisce la query base per sync_produzioni_attive con filtri stato e testo."""
+    needs_join = stato is not None
+
+    base = session.query(SyncProduzioneAttiva)
+
+    if needs_join:
+        base = base.outerjoin(
+            CoreProduzioneOverride,
+            and_(
+                CoreProduzioneOverride.id_dettaglio == SyncProduzioneAttiva.id_dettaglio,
+                CoreProduzioneOverride.bucket == "active",
+            ),
+        )
+
+    base = base.filter(SyncProduzioneAttiva.attivo == True)  # noqa: E712
+
+    if stato == "completata":
+        base = base.filter(
+            or_(
+                CoreProduzioneOverride.forza_completata == True,  # noqa: E712
+                and_(
+                    SyncProduzioneAttiva.quantita_prodotta.isnot(None),
+                    SyncProduzioneAttiva.quantita_ordinata.isnot(None),
+                    SyncProduzioneAttiva.quantita_prodotta >= SyncProduzioneAttiva.quantita_ordinata,
+                ),
+            )
+        )
+    elif stato == "attiva":
+        base = base.filter(
+            and_(
+                or_(
+                    CoreProduzioneOverride.forza_completata.is_(None),
+                    CoreProduzioneOverride.forza_completata == False,  # noqa: E712
+                ),
+                or_(
+                    SyncProduzioneAttiva.quantita_prodotta.is_(None),
+                    SyncProduzioneAttiva.quantita_ordinata.is_(None),
+                    SyncProduzioneAttiva.quantita_prodotta < SyncProduzioneAttiva.quantita_ordinata,
+                ),
+            )
+        )
+
+    if q:
+        pattern = f"%{q}%"
+        base = base.filter(
+            or_(
+                SyncProduzioneAttiva.codice_articolo.ilike(pattern),
+                SyncProduzioneAttiva.numero_documento.ilike(pattern),
+            )
+        )
+
+    return base.order_by(SyncProduzioneAttiva.id_dettaglio)
+
+
+def _build_query_storiche(session: Session, stato: str | None, q: str | None):
+    """Costruisce la query base per sync_produzioni_storiche con filtri stato e testo."""
+    needs_join = stato is not None
+
+    base = session.query(SyncProduzioneStorica)
+
+    if needs_join:
+        base = base.outerjoin(
+            CoreProduzioneOverride,
+            and_(
+                CoreProduzioneOverride.id_dettaglio == SyncProduzioneStorica.id_dettaglio,
+                CoreProduzioneOverride.bucket == "historical",
+            ),
+        )
+
+    base = base.filter(SyncProduzioneStorica.attivo == True)  # noqa: E712
+
+    if stato == "completata":
+        base = base.filter(
+            or_(
+                CoreProduzioneOverride.forza_completata == True,  # noqa: E712
+                and_(
+                    SyncProduzioneStorica.quantita_prodotta.isnot(None),
+                    SyncProduzioneStorica.quantita_ordinata.isnot(None),
+                    SyncProduzioneStorica.quantita_prodotta >= SyncProduzioneStorica.quantita_ordinata,
+                ),
+            )
+        )
+    elif stato == "attiva":
+        base = base.filter(
+            and_(
+                or_(
+                    CoreProduzioneOverride.forza_completata.is_(None),
+                    CoreProduzioneOverride.forza_completata == False,  # noqa: E712
+                ),
+                or_(
+                    SyncProduzioneStorica.quantita_prodotta.is_(None),
+                    SyncProduzioneStorica.quantita_ordinata.is_(None),
+                    SyncProduzioneStorica.quantita_prodotta < SyncProduzioneStorica.quantita_ordinata,
+                ),
+            )
+        )
+
+    if q:
+        pattern = f"%{q}%"
+        base = base.filter(
+            or_(
+                SyncProduzioneStorica.codice_articolo.ilike(pattern),
+                SyncProduzioneStorica.numero_documento.ilike(pattern),
+            )
+        )
+
+    return base.order_by(SyncProduzioneStorica.id_dettaglio)
+
+
 # ─── Read model: lista produzioni paginata ───────────────────────────────────
 
 _VALID_BUCKETS = {"active", "historical", "all"}
+_VALID_STATI = {"attiva", "completata"}
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 
@@ -75,68 +189,69 @@ def list_produzioni(
     bucket: str = "active",
     limit: int = _DEFAULT_LIMIT,
     offset: int = 0,
+    stato: str | None = None,
+    q: str | None = None,
 ) -> ProduzioniPaginata:
-    """Restituisce le produzioni con filtro bucket e paginazione (TASK-V2-034).
+    """Restituisce le produzioni con filtro bucket, stato, ricerca testuale e paginazione.
 
     bucket:
       "active"     — solo sync_produzioni_attive (attivo=True)
       "historical" — solo sync_produzioni_storiche (attivo=True)
-      "all"        — attive prima (per id_dettaglio), poi storiche (per id_dettaglio)
+      "all"        — attive prima (per id_dettaglio), poi storiche
 
-    Ordine stabile dentro ogni bucket: id_dettaglio ASC.
-    Gli override forza_completata sono caricati filtrati per bucket corrente.
+    stato:
+      None         — nessun filtro (tutte)
+      "attiva"     — solo produzioni non completate
+      "completata" — solo produzioni completate (incluso override forza_completata)
+
+    q:
+      None | str   — ricerca case-insensitive su codice_articolo e numero_documento
 
     Raises:
-        ValueError: se bucket non e tra i valori ammessi.
+        ValueError: se bucket o stato non sono tra i valori ammessi.
     """
     if bucket not in _VALID_BUCKETS:
         raise ValueError(f"Bucket non valido: '{bucket}'. Valori ammessi: {sorted(_VALID_BUCKETS)}")
+    if stato is not None and stato not in _VALID_STATI:
+        raise ValueError(f"Stato non valido: '{stato}'. Valori ammessi: {sorted(_VALID_STATI)}")
 
     limit = max(1, min(limit, _MAX_LIMIT))
     offset = max(0, offset)
+    q_norm = q.strip() if q else None
+    q_norm = q_norm if q_norm else None
 
-    q_attive = (
-        session.query(SyncProduzioneAttiva)
-        .filter(SyncProduzioneAttiva.attivo == True)  # noqa: E712
-        .order_by(SyncProduzioneAttiva.id_dettaglio)
-    )
-    q_storiche = (
-        session.query(SyncProduzioneStorica)
-        .filter(SyncProduzioneStorica.attivo == True)  # noqa: E712
-        .order_by(SyncProduzioneStorica.id_dettaglio)
-    )
+    qb_attive = _build_query_attive(session, stato, q_norm)
+    qb_storiche = _build_query_storiche(session, stato, q_norm)
 
     if bucket == "active":
-        total = q_attive.count()
-        rows_attive = q_attive.offset(offset).limit(limit).all()
-        overrides = _load_overrides(session, "active", rows_attive)
-        items = [_build_item(r, "active", overrides) for r in rows_attive]
+        total = qb_attive.count()
+        rows = qb_attive.offset(offset).limit(limit).all()
+        overrides = _load_overrides(session, "active", rows)
+        items = [_build_item(r, "active", overrides) for r in rows]
 
     elif bucket == "historical":
-        total = q_storiche.count()
-        rows_storiche = q_storiche.offset(offset).limit(limit).all()
-        overrides = _load_overrides_storica(session, rows_storiche)
-        items = [_build_item(r, "historical", overrides) for r in rows_storiche]
+        total = qb_storiche.count()
+        rows = qb_storiche.offset(offset).limit(limit).all()
+        overrides = _load_overrides(session, "historical", rows)
+        items = [_build_item(r, "historical", overrides) for r in rows]
 
     else:  # "all"
-        count_a = q_attive.count()
-        count_s = q_storiche.count()
+        count_a = qb_attive.count()
+        count_s = qb_storiche.count()
         total = count_a + count_s
 
         items = []
 
-        # Slice attive
         if offset < count_a:
-            rows_a = q_attive.offset(offset).limit(limit).all()
+            rows_a = qb_attive.offset(offset).limit(limit).all()
             ov_a = _load_overrides(session, "active", rows_a)
             items.extend(_build_item(r, "active", ov_a) for r in rows_a)
 
-        # Slice storiche (se servono ancora elementi)
         remaining = limit - len(items)
         if remaining > 0:
             storica_offset = max(0, offset - count_a)
-            rows_s = q_storiche.offset(storica_offset).limit(remaining).all()
-            ov_s = _load_overrides_storica(session, rows_s)
+            rows_s = qb_storiche.offset(storica_offset).limit(remaining).all()
+            ov_s = _load_overrides(session, "historical", rows_s)
             items.extend(_build_item(r, "historical", ov_s) for r in rows_s)
 
     return ProduzioniPaginata(items=items, total=total, limit=limit, offset=offset)
@@ -162,13 +277,6 @@ def _load_overrides(
     }
 
 
-def _load_overrides_storica(
-    session: Session,
-    rows: list,
-) -> dict[tuple, CoreProduzioneOverride]:
-    return _load_overrides(session, "historical", rows)
-
-
 # ─── Write: override forza_completata ────────────────────────────────────────
 
 def set_forza_completata(
@@ -188,9 +296,8 @@ def set_forza_completata(
     if bucket not in ("active", "historical"):
         raise ValueError(f"Bucket non valido: '{bucket}'. Valori ammessi: active, historical")
 
-    # Verifica esistenza nel mirror corretto
     if bucket == "active":
-        exists = (
+        sync_obj = (
             session.query(SyncProduzioneAttiva)
             .filter(
                 SyncProduzioneAttiva.id_dettaglio == id_dettaglio,
@@ -198,9 +305,8 @@ def set_forza_completata(
             )
             .first()
         )
-        sync_obj = exists
     else:
-        exists = (
+        sync_obj = (
             session.query(SyncProduzioneStorica)
             .filter(
                 SyncProduzioneStorica.id_dettaglio == id_dettaglio,
@@ -208,14 +314,12 @@ def set_forza_completata(
             )
             .first()
         )
-        sync_obj = exists
 
     if sync_obj is None:
         raise ValueError(
             f"Produzione id_dettaglio={id_dettaglio} bucket='{bucket}' non trovata"
         )
 
-    # Upsert override
     override = session.get(CoreProduzioneOverride, (id_dettaglio, bucket))
     if override is None:
         override = CoreProduzioneOverride(

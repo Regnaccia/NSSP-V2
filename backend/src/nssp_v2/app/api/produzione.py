@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from nssp_v2.app.deps.auth import get_current_user
-from nssp_v2.core.produzioni import ProduzioneItem, list_produzioni, set_forza_completata
+from nssp_v2.core.produzioni import ProduzioneItem, ProduzioniPaginata, list_produzioni, set_forza_completata
 from nssp_v2.core.articoli import (
     ArticoloDetail,
     ArticoloItem,
@@ -141,13 +141,28 @@ def get_famiglie(
     return list_famiglie(session)
 
 
-@router.get("/produzioni", response_model=list[ProduzioneItem])
+@router.get("/produzioni", response_model=ProduzioniPaginata)
 def get_produzioni(
+    bucket: str = "active",
+    limit: int = 50,
+    offset: int = 0,
+    stato: str | None = None,
+    q: str | None = None,
     _: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Lista produzioni (attive + storiche) con bucket e stato_produzione computato."""
-    return list_produzioni(session)
+    """Lista produzioni paginata con filtro bucket, stato e ricerca testuale.
+
+    bucket: "active" (default) | "historical" | "all"
+    limit:  max 200, default 50
+    offset: default 0
+    stato:  "attiva" | "completata" | (assente = tutti)
+    q:      ricerca case-insensitive su codice_articolo e numero_documento
+    """
+    try:
+        return list_produzioni(session, bucket=bucket, limit=limit, offset=offset, stato=stato, q=q)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 
 @router.patch("/produzioni/{id_dettaglio}/forza-completata", response_model=ProduzioneItem)

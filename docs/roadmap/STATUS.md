@@ -34,6 +34,8 @@ Sono oggi disponibili:
 - UI browser `produzioni` consultiva a `2 colonne`
 - sync on demand backend-controlled per `produzioni`
 - prima gestione operativa del flag `forza_completata`
+- default lista `produzioni` su `active`, con storico esplicito
+- filtri `stato_produzione` e ricerca per articolo/documento
 
 ## Decision log attivi
 
@@ -58,7 +60,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-033`
+- `TASK-V2-001` -> `TASK-V2-035`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -86,12 +88,16 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-031` UI produzioni
 - `TASK-V2-032` sync on demand produzioni
 - `TASK-V2-033` gestione operativa `forza_completata`
+- `TASK-V2-034` performance produzioni con default `active`
+- `TASK-V2-035` filtri e ricerca produzioni
 
 ## Task aperti
 
 Aperti:
 
-- `TASK-V2-034` performance `produzioni` con default `active`
+- `TASK-V2-036` sync `MAG_REALE`
+- `TASK-V2-037` computed fact `inventory_positions`
+- `TASK-V2-038` giacenza nel dettaglio `articoli`
 
 ## Gap noti
 
@@ -103,8 +109,9 @@ Aperti:
 
 Ordine pragmatico raccomandato:
 
-1. completare `TASK-V2-034` su filtro `bucket` server-side e default `active`
-2. valutare poi filtri o refinement UI specifici della surface `produzioni`
+1. completare `TASK-V2-036` sul mirror `MAG_REALE`
+2. completare `TASK-V2-037` sulla computed fact canonica `inventory_positions`
+3. completare `TASK-V2-038` per esporre la giacenza nel dettaglio `articoli`
 
 ## Notes
 

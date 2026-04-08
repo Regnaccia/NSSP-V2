@@ -8,6 +8,8 @@ Endpoint:
   GET  /api/sync/freshness/produzione — stato freschezza entita della surface produzione
   POST /api/sync/surface/produzioni   — trigger sync produzioni_attive + produzioni_storiche
   GET  /api/sync/freshness/produzioni — stato freschezza entita della surface produzioni
+  POST /api/sync/surface/magazzino    — trigger sync mag_reale (incrementale)
+  GET  /api/sync/freshness/magazzino  — stato freschezza entita della surface magazzino
 
 Controlli obbligatori (DL-ARCH-V2-011 §4):
 - autenticazione Bearer
@@ -36,6 +38,7 @@ from nssp_v2.shared.db import get_session
 from nssp_v2.sync.articoli.source import EasyArticoloSource
 from nssp_v2.sync.clienti.source import EasyClienteSource
 from nssp_v2.sync.destinazioni.source import EasyDestinazioneSource
+from nssp_v2.sync.mag_reale.source import EasyMagRealeSource
 from nssp_v2.sync.produzioni_attive.source import EasyProduzioneAttivaSource
 from nssp_v2.sync.produzioni_storiche.source import EasyProduzioneStoricaSource
 from nssp_v2.sync.models import SyncEntityState
@@ -48,6 +51,8 @@ _LOGISTICA_ENTITIES = ["clienti", "destinazioni"]
 _PRODUZIONE_ENTITIES = ["articoli"]
 # Entita surface produzioni (attive + storiche: nessuna dipendenza tra loro)
 _PRODUZIONI_ENTITIES = ["produzioni_attive", "produzioni_storiche"]
+# Entita surface magazzino (mag_reale: nessuna dipendenza esterna)
+_MAGAZZINO_ENTITIES = ["mag_reale"]
 _STALENESS_MINUTES = 60  # default; futura configurazione per entita
 
 
@@ -266,3 +271,66 @@ def freshness_produzioni(
 ):
     """Restituisce lo stato di freschezza di produzioni_attive e produzioni_storiche."""
     return _build_freshness(session, _PRODUZIONI_ENTITIES, _STALENESS_MINUTES * 60)
+
+
+# ─── Trigger sync on demand — magazzino ──────────────────────────────────────
+
+@router.post(
+    "/surface/magazzino",
+    response_model=SyncSurfaceResponse,
+    summary="Trigger sync on demand: mag_reale (incrementale)",
+)
+def trigger_magazzino(
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Esegue la sync on demand incrementale dei movimenti di magazzino.
+
+    Strategia: append_only + cursor — acquisisce solo i nuovi movimenti
+    con ID_MAGREALE > max(id_movimento) gia presente nel mirror.
+    Per il primo run (bootstrap) acquisisce tutti i movimenti.
+
+    Controlli backend:
+    - Easy connection string deve essere configurata
+    - Nessuna sync concorrente sul perimetro magazzino
+    """
+    settings = get_settings()
+
+    if not settings.easy_connection_string:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Easy non configurato: EASY_CONNECTION_STRING mancante in .env",
+        )
+
+    sources = {
+        "mag_reale": EasyMagRealeSource(settings.easy_connection_string),
+    }
+
+    runner = SyncRunner()
+    try:
+        results = runner.run_surface(session, _MAGAZZINO_ENTITIES, sources)
+    except SyncAlreadyRunningError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Sync gia in esecuzione: {', '.join(sorted(exc.running_entities))}",
+        )
+
+    return SyncSurfaceResponse(
+        triggered_at=datetime.now(timezone.utc),
+        results=results,
+    )
+
+
+# ─── Freshness state — magazzino ─────────────────────────────────────────────
+
+@router.get(
+    "/freshness/magazzino",
+    response_model=FreshnessResponse,
+    summary="Stato freschezza entita surface magazzino",
+)
+def freshness_magazzino(
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Restituisce lo stato di freschezza della surface magazzino (mag_reale)."""
+    return _build_freshness(session, _MAGAZZINO_ENTITIES, _STALENESS_MINUTES * 60)

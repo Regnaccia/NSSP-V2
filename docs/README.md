@@ -52,6 +52,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-013.md](decisions/ARCH/DL-ARCH-V2-013.md) | Primo Core `articoli` minimale come proiezione applicativa dei dati di `sync_articoli`, separato dal mirror e pronto per alimentare la UI |
 | [decisions/ARCH/DL-ARCH-V2-014.md](decisions/ARCH/DL-ARCH-V2-014.md) | `Famiglia articolo` come prima entita interna di produzione, con catalogo controllato V2 e associazione agli articoli |
 | [decisions/ARCH/DL-ARCH-V2-015.md](decisions/ARCH/DL-ARCH-V2-015.md) | Primo Core `produzioni` aggregato da mirror attivi/storici, con `bucket`, `stato_produzione` computato e override interno `forza_completata` |
+| [decisions/ARCH/DL-ARCH-V2-016.md](decisions/ARCH/DL-ARCH-V2-016.md) | `Inventory` / `giacenza articoli` come computed fact canonico del Core, derivato dai movimenti di magazzino e riusabile cross-modulo |
+| [decisions/ARCH/DL-ARCH-V2-017.md](decisions/ARCH/DL-ARCH-V2-017.md) | `Impegno` come computed fact canonico del Core, separato da `inventory` e base per la futura `availability` |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -79,6 +81,7 @@ Sottocartelle per tipo:
 | [integrations/easy/EASY_ARTICOLI.md](integrations/easy/EASY_ARTICOLI.md) | Mapping curato della tabella `ANAART` verso il target interno `sync_articoli` |
 | [integrations/easy/EASY_CLIENTI.md](integrations/easy/EASY_CLIENTI.md) | Mapping curato della tabella `ANACLI` verso il target interno `sync_clienti` |
 | [integrations/easy/EASY_DESTINAZIONI.md](integrations/easy/EASY_DESTINAZIONI.md) | Mapping curato della tabella `POT_DESTDIV` verso il target interno `sync_destinazioni` |
+| [integrations/easy/EASY_MAG_REALE.md](integrations/easy/EASY_MAG_REALE.md) | Mapping curato della tabella `MAG_REALE` come primo caso di mirror `append-only` con sync incrementale previsto |
 | [integrations/easy/EASY_PRODUZIONI.md](integrations/easy/EASY_PRODUZIONI.md) | Mapping curato delle sorgenti `DPRE_PROD` e `SDPRE_PROD` verso mirror sync separati per produzioni attive e storiche |
 | [integrations/easy/EASY_ENTITY_MAPPING_TEMPLATE.md](integrations/easy/EASY_ENTITY_MAPPING_TEMPLATE.md) | Template per documentare una mappatura Easy verso il target sync interno V2 |
 
@@ -136,6 +139,10 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-032-sync-on-demand-produzioni.md](task/TASK-V2-032-sync-on-demand-produzioni.md) | Trigger `sync on demand` backend-controlled per la surface `produzioni`, coerente con il pattern gia usato in logistica e articoli |
 | [task/TASK-V2-033-forza-completata-produzioni.md](task/TASK-V2-033-forza-completata-produzioni.md) | Prima gestione operativa del flag interno `forza_completata` nella surface `produzioni` |
 | [task/TASK-V2-034-performance-produzioni-active-default.md](task/TASK-V2-034-performance-produzioni-active-default.md) | Hardening prestazionale della surface `produzioni`: default `active`, filtro `bucket` server-side e paginazione backend |
+| [task/TASK-V2-035-filtri-e-ricerca-produzioni.md](task/TASK-V2-035-filtri-e-ricerca-produzioni.md) | Refinement della surface `produzioni`: filtro per `stato_produzione` e ricerca per `codice_articolo` / `numero_documento` |
+| [task/TASK-V2-036-sync-mag-reale.md](task/TASK-V2-036-sync-mag-reale.md) | Mirror sync read-only dei movimenti `MAG_REALE`, come primo caso `append-only` con sync incrementale |
+| [task/TASK-V2-037-core-inventory-positions.md](task/TASK-V2-037-core-inventory-positions.md) | Prima computed fact canonica `inventory_positions`, calcolata dai movimenti di magazzino per articolo |
+| [task/TASK-V2-038-giacenza-articoli-nel-dettaglio-ui.md](task/TASK-V2-038-giacenza-articoli-nel-dettaglio-ui.md) | Esposizione della giacenza calcolata nel dettaglio UI `articoli`, per validazione visiva del nuovo building block `inventory` |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

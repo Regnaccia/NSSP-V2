@@ -1,7 +1,7 @@
 # TASK-V2-034 - Performance produzioni con default active
 
 ## Status
-Todo
+Completed
 
 ## Date
 2026-04-08
@@ -110,3 +110,59 @@ Alla chiusura del task devono essere riportati:
 - assunzioni
 - limiti noti
 - follow-up suggeriti
+
+## Completion Notes
+
+### File creati/modificati
+
+**Modificati backend:**
+- `src/nssp_v2/core/produzioni/read_models.py` — aggiunto `ProduzioniPaginata` (items, total, limit, offset)
+- `src/nssp_v2/core/produzioni/queries.py` — `list_produzioni` ora accetta `bucket`, `limit`, `offset`; restituisce `ProduzioniPaginata`; helper `_load_overrides`, `_load_overrides_storica` (carica override solo per le righe della pagina corrente, non tutti); costanti `_DEFAULT_LIMIT=50`, `_MAX_LIMIT=200`
+- `src/nssp_v2/core/produzioni/__init__.py` — esporta `ProduzioniPaginata`
+- `src/nssp_v2/app/api/produzione.py` — endpoint `GET /produzioni` aggiornato con query params `bucket`, `limit`, `offset`; import `ProduzioniPaginata`
+- `tests/core/test_core_produzioni.py` — aggiornato per il nuovo contratto (`.items`); 10 nuovi test per filtro e paginazione (28 totali)
+
+**Modificati frontend:**
+- `frontend/src/types/api.ts` — aggiunta interfaccia `ProduzioniPaginata`
+- `frontend/src/pages/surfaces/ProduzioniPage.tsx` — bucket selector (active/historical/all, default active), stato `total`+`offset`, logica `fetchPage` (append/reset), pulsante "Carica altri N rimanenti", `handleBucketChange` (reset lista + selezione), rimozione del `useEffect` su `detail?.codice_articolo` (rimpiazzato con `useRef` per reset `saveStatus`)
+
+### Estensioni del contratto query/API
+
+- `GET /api/produzione/produzioni?bucket=active&limit=50&offset=0` → `ProduzioniPaginata`
+- `bucket`: "active" (default) | "historical" | "all"; 422 se non valido
+- `limit`: 1–200, clamped; default 50
+- `offset`: ≥0; default 0
+- Per bucket="all": attive prima (offset/limit applicato linearmente sulle due tabelle)
+
+### Test eseguiti
+
+28 test in `tests/core/test_core_produzioni.py`:
+- Bucket: active, historical, all, default active, esclusione, bucket non valido ✓
+- Stato: regola standard, quantita None, storica completata ✓
+- forza_completata: override, precedenza, reset, isolamento bucket ✓
+- Inattivi esclusi ✓
+- Paginazione: limit, offset, offset oltre totale, "all" attraversa buckets, "all" solo storiche, limit clamp ✓
+
+Suite completa: 317/317 passed.
+
+### Test non eseguiti
+
+- Test HTTP dell'endpoint paginato: non inclusi. La logica di paginazione è coperta dai test unitari sulla query Core.
+
+### Assunzioni
+
+- `_MAX_LIMIT = 200`: limite ragionevole per evitare risposte troppo grandi; configurabile in futuro.
+- Per bucket="all" la paginazione è lineare: le attive occupano i primi `count_a` slot, le storiche i successivi. Questo è stabile finché l'ordine di entrambe le query è deterministico (id_dettaglio ASC).
+- Gli override sono caricati filtrati per le sole righe della pagina (`IN` query) invece che per tutti — riduce il volume di dati caricato per ogni pagina.
+
+### Limiti noti
+
+- Nessuna ricerca full-text (fuori scope).
+- La paginazione "all" con offset che cade esattamente sul confine attive/storiche è gestita correttamente dal codice.
+- Il cambio bucket resetta la selezione corrente nella lista.
+
+### Follow-up suggeriti
+
+- Ricerca testo nella lista (filtro client-side sugli item già caricati, o query backend con parametro `q`).
+- Filtro per `stato_produzione` (attiva/completata) lato backend.
+- Virtualizzazione della lista se il numero di item caricati diventa molto grande.

@@ -1,25 +1,32 @@
 /**
- * Surface Produzione — browser produzioni (TASK-V2-031, TASK-V2-032, TASK-V2-033).
+ * Surface Produzione — browser produzioni (TASK-V2-031-035).
  *
  * Layout a 2 colonne (UIX_SPEC_PRODUZIONI.md):
- *   1. sinistra  → lista produzioni aggregate (attive + storiche) con badge bucket/stato
- *   2. destra    → dettaglio produzione con azione forza_completata (TASK-V2-033)
+ *   1. sinistra  → lista produzioni con filtro bucket, stato, ricerca testuale e "Carica altri"
+ *   2. destra    → dettaglio produzione + azione forza_completata
  *
- * Sync on demand: FreshnessBar con trigger POST /sync/surface/produzioni (TASK-V2-032).
+ * Default: bucket="active", stato="all" — lo storico e consultazione esplicita (TASK-V2-034).
+ * Filtri stato e ricerca server-side con paginazione (TASK-V2-035).
+ * Paginazione backend-driven: append mode via "Carica altri".
+ * Sync on demand: FreshnessBar con trigger POST /sync/surface/produzioni.
  * Consuma solo i read model Core produzioni (mai sync_* diretti).
- * bucket e stato_produzione vengono letti dal backend, mai ricalcolati nel frontend.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
-import type { FreshnessResponse, ProduzioneItem, SyncSurfaceResponse } from '@/types/api'
+import type { FreshnessResponse, ProduzioneItem, ProduzioniPaginata, SyncSurfaceResponse } from '@/types/api'
 
 // ─── Tipi locali ──────────────────────────────────────────────────────────────
 
+type BucketFilter = 'active' | 'historical' | 'all'
+type StatoFilter = 'all' | 'attiva' | 'completata'
 type SelectionKey = `${number}:${'active' | 'historical'}`
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error'
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
+const PAGE_SIZE = 50
+const Q_DEBOUNCE_MS = 400
 
 function toKey(item: ProduzioneItem): SelectionKey {
   return `${item.id_dettaglio}:${item.bucket}`
@@ -65,10 +72,7 @@ function FreshnessBar({
       </span>
 
       {lastSync && <span>Ultima sync: {formatDate(lastSync)}</span>}
-
-      {syncStatus === 'error' && (
-        <span className="text-red-600">Sync fallita</span>
-      )}
+      {syncStatus === 'error' && <span className="text-red-600">Sync fallita</span>}
 
       <div className="ml-auto">
         <button
@@ -111,73 +115,137 @@ function StatoBadge({ stato }: { stato: ProduzioneItem['stato_produzione'] }) {
 
 // ─── Colonna sinistra: lista produzioni ──────────────────────────────────────
 
+const inputCls = 'w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+
 function ColonnaLista({
   produzioni,
+  total,
   loading,
+  loadingMore,
+  bucket,
+  onBucketChange,
+  stato,
+  onStatoChange,
+  q,
+  onQChange,
   selected,
   onSelect,
+  onLoadMore,
 }: {
   produzioni: ProduzioneItem[]
+  total: number
   loading: boolean
+  loadingMore: boolean
+  bucket: BucketFilter
+  onBucketChange: (b: BucketFilter) => void
+  stato: StatoFilter
+  onStatoChange: (s: StatoFilter) => void
+  q: string
+  onQChange: (v: string) => void
   selected: SelectionKey | null
   onSelect: (key: SelectionKey) => void
+  onLoadMore: () => void
 }) {
+  const hasMore = produzioni.length < total
+
   return (
     <div className="w-80 shrink-0 border-r flex flex-col overflow-hidden">
-      <div className="px-3 py-3 border-b shrink-0">
+      {/* Header + filtri */}
+      <div className="px-3 py-3 border-b space-y-2 shrink-0">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Produzioni ({produzioni.length})
+          Produzioni
+          {!loading && <span className="ml-1 font-normal">({produzioni.length} / {total})</span>}
         </h2>
+        <select
+          value={bucket}
+          onChange={(e) => onBucketChange(e.target.value as BucketFilter)}
+          className={inputCls}
+        >
+          <option value="active">Solo attive</option>
+          <option value="historical">Solo storiche</option>
+          <option value="all">Tutte (attive + storiche)</option>
+        </select>
+        <select
+          value={stato}
+          onChange={(e) => onStatoChange(e.target.value as StatoFilter)}
+          className={inputCls}
+        >
+          <option value="all">Tutti gli stati</option>
+          <option value="attiva">Solo in corso</option>
+          <option value="completata">Solo completate</option>
+        </select>
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => onQChange(e.target.value)}
+          placeholder="Cerca per articolo o documento…"
+          className={inputCls}
+        />
       </div>
 
+      {/* Lista scrollabile */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <p className="p-4 text-sm text-muted-foreground">Caricamento…</p>
         ) : produzioni.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">Nessuna produzione</p>
         ) : (
-          produzioni.map((p) => {
-            const key = toKey(p)
-            return (
-              <button
-                key={key}
-                onClick={() => onSelect(key)}
-                className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors ${
-                  key === selected
-                    ? 'bg-primary/10 border-l-2 border-l-primary'
-                    : 'hover:bg-muted/50'
-                }`}
-              >
-                {/* Riga 1: cliente */}
-                <div className="text-xs text-muted-foreground truncate">
-                  {p.cliente_ragione_sociale ?? '—'}
-                </div>
-                {/* Riga 2: articolo */}
-                <div className="text-sm font-medium truncate leading-snug">
-                  {p.codice_articolo
-                    ? <span className="font-mono">{p.codice_articolo}</span>
-                    : <span className="italic text-muted-foreground">—</span>
-                  }
-                  {p.descrizione_articolo && (
-                    <span className="ml-1 font-normal text-muted-foreground">
-                      {p.descrizione_articolo}
-                    </span>
-                  )}
-                </div>
-                {/* Riga 3: documento + badge */}
-                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  {p.numero_documento && (
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {p.numero_documento}
-                      {p.numero_riga_documento != null && `/${p.numero_riga_documento}`}
-                    </span>
-                  )}
-                  <BucketBadge bucket={p.bucket} />
-                  <StatoBadge stato={p.stato_produzione} />
-                </div>
-              </button>
-            )
-          })
+          <>
+            {produzioni.map((p) => {
+              const key = toKey(p)
+              return (
+                <button
+                  key={key}
+                  onClick={() => onSelect(key)}
+                  className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors ${
+                    key === selected
+                      ? 'bg-primary/10 border-l-2 border-l-primary'
+                      : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="text-xs text-muted-foreground truncate">
+                    {p.cliente_ragione_sociale ?? '—'}
+                  </div>
+                  <div className="text-sm font-medium truncate leading-snug">
+                    {p.codice_articolo
+                      ? <span className="font-mono">{p.codice_articolo}</span>
+                      : <span className="italic text-muted-foreground">—</span>
+                    }
+                    {p.descrizione_articolo && (
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        {p.descrizione_articolo}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {p.numero_documento && (
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {p.numero_documento}
+                        {p.numero_riga_documento != null && `/${p.numero_riga_documento}`}
+                      </span>
+                    )}
+                    <BucketBadge bucket={p.bucket} />
+                    <StatoBadge stato={p.stato_produzione} />
+                  </div>
+                </button>
+              )
+            })}
+
+            {/* Carica altri */}
+            {hasMore && (
+              <div className="p-3 border-t">
+                <button
+                  onClick={onLoadMore}
+                  disabled={loadingMore}
+                  className="w-full py-1.5 px-3 border rounded-md text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  {loadingMore
+                    ? 'Caricamento…'
+                    : `Carica altri (${total - produzioni.length} rimanenti)`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -204,11 +272,13 @@ function ColonnaDettaglio({
   onToggleForzaCompletata: (item: ProduzioneItem) => Promise<void>
 }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const prevKeyRef = useRef<string | null>(null)
 
-  // Resetta feedback al cambio di produzione selezionata
-  useEffect(() => {
-    setSaveStatus('idle')
-  }, [produzione && toKey(produzione)])
+  const currentKey = produzione ? toKey(produzione) : null
+  if (currentKey !== prevKeyRef.current) {
+    prevKeyRef.current = currentKey
+    if (saveStatus !== 'idle') setSaveStatus('idle')
+  }
 
   const handleToggle = async () => {
     if (!produzione) return
@@ -236,9 +306,7 @@ function ColonnaDettaglio({
       <div className="max-w-lg space-y-6">
         {/* Intestazione */}
         <div>
-          <h2 className="text-lg font-semibold">
-            {produzione.codice_articolo ?? '—'}
-          </h2>
+          <h2 className="text-lg font-semibold">{produzione.codice_articolo ?? '—'}</h2>
           {produzione.descrizione_articolo && (
             <p className="text-sm text-muted-foreground">{produzione.descrizione_articolo}</p>
           )}
@@ -247,7 +315,7 @@ function ColonnaDettaglio({
           </p>
         </div>
 
-        {/* Stato e classificazione */}
+        {/* Stato */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
             Stato e classificazione
@@ -264,7 +332,7 @@ function ColonnaDettaglio({
           </div>
         </section>
 
-        {/* Override forza_completata — azione operativa (TASK-V2-033) */}
+        {/* Override forza_completata */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
             Override interno V2
@@ -306,16 +374,12 @@ function ColonnaDettaglio({
               </div>
             )}
 
-            {saveStatus === 'saved' && (
-              <p className="text-xs text-green-600">Salvato</p>
-            )}
-            {saveStatus === 'error' && (
-              <p className="text-xs text-red-600">Errore durante il salvataggio</p>
-            )}
+            {saveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+            {saveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
           </div>
         </section>
 
-        {/* Dati documento */}
+        {/* Documento */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
             Documento — sola lettura (Easy)
@@ -346,18 +410,74 @@ function ColonnaDettaglio({
 
 export default function ProduzioniPage() {
   const [produzioni, setProduzioni] = useState<ProduzioneItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [bucket, setBucket] = useState<BucketFilter>('active')
+  const [stato, setStato] = useState<StatoFilter>('all')
+  const [q, setQ] = useState('')
   const [selected, setSelected] = useState<SelectionKey | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
   const [freshness, setFreshness] = useState<FreshnessResponse | null>(null)
 
-  const loadProduzioni = () => {
-    setLoading(true)
+  const qDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchPage = (b: BucketFilter, st: StatoFilter, qVal: string, off: number, append: boolean) => {
+    const params = new URLSearchParams({
+      bucket: b,
+      limit: String(PAGE_SIZE),
+      offset: String(off),
+    })
+    if (st !== 'all') params.set('stato', st)
+    const qTrim = qVal.trim()
+    if (qTrim) params.set('q', qTrim)
     return apiClient
-      .get<ProduzioneItem[]>('/produzione/produzioni')
-      .then((r) => setProduzioni(r.data))
+      .get<ProduzioniPaginata>(`/produzione/produzioni?${params}`)
+      .then((r) => {
+        setTotal(r.data.total)
+        setOffset(off + r.data.items.length)
+        if (append) {
+          setProduzioni((prev) => [...prev, ...r.data.items])
+        } else {
+          setProduzioni(r.data.items)
+        }
+      })
+  }
+
+  const loadInitial = (b: BucketFilter, st: StatoFilter, qVal: string) => {
+    setLoading(true)
+    setProduzioni([])
+    setOffset(0)
+    setSelected(null)
+    fetchPage(b, st, qVal, 0, false)
       .catch(() => toast.error('Impossibile caricare le produzioni'))
       .finally(() => setLoading(false))
+  }
+
+  const handleLoadMore = () => {
+    setLoadingMore(true)
+    fetchPage(bucket, stato, q, offset, true)
+      .catch(() => toast.error('Impossibile caricare altri risultati'))
+      .finally(() => setLoadingMore(false))
+  }
+
+  const handleBucketChange = (b: BucketFilter) => {
+    setBucket(b)
+    loadInitial(b, stato, q)
+  }
+
+  const handleStatoChange = (st: StatoFilter) => {
+    setStato(st)
+    loadInitial(bucket, st, q)
+  }
+
+  const handleQChange = (value: string) => {
+    setQ(value)
+    if (qDebounceRef.current) clearTimeout(qDebounceRef.current)
+    qDebounceRef.current = setTimeout(() => {
+      loadInitial(bucket, stato, value)
+    }, Q_DEBOUNCE_MS)
   }
 
   const loadFreshness = () =>
@@ -379,7 +499,8 @@ export default function ProduzioniPage() {
         const failed = data.results.filter(r => r.status !== 'success')
         toast.error(`Sync parzialmente fallita: ${failed.map(r => r.entity_code).join(', ')}`)
       }
-      await Promise.all([loadProduzioni(), loadFreshness()])
+      await loadFreshness()
+      loadInitial(bucket, stato, q)
     } catch (err: unknown) {
       setSyncStatus('error')
       const resp = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
@@ -393,24 +514,18 @@ export default function ProduzioniPage() {
     }
   }
 
-  /**
-   * Chiama PATCH /produzione/produzioni/{id_dettaglio}/forza-completata
-   * e aggiorna il record nella lista con il ProduzioneItem restituito dal backend.
-   * Il backend calcola il nuovo stato_produzione — il frontend non lo ricalcola.
-   */
   const handleToggleForzaCompletata = async (item: ProduzioneItem) => {
     const { data: updated } = await apiClient.patch<ProduzioneItem>(
       `/produzione/produzioni/${item.id_dettaglio}/forza-completata`,
       { bucket: item.bucket, forza_completata: !item.forza_completata },
     )
-    // Sostituisce il record nella lista con il dato aggiornato dal backend
     setProduzioni((prev) =>
       prev.map((p) => (toKey(p) === toKey(updated) ? updated : p))
     )
   }
 
   useEffect(() => {
-    loadProduzioni()
+    loadInitial('active', 'all', '')
     loadFreshness()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -429,9 +544,18 @@ export default function ProduzioniPage() {
       <div className="flex flex-1 overflow-hidden">
         <ColonnaLista
           produzioni={produzioni}
+          total={total}
           loading={loading}
+          loadingMore={loadingMore}
+          bucket={bucket}
+          onBucketChange={handleBucketChange}
+          stato={stato}
+          onStatoChange={handleStatoChange}
+          q={q}
+          onQChange={handleQChange}
           selected={selected}
           onSelect={(key) => setSelected((prev) => (prev === key ? null : key))}
+          onLoadMore={handleLoadMore}
         />
         <ColonnaDettaglio
           produzione={selectedItem}

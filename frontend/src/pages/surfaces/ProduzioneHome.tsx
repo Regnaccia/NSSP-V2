@@ -323,6 +323,43 @@ function ColonnaDettaglio({
           </div>
         </section>
 
+        {/* Giacenza canonica — computed fact ODE (DL-ARCH-V2-016) */}
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+            Giacenza — sola lettura (ODE)
+          </h3>
+          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
+            {detail.on_hand_qty !== null ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {Number(detail.on_hand_qty).toLocaleString('it-IT', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 3,
+                    })}
+                  </span>
+                  {detail.unita_misura_codice && (
+                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Stock netto fisico calcolato dai movimenti di magazzino sincronizzati.
+                  Non include disponibilità prospettica o allocazioni.
+                </p>
+                {detail.giacenza_computed_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Calcolato il {formatDate(detail.giacenza_computed_at)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nessun movimento registrato per questo articolo.
+              </p>
+            )}
+          </div>
+        </section>
+
         {/* Dati Easy read-only */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">

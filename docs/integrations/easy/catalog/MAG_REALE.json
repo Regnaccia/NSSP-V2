@@ -1,6 +1,6 @@
 {
   "table_name": "MAG_REALE",
-  "extracted_at": "2026-04-07T13:41:26.120925+00:00",
+  "extracted_at": "2026-04-08T09:14:04.825619+00:00",
   "source_system": "Easy (EasyJob SQL Server — ELFESQL)",
   "access_mode": "read-only",
   "primary_keys": [

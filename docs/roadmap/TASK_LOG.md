@@ -49,3 +49,10 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-031` | Completed | UI `produzioni` consultiva a 2 colonne |
 | `TASK-V2-032` | Completed | Sync on demand `produzioni` backend-controlled |
 | `TASK-V2-033` | Completed | Gestione operativa del flag `forza_completata` |
+| `TASK-V2-034` | Completed | Performance `produzioni` con default `active` e storico esplicito |
+| `TASK-V2-035` | Completed | Filtro `stato_produzione` e ricerca per articolo/documento |
+| `TASK-V2-036` | Todo | Sync `MAG_REALE` come mirror append-only incrementale |
+| `TASK-V2-037` | Todo | Computed fact canonica `inventory_positions` da movimenti magazzino |
+| `TASK-V2-038` | Todo | Esposizione della giacenza nel dettaglio UI `articoli` |
+| `TASK-V2-036` | Todo | Sync `MAG_REALE` come mirror append-only incrementale |
+| `TASK-V2-037` | Todo | Computed fact canonica `inventory_positions` da movimenti magazzino |
