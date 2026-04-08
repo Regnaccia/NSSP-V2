@@ -1,7 +1,7 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-07
+2026-04-08
 
 ## Stato generale
 
@@ -22,6 +22,10 @@ Sono oggi disponibili:
 - UI browser `articoli`
 - trigger `sync on demand` backend-controlled per `articoli`
 - prima configurazione interna `famiglia articolo`
+- filtro famiglia nella lista articoli
+- vista dedicata al catalogo `famiglie articolo`
+- gestione minima del catalogo famiglie
+- flag `considera_in_produzione` nel catalogo famiglie
 
 ## Decision log attivi
 
@@ -53,6 +57,10 @@ Completati:
 - `TASK-V2-021`
 - `TASK-V2-022`
 - `TASK-V2-023`
+- `TASK-V2-024`
+- `TASK-V2-025`
+- `TASK-V2-026`
+- `TASK-V2-027`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -70,20 +78,19 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-021` sync on demand articoli
 - `TASK-V2-022` famiglia articoli
 - `TASK-V2-023` UI famiglia articoli
-
-## Task aperti
-
-Previsti come prossimi passi:
-
 - `TASK-V2-024` filtro famiglia articoli
 - `TASK-V2-025` UI tabella famiglia articoli
 - `TASK-V2-026` gestione famiglie articoli
 - `TASK-V2-027` flag considera in produzione famiglie
 
+## Task aperti
+
+Nessun task attualmente aperto nel flusso documentato.
+
 ## Gap noti
 
 - la documentazione `UIX` e ora separata tra pattern generale e spec caso concreto; i prossimi casi dovranno aggiungere nuove spec dedicate
-- i prossimi stream dovranno decidere se riusare il pattern `mirror esterno + primo dato interno` oppure introdurre un dominio interno piu autonomo
+- il catalogo `famiglie articolo` e ormai un vero riferimento interno; i prossimi stream dovranno decidere se riusare lo stesso pattern anche per altri cataloghi di dominio
 - i report `docs/test/` coprono formalmente solo i primi test storici; per i task piu recenti la verifica vive nelle `Completion Notes`
 
 ## Prossima sequenza consigliata
@@ -91,10 +98,8 @@ Previsti come prossimi passi:
 Ordine pragmatico raccomandato:
 
 1. definire il prossimo slice di dominio o di configurazione
-2. `TASK-V2-024`
-3. `TASK-V2-025`
-4. `TASK-V2-026`
-5. `TASK-V2-027`
+2. riusare i pattern consolidati documentati in `docs/guides/IMPLEMENTATION_PATTERNS.md`
+3. aprire un nuovo `DL` solo se emerge un concetto veramente strutturale
 
 ## Notes
 

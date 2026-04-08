@@ -35,7 +35,7 @@ Task registrati:
 - `TASK-V2-021-sync-on-demand-articoli.md` - completato
 - `TASK-V2-022-famiglia-articoli.md` - completato
 - `TASK-V2-023-ui-famiglia-articoli.md` - completato
-- `TASK-V2-024-filtro-famiglia-articoli.md` - todo
-- `TASK-V2-025-ui-tabella-famiglia-articoli.md` - todo
-- `TASK-V2-026-gestione-famiglie-articoli.md` - todo
-- `TASK-V2-027-flag-considera-in-produzione-famiglie.md` - todo
+- `TASK-V2-024-filtro-famiglia-articoli.md` - completato
+- `TASK-V2-025-ui-tabella-famiglia-articoli.md` - completato
+- `TASK-V2-026-gestione-famiglie-articoli.md` - completato
+- `TASK-V2-027-flag-considera-in-produzione-famiglie.md` - completato

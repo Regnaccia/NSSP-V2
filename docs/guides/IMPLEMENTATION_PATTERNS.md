@@ -148,6 +148,30 @@ Ogni task completo deve riportare almeno:
 
 Questo riduce la necessita di aprire ogni volta un report `docs/test/` dedicato.
 
+## Pattern 9 - Catalogo interno di riferimento + associazione a entita
+
+Quando emerge un primo dato interno stabile, il pattern corretto non e quasi mai un campo libero sparso.
+
+Percorso consigliato:
+
+1. introdurre un catalogo interno dedicato
+2. associare le entita di dominio a quel catalogo
+3. esporre il catalogo in una UI dedicata
+4. solo dopo introdurre attributi aggiuntivi del catalogo
+
+Esempio gia validato:
+
+- `famiglie articolo`
+  - catalogo interno
+  - associazione articolo -> famiglia
+  - vista dedicata del catalogo
+  - gestione create / active
+  - flag `considera_in_produzione`
+
+Regola:
+
+> Se una classificazione interna ha vita propria, va trattata come catalogo di riferimento e non solo come enum nascosto nella UI.
+
 ## Quando riusare questi pattern
 
 Questi pattern vanno riusati soprattutto per:

@@ -39,7 +39,7 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-021` | Completed | Sync on demand `articoli` backend-controlled |
 | `TASK-V2-022` | Completed | Catalogo famiglie e associazione articolo -> famiglia |
 | `TASK-V2-023` | Completed | Campo configurabile `famiglia` nella UI articoli |
-| `TASK-V2-024` | Todo | Filtro famiglia articoli con `Tutti`, `Non configurati` e famiglie specifiche |
-| `TASK-V2-025` | Todo | UI dedicata alla tabella `famiglie articolo` |
-| `TASK-V2-026` | Todo | Inserimento nuove famiglie e toggle attivo/disattivo |
-| `TASK-V2-027` | Todo | Flag booleano `considera_in_produzione` nel catalogo famiglie |
+| `TASK-V2-024` | Completed | Filtro famiglia articoli con `Tutti`, `Non configurati` e famiglie specifiche |
+| `TASK-V2-025` | Completed | UI dedicata alla tabella `famiglie articolo` |
+| `TASK-V2-026` | Completed | Inserimento nuove famiglie e toggle attivo/disattivo |
+| `TASK-V2-027` | Completed | Flag booleano `considera_in_produzione` nel catalogo famiglie |
