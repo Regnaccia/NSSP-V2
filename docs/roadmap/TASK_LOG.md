@@ -51,8 +51,11 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-033` | Completed | Gestione operativa del flag `forza_completata` |
 | `TASK-V2-034` | Completed | Performance `produzioni` con default `active` e storico esplicito |
 | `TASK-V2-035` | Completed | Filtro `stato_produzione` e ricerca per articolo/documento |
-| `TASK-V2-036` | Todo | Sync `MAG_REALE` come mirror append-only incrementale |
-| `TASK-V2-037` | Todo | Computed fact canonica `inventory_positions` da movimenti magazzino |
-| `TASK-V2-038` | Todo | Esposizione della giacenza nel dettaglio UI `articoli` |
-| `TASK-V2-036` | Todo | Sync `MAG_REALE` come mirror append-only incrementale |
-| `TASK-V2-037` | Todo | Computed fact canonica `inventory_positions` da movimenti magazzino |
+| `TASK-V2-036` | Completed | Sync `MAG_REALE` come mirror append-only incrementale |
+| `TASK-V2-037` | Completed | Computed fact canonica `inventory_positions` da movimenti magazzino |
+| `TASK-V2-038` | Completed | Esposizione della giacenza nel dettaglio UI `articoli` |
+| `TASK-V2-039` | Completed | Refresh sequenziale `articoli -> mag_reale -> inventory_positions` per la surface articoli |
+| `TASK-V2-040` | Completed | Mirror sync read-only di `V_TORDCLI` come base delle righe ordine cliente |
+| `TASK-V2-041` | Completed | Core `customer_order_lines` con `open_qty` e `description_lines` |
+| `TASK-V2-042` | Todo | Computed fact `commitments` da `customer_order_lines` |
+| `TASK-V2-043` | Todo | Estensione `commitments` alla provenienza `production` per materiali `CAT_ART1 != 0` |

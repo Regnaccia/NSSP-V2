@@ -58,6 +58,8 @@ Disponibile:
 - filtro famiglia
 - gestione catalogo famiglie
 - flag `considera_in_produzione`
+- giacenza read-only dal Core nel pannello dettaglio
+- refresh sequenziale backend-controlled `articoli -> mag_reale -> inventory_positions`
 
 ### Produzioni
 
@@ -76,6 +78,25 @@ Disponibile:
 - filtro `stato_produzione`
 - ricerca per `codice_articolo` e `numero_documento`
 
+### Inventory
+
+Disponibile:
+
+- mirror `sync_mag_reale`
+- computed fact `inventory_positions`
+- formula canonica `on_hand_qty = sum(load) - sum(unload)`
+- integrazione read-only della giacenza nella surface `articoli`
+
+### Ordini cliente
+
+Disponibile:
+
+- mirror `sync_righe_ordine_cliente` da `V_TORDCLI`
+- Core `customer_order_lines`
+- `open_qty = max(DOC_QTOR - DOC_QTAP - DOC_QTEV, 0)`
+- supporto a `description_lines` per righe con `COLL_RIGA_PREC = true`
+- enrichment cliente/destinazione demand-driven a livello query/read model
+
 ## Mirror sync attivi
 
 Gia presenti:
@@ -85,12 +106,15 @@ Gia presenti:
 - `sync_articoli`
 - `sync_produzioni_attive`
 - `sync_produzioni_storiche`
+- `sync_mag_reale`
+- `sync_righe_ordine_cliente`
 
 ## Dati interni gia introdotti
 
 - `nickname_destinazione`
 - `famiglia articolo`
 - `considera_in_produzione`
+- `inventory_positions`
 
 ## Pattern consolidati
 
@@ -104,16 +128,22 @@ Pattern gia validati:
 
 ## Prossimo passo naturale
 
-Non ci sono task aperti nello stream documentato.
+Task aperti nel flusso documentato:
 
-Il prossimo candidato naturale emerso dalla documentazione e:
+- `TASK-V2-042` `commitments` cliente
+- `TASK-V2-043` `commitments` produzione
 
-- `MAG_REALE`, come primo caso `append-only + incremental sync + rebuild periodico`
-- `inventory_positions`, come prima computed fact canonica di giacenza per articolo
-- esposizione della giacenza nella surface `articoli` per validazione visiva
+I prossimi candidati naturali emersi dalla documentazione sono:
+
+- `commitments` cliente come prima provenienza `customer_order`
+- `commitments` produzione per materiali `CAT_ART1 != 0`
+- `commitments` come building block separato da `inventory`
+- futura `availability` come derivato di `inventory` e `commitments`
 
 ## References
 
 - `docs/roadmap/STATUS.md`
 - `docs/guides/IMPLEMENTATION_PATTERNS.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-015.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-016.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-017.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-018.md`

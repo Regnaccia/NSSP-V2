@@ -5,7 +5,7 @@
 
 ## Stato generale
 
-La V2 ha completato il bootstrap architetturale principale e ha chiuso due stream applicativi minimi:
+La V2 ha completato il bootstrap architetturale principale e ha chiuso tre stream applicativi minimi:
 
 - `logistica`
 - `produzione/articoli`
@@ -36,12 +36,15 @@ Sono oggi disponibili:
 - prima gestione operativa del flag `forza_completata`
 - default lista `produzioni` su `active`, con storico esplicito
 - filtri `stato_produzione` e ricerca per articolo/documento
+- sync reale Easy read-only per `MAG_REALE`
+- computed fact canonica `inventory_positions`
+- giacenza esposta nel dettaglio UI `articoli`
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-015`
+- `ARCH/` fino a `DL-ARCH-V2-018`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -60,7 +63,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-035`
+- `TASK-V2-001` -> `TASK-V2-041`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -90,14 +93,17 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-033` gestione operativa `forza_completata`
 - `TASK-V2-034` performance produzioni con default `active`
 - `TASK-V2-035` filtri e ricerca produzioni
-
-## Task aperti
-
-Aperti:
-
 - `TASK-V2-036` sync `MAG_REALE`
 - `TASK-V2-037` computed fact `inventory_positions`
 - `TASK-V2-038` giacenza nel dettaglio `articoli`
+- `TASK-V2-039` refresh sequenziale `articoli -> mag_reale -> inventory_positions`
+- `TASK-V2-040` sync `righe_ordine_cliente`
+- `TASK-V2-041` Core `ordini cliente`
+
+## Task aperti
+
+- `TASK-V2-042` `commitments` cliente
+- `TASK-V2-043` `commitments` produzione
 
 ## Gap noti
 
@@ -109,9 +115,9 @@ Aperti:
 
 Ordine pragmatico raccomandato:
 
-1. completare `TASK-V2-036` sul mirror `MAG_REALE`
-2. completare `TASK-V2-037` sulla computed fact canonica `inventory_positions`
-3. completare `TASK-V2-038` per esporre la giacenza nel dettaglio `articoli`
+1. completare il primo computed fact `commitments` cliente
+2. estendere `commitments` alla provenienza `production`
+3. usare `inventory` e `commitments` come building block per la futura `availability`
 
 ## Notes
 

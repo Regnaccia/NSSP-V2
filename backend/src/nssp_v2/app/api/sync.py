@@ -4,8 +4,8 @@ Router sync on demand (DL-ARCH-V2-011).
 Endpoint:
   POST /api/sync/surface/logistica    — trigger sync clienti + destinazioni in ordine
   GET  /api/sync/freshness/logistica  — stato freschezza entita della surface logistica
-  POST /api/sync/surface/produzione   — trigger sync articoli
-  GET  /api/sync/freshness/produzione — stato freschezza entita della surface produzione
+  POST /api/sync/surface/produzione   — trigger sync articoli + mag_reale + rebuild inventory_positions
+  GET  /api/sync/freshness/produzione — stato freschezza entita della surface produzione (articoli + mag_reale)
   POST /api/sync/surface/produzioni   — trigger sync produzioni_attive + produzioni_storiche
   GET  /api/sync/freshness/produzioni — stato freschezza entita della surface produzioni
   POST /api/sync/surface/magazzino    — trigger sync mag_reale (incrementale)
@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from nssp_v2.app.deps.auth import get_current_user
 from nssp_v2.app.schemas.sync import (
     EntityFreshness,
+    EntityRunResult,
     FreshnessResponse,
     SyncSurfaceResponse,
 )
@@ -33,6 +34,7 @@ from nssp_v2.app.services.sync_runner import (
     SyncAlreadyRunningError,
     SyncRunner,
 )
+from nssp_v2.core.inventory_positions.queries import rebuild_inventory_positions
 from nssp_v2.shared.config import get_settings
 from nssp_v2.shared.db import get_session
 from nssp_v2.sync.articoli.source import EasyArticoloSource
@@ -47,8 +49,42 @@ router = APIRouter(prefix="/sync", tags=["sync"])
 
 # Ordine di esecuzione surface logistica (rispetta dipendenze dichiarate)
 _LOGISTICA_ENTITIES = ["clienti", "destinazioni"]
-# Entita surface produzione (articoli: nessuna dipendenza esterna)
-_PRODUZIONE_ENTITIES = ["articoli"]
+
+
+# ─── Helper: rebuild inventory_positions ─────────────────────────────────────
+
+def _run_inventory_rebuild(session: Session) -> EntityRunResult:
+    """Esegue il rebuild completo di core_inventory_positions e restituisce un EntityRunResult."""
+    started_at = datetime.now(timezone.utc)
+    try:
+        n = rebuild_inventory_positions(session)
+        session.commit()
+        return EntityRunResult(
+            entity_code="inventory_positions",
+            status="success",
+            run_id=None,
+            rows_seen=n,
+            rows_written=n,
+            rows_deleted=0,
+            error_message=None,
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        session.rollback()
+        return EntityRunResult(
+            entity_code="inventory_positions",
+            status="error",
+            run_id=None,
+            rows_seen=0,
+            rows_written=0,
+            rows_deleted=0,
+            error_message=str(exc),
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc),
+        )
+# Entita surface produzione: articoli + mag_reale (il rebuild inventory_positions segue in sequenza)
+_PRODUZIONE_ENTITIES = ["articoli", "mag_reale"]
 # Entita surface produzioni (attive + storiche: nessuna dipendenza tra loro)
 _PRODUZIONI_ENTITIES = ["produzioni_attive", "produzioni_storiche"]
 # Entita surface magazzino (mag_reale: nessuna dipendenza esterna)
@@ -164,11 +200,12 @@ def trigger_produzione(
     _: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Esegue la sync on demand degli articoli.
+    """Esegue la sync on demand sequenziale: articoli → mag_reale → rebuild inventory_positions.
 
     Controlli backend:
     - Easy connection string deve essere configurata
-    - Nessuna sync concorrente sul perimetro articoli
+    - Nessuna sync concorrente sul perimetro
+    - Il rebuild inventory_positions avviene dopo la sync, sempre (da stato corrente del mirror)
     """
     settings = get_settings()
 
@@ -180,6 +217,7 @@ def trigger_produzione(
 
     sources = {
         "articoli": EasyArticoloSource(settings.easy_connection_string),
+        "mag_reale": EasyMagRealeSource(settings.easy_connection_string),
     }
 
     runner = SyncRunner()
@@ -190,6 +228,9 @@ def trigger_produzione(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Sync gia in esecuzione: {', '.join(sorted(exc.running_entities))}",
         )
+
+    # Step finale: rebuild deterministic di inventory_positions dal mirror aggiornato
+    results.append(_run_inventory_rebuild(session))
 
     return SyncSurfaceResponse(
         triggered_at=datetime.now(timezone.utc),

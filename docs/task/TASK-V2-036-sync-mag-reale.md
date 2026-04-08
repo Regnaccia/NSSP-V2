@@ -163,6 +163,23 @@ Alla chiusura del task devono essere riportati:
 
 Suite completa: 346/346 passed.
 
+### Evidenza operativa
+
+Primo bootstrap reale Easy completato con successo:
+
+- `run_id`: `aaacf835-4327-4ff1-b7fa-0baaa9d6f079`
+- `entity`: `mag_reale`
+- `status`: `success`
+- `rows_seen`: `337721`
+- `rows_written`: `337721`
+- `started_at`: `2026-04-08T12:15:41.534960+00:00`
+- `finished_at`: `2026-04-08T12:25:56.986271+00:00`
+
+L'esecuzione completa del primo bootstrap ha richiesto circa 10 minuti e 15 secondi.
+Questo risultato conferma che, per `MAG_REALE`, la scelta `append_only + cursor incrementale`
+e corretta: il bootstrap iniziale e sostenibile e i run successivi potranno limitarsi ai soli
+nuovi movimenti.
+
 ### Test non eseguiti
 
 - Test HTTP degli endpoint `/surface/magazzino` e `/freshness/magazzino`: non inclusi; la logica è coperta dai test unitari della sync unit e il pattern degli endpoint è identico a quello delle altre surface già testate.

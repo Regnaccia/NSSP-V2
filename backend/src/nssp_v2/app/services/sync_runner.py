@@ -27,6 +27,7 @@ from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit
 from nssp_v2.sync.mag_reale.unit import MagRealeSyncUnit
 from nssp_v2.sync.produzioni_attive.unit import ProduzioneAttivaSyncUnit
 from nssp_v2.sync.produzioni_storiche.unit import ProduzioneStoricaSyncUnit
+from nssp_v2.sync.righe_ordine_cliente.unit import RigheOrdineClienteSyncUnit
 
 # ─── Mappa entity_code → sync unit class ──────────────────────────────────────
 
@@ -37,6 +38,7 @@ _UNIT_MAP = {
     "produzioni_attive": ProduzioneAttivaSyncUnit,
     "produzioni_storiche": ProduzioneStoricaSyncUnit,
     "mag_reale": MagRealeSyncUnit,
+    "righe_ordine_cliente": RigheOrdineClienteSyncUnit,
 }
 
 # ─── Concurrency guard ────────────────────────────────────────────────────────

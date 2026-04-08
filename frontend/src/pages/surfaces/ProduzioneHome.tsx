@@ -457,7 +457,16 @@ export default function ProduzioneHome() {
         const failed = data.results.filter(r => r.status !== 'success')
         toast.error(`Sync parzialmente fallita: ${failed.map(r => r.entity_code).join(', ')}`)
       }
-      await Promise.all([loadArticoli(), loadFreshness()])
+      const reloads: Promise<unknown>[] = [loadArticoli(), loadFreshness()]
+      if (selected) {
+        reloads.push(
+          apiClient
+            .get<ArticoloDetail>(`/produzione/articoli/${encodeURIComponent(selected)}`)
+            .then((r) => setDetail(r.data))
+            .catch(() => {})
+        )
+      }
+      await Promise.all(reloads)
     } catch (err: unknown) {
       setSyncStatus('error')
       const resp = (err as { response?: { status?: number; data?: { detail?: string } } })?.response

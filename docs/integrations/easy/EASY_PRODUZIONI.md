@@ -116,7 +116,7 @@ Campi rilevanti fissati per il primo slice:
 | `DOC_QTOR` | `quantita_ordinata` | `numeric(18,5)` -> decimal nullable | quantita ordinata |
 | `DOC_QTEV` | `quantita_prodotta` | `numeric(18,5)` -> decimal nullable | quantita prodotta |
 | `MAT_COD` | `materiale_partenza_codice` | `varchar(25)` -> string nullable | materiale di partenza |
-| `MM_PEZZO` | `materiale_partenza_per_pezzo` | `numeric(18,5)` -> decimal nullable | materiale di partenza necessario per un pezzo |
+| `MM_PEZZO` | `materiale_partenza_per_pezzo` | `numeric(18,5)` -> decimal nullable | dato sorgente da preservare; la semantica operativa dipende da `CAT_ART1` dell'articolo `MAT_COD` |
 | `ART_MISURA` | `misura_articolo` | `varchar(20)` -> string nullable | misura articolo |
 | `DOC_NUM` | `numero_documento` | `varchar(10)` -> string nullable | numero documento |
 | `COD_IMM` | `codice_immagine` | `varchar(1)` -> string nullable | riferimento immagine articolo |
@@ -144,6 +144,42 @@ Campi presenti in sorgente ma rinviati a una fase successiva o da chiarire seman
 - `SCRITTO` / `scritto`
 - `CAT_ART6`
 
+## Semantic Note - `MM_PEZZO` e impegni produzione
+
+`MM_PEZZO` non ha una semantica unica e fissa.
+
+Il suo significato dipende dalla categoria articolo `CAT_ART1` dell'articolo indicato in:
+
+- `MAT_COD`
+
+Regola semantica osservata:
+
+- se `MAT_COD.CAT_ART1 = 0`
+  - `MM_PEZZO` rappresenta i millimetri di materiale necessari per produrre 1 pezzo finito
+  - l'impegno totale futuro di produzione e:
+    - `MM_PEZZO * quantita_aperta_da_produrre`
+  - l'unita implicita e `mm`
+
+- se `MAT_COD.CAT_ART1 != 0`
+  - `MM_PEZZO` rappresenta il numero di pezzi di materiale/semilavorato da prelevare dal magazzino
+  - l'impegno totale futuro di produzione coincide con:
+    - `MM_PEZZO`
+  - l'unita implicita e `pezzi`
+
+Esempi:
+
+- produzione con `MAT_COD = mat0`, `CAT_ART1 = 0`, `MM_PEZZO = 10`, `pezzi_da_produrre = 10`
+  - impegno materiale = `100 mm`
+
+- produzione con `MAT_COD = semi1`, `CAT_ART1 != 0`, `MM_PEZZO = 21`, `pezzi_da_produrre = 20`
+  - impegno materiale = `21 pezzi`
+
+Regola di mapping:
+
+- il layer `sync` deve preservare `MM_PEZZO` come dato sorgente grezzo
+- il layer `sync` non deve interpretare `MM_PEZZO` come `committed_qty`
+- la semantica operativa va applicata solo nel futuro Core `commitments production`, tramite lookup di `MAT_COD` su `ANAART`
+
 ## Technical Normalization Allowed
 
 Trasformazioni tecniche consentite nel layer sync:
@@ -159,6 +195,7 @@ Non includere:
 - join o deduzioni Core
 - logiche di pianificazione
 - classificazioni operative di produzione
+- interpretazione di `MM_PEZZO` come quantita impegnata finale
 
 ## Target Notes
 
@@ -204,11 +241,13 @@ Nel primo draft restano non ancora fissate.
 - nessuna primary key dichiarata nel catalogo
 - `DPRE_PROD` e `SDPRE_PROD` sono molto simili ma non perfettamente identiche
 - la semantica esatta di alcune quantita va validata prima della sync reale
+- `MM_PEZZO` cambia significato operativo in funzione di `CAT_ART1` dell'articolo `MAT_COD`
 
 ## Open Questions
 
 - usare `ID_DETTAGLIO` come identita tecnica definitiva
 - decidere se i campi quantita rinviati debbano entrare gia nel primo slice
+- definire nel futuro stream `commitments production` il lookup stabile `MAT_COD -> CAT_ART1`
 
 ## References
 
@@ -217,5 +256,6 @@ Nel primo draft restano non ancora fissate.
 - `docs/decisions/ARCH/DL-ARCH-V2-008.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-009.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-015.md`
+- `docs/integrations/easy/EASY_ARTICOLI.md`
 - `docs/integrations/easy/catalog/DPRE_PROD.json`
 - `docs/integrations/easy/catalog/SDPRE_PROD.json`

@@ -47,6 +47,11 @@ Task registrati:
 - `TASK-V2-033-forza-completata-produzioni.md` - completato
 - `TASK-V2-034-performance-produzioni-active-default.md` - completato
 - `TASK-V2-035-filtri-e-ricerca-produzioni.md` - completato
-- `TASK-V2-036-sync-mag-reale.md` - todo
-- `TASK-V2-037-core-inventory-positions.md` - todo
-- `TASK-V2-038-giacenza-articoli-nel-dettaglio-ui.md` - todo
+- `TASK-V2-036-sync-mag-reale.md` - completato
+- `TASK-V2-037-core-inventory-positions.md` - completato
+- `TASK-V2-038-giacenza-articoli-nel-dettaglio-ui.md` - completato
+- `TASK-V2-039-refresh-sequenziale-articoli-e-giacenza.md` - completato
+- `TASK-V2-040-sync-righe-ordine-cliente.md` - completato
+- `TASK-V2-041-core-ordini-cliente.md` - completato
+- `TASK-V2-042-commitments-cliente.md` - todo
+- `TASK-V2-043-commitments-produzione.md` - todo

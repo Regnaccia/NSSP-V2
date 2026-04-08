@@ -10,14 +10,18 @@ Stato coperto:
 - surface `admin`
 - surface `logistica`
 - surface `produzione`
+- surface `produzioni`
 - sync Easy read-only `clienti`
 - sync Easy read-only `destinazioni`
 - sync Easy read-only `articoli`
+- sync Easy read-only `mag_reale`
 - sync on demand backend-controlled
 - catalogo interno `famiglie articolo`
+- computed fact `inventory_positions`
+- giacenza read-only nel dettaglio `articoli`
 - build frontend
 
-Aggiornata dopo: `TASK-V2-027`.
+Aggiornata dopo: `TASK-V2-038`.
 
 ## Prerequisiti
 
@@ -122,9 +126,11 @@ Le migration attive includono almeno:
 - `sync_clienti`
 - `sync_destinazioni`
 - `sync_articoli`
+- `sync_mag_reale`
 - `core_destinazione_config`
 - `articolo_famiglie`
 - `core_articolo_config`
+- `core_inventory_positions`
 
 ## 5. Seed iniziale
 
@@ -175,7 +181,7 @@ Endpoint principali:
 | `GET /api/sync/freshness/logistica` | freshness della surface logistica | Bearer JWT |
 | `POST /api/sync/surface/logistica` | trigger sync on demand `clienti + destinazioni` | Bearer JWT |
 | `GET /api/produzione/articoli` | lista articoli Core | Bearer JWT |
-| `GET /api/produzione/articoli/{codice}` | dettaglio articolo | Bearer JWT |
+| `GET /api/produzione/articoli/{codice}` | dettaglio articolo con giacenza read-only | Bearer JWT |
 | `PATCH /api/produzione/articoli/{codice}/famiglia` | aggiorna famiglia articolo | Bearer JWT |
 | `GET /api/produzione/famiglie` | picker famiglie attive | Bearer JWT |
 | `GET /api/produzione/famiglie/catalog` | catalogo famiglie completo | Bearer JWT |
@@ -184,6 +190,11 @@ Endpoint principali:
 | `PATCH /api/produzione/famiglie/{code}/considera-produzione` | toggle flag produzione | Bearer JWT |
 | `GET /api/sync/freshness/produzione` | freshness della surface produzione | Bearer JWT |
 | `POST /api/sync/surface/produzione` | trigger sync on demand `articoli` | Bearer JWT |
+| `GET /api/sync/freshness/magazzino` | freshness della surface magazzino | Bearer JWT |
+| `POST /api/sync/surface/magazzino` | trigger sync on demand `mag_reale` | Bearer JWT |
+| `GET /api/produzioni` | lista produzioni Core | Bearer JWT |
+| `GET /api/produzioni/{id_dettaglio}` | dettaglio produzione | Bearer JWT |
+| `PATCH /api/produzioni/{id_dettaglio}/forza-completata` | override stato completata | Bearer JWT |
 
 Esempio login:
 
@@ -209,8 +220,11 @@ La suite copre:
 - utility security e `available_surfaces`
 - policy "ultimo admin attivo"
 - contratti sync `clienti`, `destinazioni`, `articoli`
+- contratto sync `mag_reale`
 - read model Core clienti/destinazioni
 - read model Core articoli
+- read model Core `produzioni`
+- computed fact `inventory_positions`
 - catalogo famiglie articolo
 - `SyncRunner` per trigger `sync on demand`
 
@@ -230,6 +244,8 @@ cd backend
 python scripts/sync_clienti.py --source fake
 python scripts/sync_destinazioni.py --source fake
 python scripts/sync_articoli.py --source fake
+python scripts/sync_mag_reale.py --source fake
+python scripts/rebuild_inventory_positions.py
 ```
 
 Per usare Easy reale:
@@ -239,14 +255,17 @@ cd backend
 python scripts/sync_clienti.py
 python scripts/sync_destinazioni.py
 python scripts/sync_articoli.py
+python scripts/sync_mag_reale.py
+python scripts/rebuild_inventory_positions.py
 ```
 
 Regole operative:
 
 - `sync_clienti` va eseguita prima di `sync_destinazioni`
 - gli script Easy richiedono `EASY_CONNECTION_STRING`
-- gli adapter Easy leggono solo `ANACLI`, `POT_DESTDIV` e `ANAART`
+- gli adapter Easy leggono solo `ANACLI`, `POT_DESTDIV`, `ANAART` e `MAG_REALE`
 - gli script scrivono solo sul database interno V2
+- `rebuild_inventory_positions` ricalcola la giacenza dal mirror interno, non da Easy
 
 ## 9. Sync on demand applicativo
 
@@ -274,6 +293,18 @@ curl -s http://localhost:8000/api/sync/freshness/produzione \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
+Per la surface magazzino:
+
+```bash
+curl -s -X POST http://localhost:8000/api/sync/surface/magazzino \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+```bash
+curl -s http://localhost:8000/api/sync/freshness/magazzino \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
 Note:
 
 - il trigger vive nel backend, non negli script frontend
@@ -298,8 +329,11 @@ python -c "from nssp_v2.sync.models import SyncRunLog, SyncEntityState; print('s
 python -c "from nssp_v2.sync.clienti.unit import ClienteSyncUnit; print('sync clienti OK')"
 python -c "from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit; print('sync destinazioni OK')"
 python -c "from nssp_v2.sync.articoli.unit import ArticoloSyncUnit; print('sync articoli OK')"
+python -c "from nssp_v2.sync.mag_reale.unit import MagRealeSyncUnit; print('sync mag_reale OK')"
 python -c "from nssp_v2.core.clienti_destinazioni import CoreDestinazioneConfig; print('core clienti/destinazioni OK')"
 python -c "from nssp_v2.core.articoli import ArticoloItem, ArticoloDetail; print('core articoli OK')"
+python -c "from nssp_v2.core.produzioni import ProduzioneItem, ProduzioneDetail; print('core produzioni OK')"
+python -c "from nssp_v2.core.inventory_positions import InventoryPositionItem; print('core inventory OK')"
 ```
 
 ## 11. Bootstrap frontend
@@ -344,6 +378,8 @@ pytest tests/unit/ -v
 python scripts/sync_clienti.py --source fake
 python scripts/sync_destinazioni.py --source fake
 python scripts/sync_articoli.py --source fake
+python scripts/sync_mag_reale.py --source fake
+python scripts/rebuild_inventory_positions.py
 
 # 6. Avviare backend
 uvicorn nssp_v2.app.main:app --reload
@@ -352,6 +388,8 @@ uvicorn nssp_v2.app.main:app --reload
 python scripts/sync_clienti.py
 python scripts/sync_destinazioni.py
 python scripts/sync_articoli.py
+python scripts/sync_mag_reale.py
+python scripts/rebuild_inventory_positions.py
 
 # 8. In un'altra shell, frontend
 cd ../frontend
@@ -376,7 +414,10 @@ Verifica manuale minima:
 10. usare il trigger `POST /api/sync/surface/logistica` o il pulsante UI equivalente e verificare stato freshness
 11. aprire la surface `produzione/articoli`
 12. verificare ricerca articolo, filtro famiglia e dettaglio read-only
-13. configurare la `famiglia articolo` dal dettaglio
-14. aprire la vista `famiglie`
-15. creare una nuova famiglia, cambiare `is_active` e `considera_in_produzione`
-16. usare il trigger `POST /api/sync/surface/produzione` o il pulsante UI equivalente e verificare freshness
+13. verificare che il dettaglio articolo mostri anche la `giacenza` read-only ODE
+14. configurare la `famiglia articolo` dal dettaglio
+15. aprire la vista `famiglie`
+16. creare una nuova famiglia, cambiare `is_active` e `considera_in_produzione`
+17. usare il trigger `POST /api/sync/surface/produzione` o il pulsante UI equivalente e verificare freshness
+18. eseguire `sync_mag_reale` e `rebuild_inventory_positions`, poi verificare che la giacenza articolo sia coerente
+19. aprire la surface `produzioni` e verificare lista, dettaglio, sync on demand e `forza_completata`

@@ -195,6 +195,33 @@ Regola:
 
 > Se la distinzione nasce dalla sorgente, i mirror restano separati; se la vista deve essere unificata, l'aggregazione e i computed fact nascono nel `core`.
 
+## Pattern 11 - Append-only incrementale con rebuild deterministico a valle
+
+Per sorgenti grandi che registrano eventi o movimenti e non aggiornano i record esistenti, il
+pattern corretto e:
+
+1. mirror `append_only` nel layer `sync`
+2. cursor incrementale stabile
+3. nessun calcolo business nel mirror
+4. computed fact o rebuild deterministico nel `core`
+5. rebuild completo periodico rimandato allo scheduler, non al bootstrap quotidiano
+
+Primo caso validato:
+
+- `MAG_REALE` -> `sync_mag_reale` -> `inventory_positions`
+
+Evidenza iniziale:
+
+- primo bootstrap reale completato con `337721` movimenti scritti
+- durata circa `10m 15s`
+- conferma pratica che il bootstrap completo e sostenibile e che i run successivi possono
+  beneficiare del cursor incrementale
+
+Regola:
+
+> Se la sorgente e append-only, l'ottimizzazione giusta e sincronizzare i nuovi eventi e
+> ricostruire a valle i fact canonici, non comprimere la logica direttamente nel mirror.
+
 ## Quando riusare questi pattern
 
 Questi pattern vanno riusati soprattutto per:

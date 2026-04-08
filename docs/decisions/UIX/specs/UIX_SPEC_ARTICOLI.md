@@ -10,7 +10,7 @@ Valori ammessi:
 - `Superseded`
 
 ## Date
-2026-04-07
+2026-04-08
 
 ## Purpose
 
@@ -21,10 +21,12 @@ Documentare come il pattern UIX multi-colonna standard viene applicato al caso `
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
 - `docs/decisions/UIX/DL-UIX-V2-004.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-014.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-016.md`
 - `docs/integrations/easy/EASY_ARTICOLI.md`
 - `docs/task/TASK-V2-018-sync-articoli-reale.md`
 - `docs/task/TASK-V2-022-famiglia-articoli.md`
 - `docs/task/TASK-V2-023-ui-famiglia-articoli.md`
+- `docs/task/TASK-V2-038-giacenza-articoli-nel-dettaglio-ui.md`
 
 ## Variant
 
@@ -47,17 +49,17 @@ Requisiti UX minimi:
 - ricerca sempre visibile e usabile con liste lunghe
 - evidenza chiara dell'articolo selezionato
 
-#### Filtro famiglia (TASK-V2-024)
+#### Filtro famiglia
 
 Posizionato nella colonna sinistra, sotto il campo ricerca. Opzioni:
 
-- `Tutte le famiglie` — mostra tutti gli articoli
-- `Non configurati` — solo articoli senza famiglia assegnata (`famiglia_code = null`)
+- `Tutte le famiglie` - mostra tutti gli articoli
+- `Non configurati` - solo articoli senza famiglia assegnata (`famiglia_code = null`)
 - una opzione per ogni famiglia del catalogo interno
 
-Il filtro si combina con la ricerca: la ricerca opera sul subset già filtrato per famiglia.
-Il filtro è client-side; nessuna modifica al contratto Core/API è necessaria perché `famiglia_code`
-è già esposto in `ArticoloItem`.
+Il filtro si combina con la ricerca: la ricerca opera sul subset gia filtrato per famiglia.
+Il filtro e client-side; nessuna modifica al contratto Core/API e necessaria perche
+`famiglia_code` e gia esposto in `ArticoloItem`.
 
 ### Colonna 2 - Configurazione articolo
 
@@ -66,19 +68,35 @@ Contiene:
 - dati read-only dell'articolo selezionato esposti dal Core
 - dati interni configurabili dell'articolo
 
-#### Sezione "Classificazione interna" (DL-ARCH-V2-014)
+#### Sezione "Classificazione interna"
 
-Prima configurazione interna introdotta con TASK-V2-022 / TASK-V2-023:
+Prima configurazione interna introdotta con `TASK-V2-022` e `TASK-V2-023`.
 
 - campo: `famiglia articolo`
-- controllo: `select` con catalogo controllato interno (5 valori seed: `materia_prima`, `articolo_standard`, `speciale`, `barre`, `conto_lavorazione`)
-- valore opzionale — l'articolo puo non avere famiglia assegnata
+- controllo: `select` con catalogo controllato interno
+- catalogo seed iniziale: `materia_prima`, `articolo_standard`, `speciale`, `barre`, `conto_lavorazione`
+- valore opzionale: l'articolo puo non avere famiglia assegnata
 - salvataggio via `PATCH /api/produzione/articoli/{codice}/famiglia`
-- feedback inline salvataggio: idle / salvataggio / salvato / errore
+- feedback inline: `idle | salvataggio | salvato | errore`
 
-#### Sezione "Dati anagrafici — sola lettura (Easy)"
+#### Sezione "Dati anagrafici - sola lettura (Easy)"
 
 Tutti i campi provenienti da Easy tramite `sync_articoli` sono visualizzati in sola lettura.
+
+#### Sezione "Giacenza - sola lettura (ODE)"
+
+Estensione introdotta con `TASK-V2-038`.
+
+Contiene:
+
+- `on_hand_qty`
+- `giacenza_computed_at`
+
+Semantica:
+
+- la giacenza proviene dal computed fact Core `inventory_positions`
+- non e un dato Easy diretto
+- la sezione serve come verifica visiva dell'allineamento Easy/ODE, non come UI magazzino dedicata
 
 ## Search Behavior
 
@@ -104,7 +122,7 @@ I dati provenienti da Easy o derivati dal Core a partire da Easy sono visualizza
 
 I dati interni persistiti nel sistema V2 sono presentati come configurabili.
 
-Il set preciso dei campi configurabili verra fissato dal successivo slice Core/UI `articoli`.
+Il set preciso dei campi configurabili crescera per slice successivi del dominio `articoli`.
 
 ## Selection Flow
 
@@ -121,10 +139,13 @@ Il set preciso dei campi configurabili verra fissato dal successivo slice Core/U
 ## Notes
 
 - Questa spec descrive il caso concreto `articoli` come variante a `2 colonne`.
-- Aggiornata a `In Use` con TASK-V2-023; la configurazione concreta del primo campo interno (`famiglia`) e ora documentata.
+- Aggiornata a `In Use` con `TASK-V2-023`.
+- Estesa con `TASK-V2-038` per includere la giacenza read-only proveniente dal Core.
 
 ## References
 
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
 - `docs/decisions/UIX/DL-UIX-V2-004.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-014.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-016.md`
 - `docs/integrations/easy/EASY_ARTICOLI.md`

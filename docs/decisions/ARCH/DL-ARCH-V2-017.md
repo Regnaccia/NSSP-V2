@@ -137,6 +137,12 @@ L'impegno da cliente deriva da:
 La quantita impegnata deve riflettere la parte non ancora chiusa o assorbita della domanda cliente,
 secondo il modello che verra fissato nei task attuativi.
 
+Nota:
+
+- eventuali stati intermedi come quantita gia inscatolata/appartata per cliente ma non ancora uscita da magazzino
+  devono restare tracciati come dato distinto e non vanno confusi automaticamente con `inventory`
+  o con la futura `availability`
+
 ## 7. Confine tra sorgenti e fact canonica
 
 Le sorgenti operative:
@@ -173,6 +179,10 @@ Prima devono esistere:
 - `commitments`
 
 robusti e riusabili.
+
+Stati intermedi come `set_aside_qty` da ordine cliente potranno contribuire alla disponibilita futura,
+ma richiedono una modellazione esplicita e non vanno compressi prematuramente nella sola formula
+`inventory - commitments`.
 
 ## Consequences
 
