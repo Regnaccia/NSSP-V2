@@ -14,6 +14,12 @@ docs/
 `-- test/             report di verifica su task, pipeline e controlli manuali
 ```
 
+## Overview
+
+| File | Contenuto |
+|------|-----------|
+| [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) | Panoramica rapida dello stato reale del sistema V2: stream operativi, mirror sync attivi, dati interni, surface e pattern consolidati |
+
 ## Charter
 
 | File | Contenuto |
@@ -58,7 +64,7 @@ Sottocartelle per tipo:
 
 | File | Contenuto |
 |------|-----------|
-| [guides/BACKEND_BOOTSTRAP_AND_VERIFY.md](guides/BACKEND_BOOTSTRAP_AND_VERIFY.md) | Bootstrap locale backend/frontend, auth browser, admin, logistica, sync Easy read-only e sync on demand backend-controlled |
+| [guides/BACKEND_BOOTSTRAP_AND_VERIFY.md](guides/BACKEND_BOOTSTRAP_AND_VERIFY.md) | Bootstrap locale backend/frontend, auth browser, admin, logistica, produzione/articoli, sync Easy read-only, catalogo famiglie e sync on demand backend-controlled |
 | [guides/IMPLEMENTATION_PATTERNS.md](guides/IMPLEMENTATION_PATTERNS.md) | Pattern replicabili emersi dai primi slice reali V2, utili per accelerare nuovi stream di sviluppo |
 
 ## Integrations

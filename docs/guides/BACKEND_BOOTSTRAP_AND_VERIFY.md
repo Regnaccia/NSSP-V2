@@ -9,12 +9,15 @@ Stato coperto:
 - auth browser
 - surface `admin`
 - surface `logistica`
+- surface `produzione`
 - sync Easy read-only `clienti`
 - sync Easy read-only `destinazioni`
+- sync Easy read-only `articoli`
 - sync on demand backend-controlled
+- catalogo interno `famiglie articolo`
 - build frontend
 
-Aggiornata dopo: `TASK-V2-014`.
+Aggiornata dopo: `TASK-V2-027`.
 
 ## Prerequisiti
 
@@ -60,8 +63,8 @@ Variabili principali:
 | `JWT_SECRET_KEY` | `change-me-in-production` | da cambiare fuori dal locale |
 | `JWT_ALGORITHM` | `HS256` | algoritmo JWT |
 | `JWT_EXPIRE_MINUTES` | `480` | 8 ore |
-| `EASY_CONNECTION_STRING` | `DRIVER={SQL Server};SERVER=SERVER\SQLEXPRESS;DATABASE=ELFESQL;UID=sa;PWD=CHANGE_ME` | connessione read-only a Easy |
-| `SYNC_STALENESS_THRESHOLD_MINUTES` | `60` | soglia freshness usata dal trigger logistica |
+| `EASY_CONNECTION_STRING` | `DRIVER={SQL Server};SERVER=SERVER\\SQLEXPRESS;DATABASE=ELFESQL;UID=sa;PWD=CHANGE_ME` | connessione read-only a Easy |
+| `SYNC_STALENESS_THRESHOLD_MINUTES` | `60` | soglia freshness usata dai trigger di surface |
 
 Note:
 
@@ -116,9 +119,12 @@ Le migration attive includono almeno:
 
 - access control (`users`, `roles`, `user_roles`)
 - metadati condivisi del layer `sync`
-- estensione reale `sync_clienti`
+- `sync_clienti`
 - `sync_destinazioni`
+- `sync_articoli`
 - `core_destinazione_config`
+- `articolo_famiglie`
+- `core_articolo_config`
 
 ## 5. Seed iniziale
 
@@ -168,6 +174,16 @@ Endpoint principali:
 | `PATCH /api/logistica/destinazioni/{codice_destinazione}/nickname` | aggiorna nickname interno | Bearer JWT |
 | `GET /api/sync/freshness/logistica` | freshness della surface logistica | Bearer JWT |
 | `POST /api/sync/surface/logistica` | trigger sync on demand `clienti + destinazioni` | Bearer JWT |
+| `GET /api/produzione/articoli` | lista articoli Core | Bearer JWT |
+| `GET /api/produzione/articoli/{codice}` | dettaglio articolo | Bearer JWT |
+| `PATCH /api/produzione/articoli/{codice}/famiglia` | aggiorna famiglia articolo | Bearer JWT |
+| `GET /api/produzione/famiglie` | picker famiglie attive | Bearer JWT |
+| `GET /api/produzione/famiglie/catalog` | catalogo famiglie completo | Bearer JWT |
+| `POST /api/produzione/famiglie` | crea famiglia articolo | Bearer JWT |
+| `PATCH /api/produzione/famiglie/{code}/active` | attiva/disattiva famiglia | Bearer JWT |
+| `PATCH /api/produzione/famiglie/{code}/considera-produzione` | toggle flag produzione | Bearer JWT |
+| `GET /api/sync/freshness/produzione` | freshness della surface produzione | Bearer JWT |
+| `POST /api/sync/surface/produzione` | trigger sync on demand `articoli` | Bearer JWT |
 
 Esempio login:
 
@@ -192,8 +208,10 @@ La suite copre:
 - modelli access control
 - utility security e `available_surfaces`
 - policy "ultimo admin attivo"
-- contratti sync `clienti` e `destinazioni`
+- contratti sync `clienti`, `destinazioni`, `articoli`
 - read model Core clienti/destinazioni
+- read model Core articoli
+- catalogo famiglie articolo
 - `SyncRunner` per trigger `sync on demand`
 
 Per l'intera suite:
@@ -211,6 +229,7 @@ Comandi on demand disponibili:
 cd backend
 python scripts/sync_clienti.py --source fake
 python scripts/sync_destinazioni.py --source fake
+python scripts/sync_articoli.py --source fake
 ```
 
 Per usare Easy reale:
@@ -219,28 +238,39 @@ Per usare Easy reale:
 cd backend
 python scripts/sync_clienti.py
 python scripts/sync_destinazioni.py
+python scripts/sync_articoli.py
 ```
 
 Regole operative:
 
 - `sync_clienti` va eseguita prima di `sync_destinazioni`
 - gli script Easy richiedono `EASY_CONNECTION_STRING`
-- gli adapter Easy leggono solo `ANACLI` e `POT_DESTDIV`
+- gli adapter Easy leggono solo `ANACLI`, `POT_DESTDIV` e `ANAART`
 - gli script scrivono solo sul database interno V2
 
 ## 9. Sync on demand applicativo
 
-Per la surface logistica e disponibile anche il trigger backend-controlled:
+Per la surface logistica:
 
 ```bash
 curl -s -X POST http://localhost:8000/api/sync/surface/logistica \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-Freshness corrente della surface:
-
 ```bash
 curl -s http://localhost:8000/api/sync/freshness/logistica \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Per la surface produzione:
+
+```bash
+curl -s -X POST http://localhost:8000/api/sync/surface/produzione \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+```bash
+curl -s http://localhost:8000/api/sync/freshness/produzione \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -262,11 +292,14 @@ python -c "from nssp_v2.shared.security import hash_password, create_access_toke
 python -c "from nssp_v2.app.api.auth import router; print('auth router OK')"
 python -c "from nssp_v2.app.api.admin import router; print('admin router OK')"
 python -c "from nssp_v2.app.api.logistica import router; print('logistica router OK')"
+python -c "from nssp_v2.app.api.produzione import router; print('produzione router OK')"
 python -c "from nssp_v2.app.api.sync import router; print('sync router OK')"
 python -c "from nssp_v2.sync.models import SyncRunLog, SyncEntityState; print('sync shared OK')"
 python -c "from nssp_v2.sync.clienti.unit import ClienteSyncUnit; print('sync clienti OK')"
 python -c "from nssp_v2.sync.destinazioni.unit import DestinazioneSyncUnit; print('sync destinazioni OK')"
+python -c "from nssp_v2.sync.articoli.unit import ArticoloSyncUnit; print('sync articoli OK')"
 python -c "from nssp_v2.core.clienti_destinazioni import CoreDestinazioneConfig; print('core clienti/destinazioni OK')"
+python -c "from nssp_v2.core.articoli import ArticoloItem, ArticoloDetail; print('core articoli OK')"
 ```
 
 ## 11. Bootstrap frontend
@@ -310,6 +343,7 @@ python scripts/seed_initial.py
 pytest tests/unit/ -v
 python scripts/sync_clienti.py --source fake
 python scripts/sync_destinazioni.py --source fake
+python scripts/sync_articoli.py --source fake
 
 # 6. Avviare backend
 uvicorn nssp_v2.app.main:app --reload
@@ -317,6 +351,7 @@ uvicorn nssp_v2.app.main:app --reload
 # 7. Sync reale Easy (solo se EASY_CONNECTION_STRING e configurata)
 python scripts/sync_clienti.py
 python scripts/sync_destinazioni.py
+python scripts/sync_articoli.py
 
 # 8. In un'altra shell, frontend
 cd ../frontend
@@ -339,3 +374,9 @@ Verifica manuale minima:
 8. eseguire `sync_clienti` e verificare aggiornamento di `sync_clienti`
 9. eseguire `sync_destinazioni` e verificare aggiornamento di `sync_destinazioni`
 10. usare il trigger `POST /api/sync/surface/logistica` o il pulsante UI equivalente e verificare stato freshness
+11. aprire la surface `produzione/articoli`
+12. verificare ricerca articolo, filtro famiglia e dettaglio read-only
+13. configurare la `famiglia articolo` dal dettaglio
+14. aprire la vista `famiglie`
+15. creare una nuova famiglia, cambiare `is_active` e `considera_in_produzione`
+16. usare il trigger `POST /api/sync/surface/produzione` o il pulsante UI equivalente e verificare freshness

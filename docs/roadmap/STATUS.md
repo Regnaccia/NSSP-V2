@@ -5,7 +5,7 @@
 
 ## Stato generale
 
-La V2 ha completato il bootstrap architetturale principale e ha gia chiuso due stream applicativi minimi:
+La V2 ha completato il bootstrap architetturale principale e ha chiuso due stream applicativi minimi:
 
 - `logistica`
 - `produzione/articoli`
@@ -15,13 +15,14 @@ Sono oggi disponibili:
 - backend base, auth browser e surface `admin`
 - sync reale Easy read-only per `clienti` e `destinazioni`
 - Core slice `clienti + destinazioni`
-- UI browser iniziale della surface clienti/destinazioni
-- trigger `sync on demand` backend-controlled per la surface logistica
+- UI browser clienti/destinazioni
+- sync on demand backend-controlled per la surface logistica
 - sync reale Easy read-only per `articoli`
 - Core `articoli`
 - UI browser `articoli`
-- trigger `sync on demand` backend-controlled per `articoli`
-- prima configurazione interna `famiglia articolo`
+- sync on demand backend-controlled per `articoli`
+- catalogo interno `famiglie articolo`
+- associazione articolo -> famiglia
 - filtro famiglia nella lista articoli
 - vista dedicata al catalogo `famiglie articolo`
 - gestione minima del catalogo famiglie
@@ -50,17 +51,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-017`
-- `TASK-V2-018`
-- `TASK-V2-019`
-- `TASK-V2-020`
-- `TASK-V2-021`
-- `TASK-V2-022`
-- `TASK-V2-023`
-- `TASK-V2-024`
-- `TASK-V2-025`
-- `TASK-V2-026`
-- `TASK-V2-027`
+- `TASK-V2-001` -> `TASK-V2-027`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -89,7 +80,7 @@ Nessun task attualmente aperto nel flusso documentato.
 
 ## Gap noti
 
-- la documentazione `UIX` e ora separata tra pattern generale e spec caso concreto; i prossimi casi dovranno aggiungere nuove spec dedicate
+- la documentazione `UIX` e separata tra pattern generale e spec caso concreto; i prossimi casi dovranno aggiungere nuove spec dedicate
 - il catalogo `famiglie articolo` e ormai un vero riferimento interno; i prossimi stream dovranno decidere se riusare lo stesso pattern anche per altri cataloghi di dominio
 - i report `docs/test/` coprono formalmente solo i primi test storici; per i task piu recenti la verifica vive nelle `Completion Notes`
 
