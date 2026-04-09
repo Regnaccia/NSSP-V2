@@ -360,6 +360,43 @@ function ColonnaDettaglio({
           </div>
         </section>
 
+        {/* Quota appartata per cliente — computed fact ODE (DL-ARCH-V2-019) */}
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+            Quota appartata — sola lettura (ODE)
+          </h3>
+          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
+            {detail.customer_set_aside_qty !== null ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {Number(detail.customer_set_aside_qty).toLocaleString('it-IT', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 3,
+                    })}
+                  </span>
+                  {detail.unita_misura_codice && (
+                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Quota gia inscatolata o appartata per cliente (DOC_QTAP).
+                  Non e ancora evasa e non e piu giacenza libera.
+                </p>
+                {detail.set_aside_computed_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Calcolato il {formatDate(detail.set_aside_computed_at)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nessuna quota appartata per questo articolo.
+              </p>
+            )}
+          </div>
+        </section>
+
         {/* Dati Easy read-only */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">

@@ -11,3 +11,7 @@ Documenti attivi:
 
 - `STATUS.md`
 - `TASK_LOG.md`
+
+Nota:
+
+- le review critiche trasversali non vivono in `roadmap/`, ma in `docs/reviews/`

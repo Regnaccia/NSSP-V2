@@ -19,9 +19,13 @@ Stato coperto:
 - catalogo interno `famiglie articolo`
 - computed fact `inventory_positions`
 - giacenza read-only nel dettaglio `articoli`
+- sync Easy read-only `righe_ordine_cliente`
+- computed fact `customer_set_aside`
+- `customer_set_aside` read-only nel dettaglio `articoli`
+- refresh sequenziale `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
 - build frontend
 
-Aggiornata dopo: `TASK-V2-038`.
+Aggiornata dopo: `TASK-V2-047`.
 
 ## Prerequisiti
 
@@ -130,7 +134,10 @@ Le migration attive includono almeno:
 - `core_destinazione_config`
 - `articolo_famiglie`
 - `core_articolo_config`
+- `sync_righe_ordine_cliente`
+- `core_commitments`
 - `core_inventory_positions`
+- `core_customer_set_aside`
 
 ## 5. Seed iniziale
 
@@ -189,7 +196,7 @@ Endpoint principali:
 | `PATCH /api/produzione/famiglie/{code}/active` | attiva/disattiva famiglia | Bearer JWT |
 | `PATCH /api/produzione/famiglie/{code}/considera-produzione` | toggle flag produzione | Bearer JWT |
 | `GET /api/sync/freshness/produzione` | freshness della surface produzione | Bearer JWT |
-| `POST /api/sync/surface/produzione` | trigger sync on demand `articoli` | Bearer JWT |
+| `POST /api/sync/surface/produzione` | trigger sync on demand `articoli + mag_reale + righe_ordine_cliente + rebuild inventory + customer_set_aside` | Bearer JWT |
 | `GET /api/sync/freshness/magazzino` | freshness della surface magazzino | Bearer JWT |
 | `POST /api/sync/surface/magazzino` | trigger sync on demand `mag_reale` | Bearer JWT |
 | `GET /api/produzioni` | lista produzioni Core | Bearer JWT |
@@ -245,7 +252,9 @@ python scripts/sync_clienti.py --source fake
 python scripts/sync_destinazioni.py --source fake
 python scripts/sync_articoli.py --source fake
 python scripts/sync_mag_reale.py --source fake
+python scripts/sync_righe_ordine_cliente.py --source fake
 python scripts/rebuild_inventory_positions.py
+python scripts/rebuild_customer_set_aside.py
 ```
 
 Per usare Easy reale:
@@ -256,16 +265,19 @@ python scripts/sync_clienti.py
 python scripts/sync_destinazioni.py
 python scripts/sync_articoli.py
 python scripts/sync_mag_reale.py
+python scripts/sync_righe_ordine_cliente.py
 python scripts/rebuild_inventory_positions.py
+python scripts/rebuild_customer_set_aside.py
 ```
 
 Regole operative:
 
 - `sync_clienti` va eseguita prima di `sync_destinazioni`
+- `sync_righe_ordine_cliente` va eseguita prima di `rebuild_customer_set_aside`
 - gli script Easy richiedono `EASY_CONNECTION_STRING`
-- gli adapter Easy leggono solo `ANACLI`, `POT_DESTDIV`, `ANAART` e `MAG_REALE`
+- gli adapter Easy leggono solo `ANACLI`, `POT_DESTDIV`, `ANAART`, `MAG_REALE` e `V_TORDCLI`
 - gli script scrivono solo sul database interno V2
-- `rebuild_inventory_positions` ricalcola la giacenza dal mirror interno, non da Easy
+- `rebuild_inventory_positions` e `rebuild_customer_set_aside` ricalcolano i fact dal mirror interno, non da Easy
 
 ## 9. Sync on demand applicativo
 
@@ -379,7 +391,9 @@ python scripts/sync_clienti.py --source fake
 python scripts/sync_destinazioni.py --source fake
 python scripts/sync_articoli.py --source fake
 python scripts/sync_mag_reale.py --source fake
+python scripts/sync_righe_ordine_cliente.py --source fake
 python scripts/rebuild_inventory_positions.py
+python scripts/rebuild_customer_set_aside.py
 
 # 6. Avviare backend
 uvicorn nssp_v2.app.main:app --reload
@@ -389,7 +403,9 @@ python scripts/sync_clienti.py
 python scripts/sync_destinazioni.py
 python scripts/sync_articoli.py
 python scripts/sync_mag_reale.py
+python scripts/sync_righe_ordine_cliente.py
 python scripts/rebuild_inventory_positions.py
+python scripts/rebuild_customer_set_aside.py
 
 # 8. In un'altra shell, frontend
 cd ../frontend
@@ -420,4 +436,6 @@ Verifica manuale minima:
 16. creare una nuova famiglia, cambiare `is_active` e `considera_in_produzione`
 17. usare il trigger `POST /api/sync/surface/produzione` o il pulsante UI equivalente e verificare freshness
 18. eseguire `sync_mag_reale` e `rebuild_inventory_positions`, poi verificare che la giacenza articolo sia coerente
-19. aprire la surface `produzioni` e verificare lista, dettaglio, sync on demand e `forza_completata`
+19. verificare che il dettaglio articolo mostri anche `customer_set_aside` read-only ODE
+20. usare il trigger `POST /api/sync/surface/produzione` e verificare che i 5 step vengano completati in sequenza
+21. aprire la surface `produzioni` e verificare lista, dettaglio, sync on demand e `forza_completata`

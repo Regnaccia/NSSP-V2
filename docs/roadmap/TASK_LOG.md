@@ -57,5 +57,10 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-039` | Completed | Refresh sequenziale `articoli -> mag_reale -> inventory_positions` per la surface articoli |
 | `TASK-V2-040` | Completed | Mirror sync read-only di `V_TORDCLI` come base delle righe ordine cliente |
 | `TASK-V2-041` | Completed | Core `customer_order_lines` con `open_qty` e `description_lines` |
-| `TASK-V2-042` | Todo | Computed fact `commitments` da `customer_order_lines` |
-| `TASK-V2-043` | Todo | Estensione `commitments` alla provenienza `production` per materiali `CAT_ART1 != 0` |
+| `TASK-V2-042` | Completed | Computed fact `commitments` da `customer_order_lines` |
+| `TASK-V2-043` | Completed | Estensione `commitments` alla provenienza `production` per materiali `CAT_ART1 != 0` |
+| `TASK-V2-044` | Todo | Computed fact `customer_set_aside` da `DOC_QTAP` |
+| `TASK-V2-045` | Todo | Esposizione read-only del `customer_set_aside` nel dettaglio UI `articoli` |
+| `TASK-V2-046` | Todo | Estensione del refresh articoli per ricalcolare anche `customer_set_aside` |
+| `TASK-V2-047` | Todo | Refresh articoli esteso con `sync_righe_ordine_cliente` prima di `customer_set_aside` |
+| `TASK-V2-048` | Todo | Correzione della sync ordini cliente per rimuovere dal mirror le righe non piu in `V_TORDCLI` |

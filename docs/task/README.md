@@ -53,5 +53,10 @@ Task registrati:
 - `TASK-V2-039-refresh-sequenziale-articoli-e-giacenza.md` - completato
 - `TASK-V2-040-sync-righe-ordine-cliente.md` - completato
 - `TASK-V2-041-core-ordini-cliente.md` - completato
-- `TASK-V2-042-commitments-cliente.md` - todo
-- `TASK-V2-043-commitments-produzione.md` - todo
+- `TASK-V2-042-commitments-cliente.md` - completato
+- `TASK-V2-043-commitments-produzione.md` - completato
+- `TASK-V2-044-customer-set-aside.md` - todo
+- `TASK-V2-045-set-aside-articoli-nel-dettaglio-ui.md` - todo
+- `TASK-V2-046-refresh-sequenziale-articoli-giacenza-e-set-aside.md` - todo
+- `TASK-V2-047-refresh-articoli-con-ordini-per-set-aside.md` - todo
+- `TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md` - todo

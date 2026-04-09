@@ -135,6 +135,10 @@ export interface ArticoloDetail {
   on_hand_qty: string | null
   /** Timestamp del calcolo giacenza */
   giacenza_computed_at: string | null
+  /** Quota appartata per cliente DOC_QTAP (DL-ARCH-V2-019) — null se nessuna quota appartata */
+  customer_set_aside_qty: string | null
+  /** Timestamp del calcolo set aside */
+  set_aside_computed_at: string | null
 }
 
 // ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────

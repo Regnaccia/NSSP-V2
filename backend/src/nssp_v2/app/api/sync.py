@@ -4,7 +4,7 @@ Router sync on demand (DL-ARCH-V2-011).
 Endpoint:
   POST /api/sync/surface/logistica    — trigger sync clienti + destinazioni in ordine
   GET  /api/sync/freshness/logistica  — stato freschezza entita della surface logistica
-  POST /api/sync/surface/produzione   — trigger sync articoli + mag_reale + rebuild inventory_positions
+  POST /api/sync/surface/produzione   — trigger sync articoli + mag_reale + righe_ordine_cliente + rebuild inventory_positions + rebuild customer_set_aside
   GET  /api/sync/freshness/produzione — stato freschezza entita della surface produzione (articoli + mag_reale)
   POST /api/sync/surface/produzioni   — trigger sync produzioni_attive + produzioni_storiche
   GET  /api/sync/freshness/produzioni — stato freschezza entita della surface produzioni
@@ -34,10 +34,12 @@ from nssp_v2.app.services.sync_runner import (
     SyncAlreadyRunningError,
     SyncRunner,
 )
+from nssp_v2.core.customer_set_aside.queries import rebuild_customer_set_aside
 from nssp_v2.core.inventory_positions.queries import rebuild_inventory_positions
 from nssp_v2.shared.config import get_settings
 from nssp_v2.shared.db import get_session
 from nssp_v2.sync.articoli.source import EasyArticoloSource
+from nssp_v2.sync.righe_ordine_cliente.source import EasyRigheOrdineClienteSource
 from nssp_v2.sync.clienti.source import EasyClienteSource
 from nssp_v2.sync.destinazioni.source import EasyDestinazioneSource
 from nssp_v2.sync.mag_reale.source import EasyMagRealeSource
@@ -83,8 +85,42 @@ def _run_inventory_rebuild(session: Session) -> EntityRunResult:
             started_at=started_at,
             finished_at=datetime.now(timezone.utc),
         )
-# Entita surface produzione: articoli + mag_reale (il rebuild inventory_positions segue in sequenza)
-_PRODUZIONE_ENTITIES = ["articoli", "mag_reale"]
+# ─── Helper: rebuild customer_set_aside ──────────────────────────────────────
+
+def _run_set_aside_rebuild(session: Session) -> EntityRunResult:
+    """Esegue il rebuild completo di core_customer_set_aside e restituisce un EntityRunResult."""
+    started_at = datetime.now(timezone.utc)
+    try:
+        n = rebuild_customer_set_aside(session)
+        session.commit()
+        return EntityRunResult(
+            entity_code="customer_set_aside",
+            status="success",
+            run_id=None,
+            rows_seen=n,
+            rows_written=n,
+            rows_deleted=0,
+            error_message=None,
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc),
+        )
+    except Exception as exc:
+        session.rollback()
+        return EntityRunResult(
+            entity_code="customer_set_aside",
+            status="error",
+            run_id=None,
+            rows_seen=0,
+            rows_written=0,
+            rows_deleted=0,
+            error_message=str(exc),
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc),
+        )
+
+
+# Entita surface produzione: articoli + mag_reale + righe_ordine_cliente (i rebuild seguono)
+_PRODUZIONE_ENTITIES = ["articoli", "mag_reale", "righe_ordine_cliente"]
 # Entita surface produzioni (attive + storiche: nessuna dipendenza tra loro)
 _PRODUZIONI_ENTITIES = ["produzioni_attive", "produzioni_storiche"]
 # Entita surface magazzino (mag_reale: nessuna dipendenza esterna)
@@ -200,12 +236,14 @@ def trigger_produzione(
     _: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Esegue la sync on demand sequenziale: articoli → mag_reale → rebuild inventory_positions.
+    """Esegue la sync on demand sequenziale:
+    articoli → mag_reale → righe_ordine_cliente → rebuild inventory_positions → rebuild customer_set_aside.
 
     Controlli backend:
     - Easy connection string deve essere configurata
     - Nessuna sync concorrente sul perimetro
-    - Il rebuild inventory_positions avviene dopo la sync, sempre (da stato corrente del mirror)
+    - I rebuild avvengono dopo la sync, sempre (dallo stato corrente dei mirror)
+    - righe_ordine_cliente va prima di customer_set_aside: e il prerequisito operativo del rebuild
     """
     settings = get_settings()
 
@@ -218,6 +256,7 @@ def trigger_produzione(
     sources = {
         "articoli": EasyArticoloSource(settings.easy_connection_string),
         "mag_reale": EasyMagRealeSource(settings.easy_connection_string),
+        "righe_ordine_cliente": EasyRigheOrdineClienteSource(settings.easy_connection_string),
     }
 
     runner = SyncRunner()
@@ -229,8 +268,11 @@ def trigger_produzione(
             detail=f"Sync gia in esecuzione: {', '.join(sorted(exc.running_entities))}",
         )
 
-    # Step finale: rebuild deterministic di inventory_positions dal mirror aggiornato
+    # Step 3: rebuild deterministic di inventory_positions dal mirror aggiornato
     results.append(_run_inventory_rebuild(session))
+
+    # Step 4: rebuild deterministic di customer_set_aside (da sync_righe_ordine_cliente corrente)
+    results.append(_run_set_aside_rebuild(session))
 
     return SyncSurfaceResponse(
         triggered_at=datetime.now(timezone.utc),

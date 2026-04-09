@@ -98,6 +98,22 @@ Semantica:
 - non e un dato Easy diretto
 - la sezione serve come verifica visiva dell'allineamento Easy/ODE, non come UI magazzino dedicata
 
+#### Sezione "Quota appartata - sola lettura (ODE)"
+
+Estensione introdotta con `TASK-V2-045`.
+
+Contiene:
+
+- `customer_set_aside_qty`
+- `set_aside_computed_at`
+
+Semantica:
+
+- la quota appartata proviene dal computed fact Core `customer_set_aside` (DL-ARCH-V2-019)
+- rappresenta la merce gia fisicamente appartata per cliente (DOC_QTAP) non ancora evasa
+- distinta dalla giacenza (stock fisico netto) e dagli impegni (domanda ancora da coprire)
+- non e un dato Easy diretto: e un fact canonico V2 derivato dalle righe ordine cliente
+
 ## Search Behavior
 
 La ricerca articolo deve seguire il pattern definito in `DL-UIX-V2-004`.

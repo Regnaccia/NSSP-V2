@@ -17,6 +17,7 @@ from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
 from sqlalchemy import func
 
 from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem, FamigliaRow
+from nssp_v2.core.customer_set_aside.models import CoreCustomerSetAside
 from nssp_v2.core.inventory_positions.models import CoreInventoryPosition
 from nssp_v2.sync.articoli.models import SyncArticolo
 
@@ -142,6 +143,18 @@ def get_articolo_detail(
         CoreInventoryPosition.article_code == art.codice_articolo.strip().upper()
     ).first()
 
+    # Quota appartata per cliente (DL-ARCH-V2-019) — aggregata su tutte le righe ordine
+    csa_row = (
+        session.query(
+            func.sum(CoreCustomerSetAside.set_aside_qty).label("total"),
+            func.max(CoreCustomerSetAside.computed_at).label("computed_at"),
+        )
+        .filter(CoreCustomerSetAside.article_code == art.codice_articolo)
+        .first()
+    )
+    customer_set_aside_qty = csa_row.total if (csa_row and csa_row.total is not None) else None
+    set_aside_computed_at = csa_row.computed_at if (csa_row and csa_row.total is not None) else None
+
     return ArticoloDetail(
         codice_articolo=art.codice_articolo,
         descrizione_1=art.descrizione_1,
@@ -163,6 +176,8 @@ def get_articolo_detail(
         famiglia_label=famiglia.label if famiglia else None,
         on_hand_qty=inv.on_hand_qty if inv is not None else None,
         giacenza_computed_at=inv.computed_at if inv is not None else None,
+        customer_set_aside_qty=customer_set_aside_qty,
+        set_aside_computed_at=set_aside_computed_at,
     )
 
 

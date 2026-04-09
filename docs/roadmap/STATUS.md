@@ -1,7 +1,7 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-08
+2026-04-09
 
 ## Stato generale
 
@@ -39,12 +39,17 @@ Sono oggi disponibili:
 - sync reale Easy read-only per `MAG_REALE`
 - computed fact canonica `inventory_positions`
 - giacenza esposta nel dettaglio UI `articoli`
+- computed fact canonica `commitments` da provenienza `customer_order`
+- estensione `commitments` alla provenienza `production` per materiali `CAT_ART1 != 0`
+- computed fact canonico `customer_set_aside` da `DOC_QTAP`
+- `customer_set_aside` esposto nel dettaglio UI `articoli` come campo read-only ODE
+- refresh sequenziale `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-018`
+- `ARCH/` fino a `DL-ARCH-V2-020`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -63,7 +68,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-041`
+- `TASK-V2-001` -> `TASK-V2-047`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -99,11 +104,16 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-039` refresh sequenziale `articoli -> mag_reale -> inventory_positions`
 - `TASK-V2-040` sync `righe_ordine_cliente`
 - `TASK-V2-041` Core `ordini cliente`
+- `TASK-V2-042` `commitments` cliente
+- `TASK-V2-043` `commitments` produzione
+- `TASK-V2-044` computed fact `customer_set_aside` da `DOC_QTAP`
+- `TASK-V2-045` `customer_set_aside` nel dettaglio UI `articoli`
+- `TASK-V2-046` refresh sequenziale esteso a `customer_set_aside`
+- `TASK-V2-047` refresh corretto con `sync_righe_ordine_cliente` a monte del rebuild
 
 ## Task aperti
 
-- `TASK-V2-042` `commitments` cliente
-- `TASK-V2-043` `commitments` produzione
+- `TASK-V2-048` allineamento operativo di `sync_righe_ordine_cliente`
 
 ## Gap noti
 
@@ -113,11 +123,18 @@ In particolare il primo caso applicativo oggi copre:
 
 ## Prossima sequenza consigliata
 
-Ordine pragmatico raccomandato:
+I building block canonici ora disponibili sono:
 
-1. completare il primo computed fact `commitments` cliente
-2. estendere `commitments` alla provenienza `production`
-3. usare `inventory` e `commitments` come building block per la futura `availability`
+- `inventory` (stock fisico netto)
+- `commitments` (domanda operativa aperta - customer_order + production)
+- `customer_set_aside` (quota gia appartata per cliente - `DOC_QTAP`)
+
+Prima di introdurre `availability`, va corretto il mirror operativo ordini cliente:
+
+- `V_TORDCLI` deve restare specchio delle sole righe attive
+- le righe sparite dalla sorgente non devono continuare ad alimentare `customer_set_aside` e `commitments`
+
+Solo dopo questo riallineamento il prossimo passo naturale torna a essere `availability` come derivato di questi tre fact.
 
 ## Notes
 

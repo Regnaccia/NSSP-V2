@@ -20,6 +20,13 @@ docs/
 |------|-----------|
 | [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) | Panoramica rapida dello stato reale del sistema V2: stream operativi, mirror sync attivi, dati interni, surface e pattern consolidati |
 
+## Reviews
+
+| File | Contenuto |
+|------|-----------|
+| [reviews/README.md](reviews/README.md) | Indice delle review critiche trasversali sullo stato del progetto |
+| [reviews/PROJECT_REVIEW_2026-04-08.md](reviews/PROJECT_REVIEW_2026-04-08.md) | Review architetturale e operativa del progetto V2, con finding, rischi potenziali e linea di risoluzione |
+
 ## Charter
 
 | File | Contenuto |
@@ -55,6 +62,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-016.md](decisions/ARCH/DL-ARCH-V2-016.md) | `Inventory` / `giacenza articoli` come computed fact canonico del Core, derivato dai movimenti di magazzino e riusabile cross-modulo |
 | [decisions/ARCH/DL-ARCH-V2-017.md](decisions/ARCH/DL-ARCH-V2-017.md) | `Impegno` come computed fact canonico del Core, separato da `inventory` e base per la futura `availability` |
 | [decisions/ARCH/DL-ARCH-V2-018.md](decisions/ARCH/DL-ARCH-V2-018.md) | `Ordine` come entita canonica cross-modulo, distinta da `commitments` e base per futuri stream cliente, produzione, logistica e disponibilita |
+| [decisions/ARCH/DL-ARCH-V2-019.md](decisions/ARCH/DL-ARCH-V2-019.md) | Quantita appartata cliente come fact canonico intermedio, separato da `inventory`, `commitments` e futura `availability` |
+| [decisions/ARCH/DL-ARCH-V2-020.md](decisions/ARCH/DL-ARCH-V2-020.md) | `V_TORDCLI` come mirror operativo delle righe ordine cliente attive, con storico delegato a sorgenti Easy separate |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -150,6 +159,7 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-041-core-ordini-cliente.md](task/TASK-V2-041-core-ordini-cliente.md) | Primo Core `ordini cliente`, con `customer_order_lines`, `description_lines` e `open_qty` calcolata |
 | [task/TASK-V2-042-commitments-cliente.md](task/TASK-V2-042-commitments-cliente.md) | Primo computed fact `commitments` da provenienza `customer_order`, basato sul Core ordini cliente |
 | [task/TASK-V2-043-commitments-produzione.md](task/TASK-V2-043-commitments-produzione.md) | Estensione di `commitments` alla provenienza `production`, limitata in V1 ai materiali con `CAT_ART1 != 0` |
+| [task/TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md](task/TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md) | Correzione della sync ordini cliente per mantenerla allineata alle sole righe ancora presenti in `V_TORDCLI` |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

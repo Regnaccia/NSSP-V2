@@ -88,6 +88,10 @@ class ArticoloDetail(BaseModel):
     on_hand_qty: Decimal | None = None
     giacenza_computed_at: datetime | None = None
 
+    # Quota appartata per cliente (DL-ARCH-V2-019, TASK-V2-044) — None se nessuna quota appartata
+    customer_set_aside_qty: Decimal | None = None
+    set_aside_computed_at: datetime | None = None
+
 
 class FamigliaItem(BaseModel):
     """Voce del catalogo famiglie articolo.

@@ -1,7 +1,7 @@
 # ODE V2 - System Overview
 
 ## Date
-2026-04-08
+2026-04-09
 
 ## Scopo
 
@@ -59,7 +59,8 @@ Disponibile:
 - gestione catalogo famiglie
 - flag `considera_in_produzione`
 - giacenza read-only dal Core nel pannello dettaglio
-- refresh sequenziale backend-controlled `articoli -> mag_reale -> inventory_positions`
+- computed fact `customer_set_aside` esposto nel pannello dettaglio
+- refresh sequenziale backend-controlled `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
 
 ### Produzioni
 
@@ -97,6 +98,30 @@ Disponibile:
 - supporto a `description_lines` per righe con `COLL_RIGA_PREC = true`
 - enrichment cliente/destinazione demand-driven a livello query/read model
 
+Correzione ancora aperta:
+
+- il mirror ordini cliente deve essere riallineato come specchio delle sole righe ancora presenti in `V_TORDCLI`
+
+### Commitments
+
+Disponibile:
+
+- computed fact `commitments` da provenienza `customer_order`
+- `committed_qty = open_qty` per righe ordine ancora aperte
+- estensione `commitments` alla provenienza `production`
+- perimetro V1 `production` limitato a materiali con `CAT_ART1 != 0`
+- `commitments` mantenuto separato da `inventory`
+
+### Customer Set Aside
+
+Disponibile:
+
+- computed fact `customer_set_aside` da `DOC_QTAP`
+- `set_aside_qty = DOC_QTAP` per righe ordine con quota appartata > 0
+- separato da `commitments` (open_qty) e da `inventory` (stock fisico)
+- esposto nel dettaglio UI `articoli` come campo read-only ODE
+- ricalcolato nel refresh sequenziale dopo `sync_righe_ordine_cliente`
+
 ## Mirror sync attivi
 
 Gia presenti:
@@ -115,6 +140,8 @@ Gia presenti:
 - `famiglia articolo`
 - `considera_in_produzione`
 - `inventory_positions`
+- `commitments`
+- `customer_set_aside`
 
 ## Pattern consolidati
 
@@ -128,17 +155,17 @@ Pattern gia validati:
 
 ## Prossimo passo naturale
 
-Task aperti nel flusso documentato:
+I building block canonici ora disponibili:
 
-- `TASK-V2-042` `commitments` cliente
-- `TASK-V2-043` `commitments` produzione
+- `inventory` - stock fisico netto
+- `commitments` - domanda operativa aperta (`customer_order` + `production`)
+- `customer_set_aside` - quota gia fisicamente appartata (`DOC_QTAP`)
 
-I prossimi candidati naturali emersi dalla documentazione sono:
+Prima del passo `availability` e aperto un riallineamento necessario:
 
-- `commitments` cliente come prima provenienza `customer_order`
-- `commitments` produzione per materiali `CAT_ART1 != 0`
-- `commitments` come building block separato da `inventory`
-- futura `availability` come derivato di `inventory` e `commitments`
+- `TASK-V2-048` per rendere `sync_righe_ordine_cliente` un mirror operativo delle sole righe ancora presenti in `V_TORDCLI`
+
+Dopo questo riallineamento, il passo naturale successivo torna a essere `availability` come derivato di questi tre fact (DL-ARCH-V2-019, sezione 8).
 
 ## References
 
@@ -147,3 +174,5 @@ I prossimi candidati naturali emersi dalla documentazione sono:
 - `docs/decisions/ARCH/DL-ARCH-V2-016.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-017.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-018.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-019.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-020.md`

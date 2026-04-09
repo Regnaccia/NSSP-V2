@@ -1,14 +1,7 @@
 # TASK-V2-043 - Commitments produzione
 
 ## Status
-Todo
-
-Valori ammessi:
-
-- `Todo`
-- `In Progress`
-- `Blocked`
-- `Completed`
+Completed
 
 ## Date
 2026-04-08
@@ -145,3 +138,101 @@ Direzione raccomandata:
 - trattare la materia prima `CAT_ART1 = 0` come stream futuro separato
 - mantenere `source_type = production` coerente con la stessa fact `commitments`
 - non introdurre ancora `availability`
+
+## Completion Notes
+
+### File creati/modificati
+
+**Modificati:**
+- `src/nssp_v2/core/commitments/queries.py`
+  - Aggiunto `_SOURCE_TYPE_PRODUCTION = "production"`
+  - Aggiunto `_build_production_commitments(session, computed_at) -> list[CoreCommitment]`
+  - `rebuild_commitments` esteso: ora include sia `customer_order` che `production` nello stesso delete-all + re-insert; restituisce il totale combinato
+
+**Creati:**
+- `tests/core/test_core_commitments_produzione.py` — 19 test di integrazione
+
+### Nessuna migration
+
+La tabella `core_commitments` esiste già (TASK-V2-042) ed è progettata per multi-source tramite `source_type`. Nessuna nuova tabella necessaria.
+
+### Logica _build_production_commitments
+
+```
+SyncProduzioneAttiva (attivo=True)
+  OUTER JOIN CoreProduzioneOverride (bucket="active")   — per filtro forza_completata
+  INNER JOIN SyncArticolo ON codice_articolo = materiale_partenza_codice  — per CAT_ART1
+  WHERE:
+    materiale_partenza_codice IS NOT NULL
+    materiale_partenza_per_pezzo IS NOT NULL AND > 0
+    forza_completata IS NULL OR = False
+    quantita_prodotta IS NULL OR ordinata IS NULL OR prodotta < ordinata
+    categoria_articolo_1 IS NOT NULL AND != "0"
+```
+
+- `article_code` = `materiale_partenza_codice` (il materiale consumato, non l'articolo prodotto)
+- `committed_qty` = `materiale_partenza_per_pezzo` (MM_PEZZO)
+- `source_reference` = `str(id_dettaglio)`
+- `source_type` = `"production"`
+
+### Esclusioni V1 esplicite
+
+| Caso | Motivo esclusione |
+|------|-------------------|
+| `CAT_ART1 = "0"` | materia prima in mm — stream futuro separato |
+| materiale non in `sync_articoli` | CAT_ART1 non verificabile (INNER JOIN) |
+| `CAT_ART1 = None` | non classificato — escluso per sicurezza |
+| `materiale_partenza_per_pezzo <= 0` | commitment non valido |
+| produzione completata (prodotta >= ordinata) | non piu attiva |
+| `forza_completata = True` | override interno — chiusa manualmente |
+| `attivo = False` | rimossa dal mirror |
+
+### Test eseguiti
+
+19 test in `tests/core/test_core_commitments_produzione.py`:
+- source_type = "production" ✓
+- source_reference = str(id_dettaglio) ✓
+- committed_qty = MM_PEZZO ✓
+- article_code = materiale (non articolo prodotto) ✓
+- produzione completata per quantita esclusa ✓
+- forza_completata=True esclusa ✓
+- produzione attiva inclusa ✓
+- attivo=False esclusa ✓
+- CAT_ART1 = "0" escluso ✓
+- materiale non in sync_articoli escluso ✓
+- CAT_ART1 != "0" incluso ✓
+- CAT_ART1 = None escluso ✓
+- materiale_codice None escluso ✓
+- materiale_per_pezzo None escluso ✓
+- materiale_per_pezzo = 0 escluso ✓
+- piu produzioni stesso materiale aggregate ✓
+- rebuild include entrambe le provenienze ✓
+- aggregazione cross-source stesso articolo ✓
+- rebuild deterministico production ✓
+
+Suite completa: 435/435 passed.
+
+### Test non eseguiti
+
+- Test con dati reali Easy: non eseguibili senza connessione.
+- Test HTTP: il task non introduce endpoint API.
+
+### Assunzioni
+
+- Il join tra `SyncProduzioneAttiva` e `SyncArticolo` su `materiale_partenza_codice = codice_articolo` usa INNER JOIN: materiali non presenti in `sync_articoli` vengono esclusi (impossibile verificare `CAT_ART1`).
+- Il filtro "attiva" replica la logica del Core produzioni (`_build_query_attive` con `stato="attiva"`): le due logiche devono restare coerenti.
+- `materiale_partenza_per_pezzo` rappresenta pezzi da prelevare (non mm) quando `CAT_ART1 != "0"`.
+- `source_reference = str(id_dettaglio)` permette tracciabilita verso la produzione sorgente senza FK persistita.
+
+### Limiti noti
+
+- Casi `CAT_ART1 = "0"` (materia prima in mm) non gestiti in V1: stream futuro separato (alert scorta materia prima).
+- Il filtro "attiva" e duplicato in `_build_production_commitments` rispetto a `_build_query_attive` del Core produzioni: se la logica di stato cambia, entrambi vanno aggiornati.
+- Nessun endpoint API esposto.
+
+### Follow-up suggeriti
+
+- Computed fact `availability = inventory - commitments` (DL-ARCH-V2-017 §8).
+- Stream `CAT_ART1 = "0"`: alert/controllo scorta materia prima in mm.
+- Endpoint `POST /api/core/commitments/rebuild` per trigger manuale.
+- Fattorizzare il filtro "attiva" in una funzione condivisa tra Core produzioni e Core commitments.
