@@ -18,7 +18,10 @@ from sqlalchemy.orm import Session
 
 from nssp_v2.shared.db import Base
 from nssp_v2.sync.articoli.models import SyncArticolo
+from nssp_v2.core.availability.models import CoreAvailability
+from nssp_v2.core.commitments.models import CoreCommitment
 from nssp_v2.core.customer_set_aside.models import CoreCustomerSetAside
+from nssp_v2.core.inventory_positions.models import CoreInventoryPosition
 from nssp_v2.core.articoli.queries import get_articolo_detail
 
 
@@ -126,3 +129,47 @@ def test_customer_set_aside_isolato_per_articolo(session):
 
     detail = get_articolo_detail(session, "ART001")
     assert detail.customer_set_aside_qty is None
+
+
+def test_dettaglio_articolo_normalizza_lookup_fact_canonici(session):
+    """Il dettaglio usa article_code canonico su inventory, set_aside, commitments e availability."""
+    _insert_articolo(session, "art001")
+    session.add(CoreInventoryPosition(
+        article_code="ART001",
+        total_load_qty=Decimal("100.000000"),
+        total_unload_qty=Decimal("0.000000"),
+        on_hand_qty=Decimal("100.000000"),
+        movement_count=1,
+        computed_at=_NOW,
+        source_last_movement_date=None,
+    ))
+    session.add(CoreCustomerSetAside(
+        article_code="ART001",
+        source_type="customer_order",
+        source_reference="ORD001/1",
+        set_aside_qty=Decimal("15.000000"),
+        computed_at=_NOW,
+    ))
+    session.add(CoreCommitment(
+        article_code="ART001",
+        source_type="customer_order",
+        source_reference="ORD001/1",
+        committed_qty=Decimal("30.000000"),
+        computed_at=_NOW,
+    ))
+    session.add(CoreAvailability(
+        article_code="ART001",
+        inventory_qty=Decimal("100.000000"),
+        customer_set_aside_qty=Decimal("15.000000"),
+        committed_qty=Decimal("30.000000"),
+        availability_qty=Decimal("55.000000"),
+        computed_at=_NOW,
+    ))
+    session.flush()
+
+    detail = get_articolo_detail(session, "art001")
+    assert detail is not None
+    assert detail.on_hand_qty == Decimal("100.000000")
+    assert detail.customer_set_aside_qty == Decimal("15.000000")
+    assert detail.committed_qty == Decimal("30.000000")
+    assert detail.availability_qty == Decimal("55.000000")

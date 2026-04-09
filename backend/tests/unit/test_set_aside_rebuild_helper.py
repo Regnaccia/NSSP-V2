@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from nssp_v2.shared.db import Base
-from nssp_v2.app.api.sync import _run_set_aside_rebuild
+from nssp_v2.app.services.refresh_articoli import _run_set_aside_rebuild
 from nssp_v2.sync.righe_ordine_cliente.models import SyncRigaOrdineCliente
 
 

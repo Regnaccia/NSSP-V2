@@ -397,6 +397,81 @@ function ColonnaDettaglio({
           </div>
         </section>
 
+        {/* Impegni totali — computed fact ODE (DL-ARCH-V2-017) */}
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+            Impegni — sola lettura (ODE)
+          </h3>
+          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
+            {detail.committed_qty !== null ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {Number(detail.committed_qty).toLocaleString('it-IT', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 3,
+                    })}
+                  </span>
+                  {detail.unita_misura_codice && (
+                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Quantita impegnata da ordini cliente e ordini di produzione ancora aperti.
+                  Separato dalla quota appartata e dalla giacenza fisica.
+                </p>
+                {detail.commitments_computed_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Calcolato il {formatDate(detail.commitments_computed_at)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nessun impegno attivo per questo articolo.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Disponibilita canonica — computed fact ODE (DL-ARCH-V2-021) */}
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+            Disponibilita — sola lettura (ODE)
+          </h3>
+          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
+            {detail.availability_qty !== null ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-semibold tabular-nums ${
+                    Number(detail.availability_qty) < 0 ? 'text-red-600' : ''
+                  }`}>
+                    {Number(detail.availability_qty).toLocaleString('it-IT', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 3,
+                    })}
+                  </span>
+                  {detail.unita_misura_codice && (
+                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Giacenza - quota appartata - impegni. Puo essere negativa se gli impegni superano lo stock disponibile.
+                </p>
+                {detail.availability_computed_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Calcolato il {formatDate(detail.availability_computed_at)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Disponibilita non ancora calcolata per questo articolo.
+              </p>
+            )}
+          </div>
+        </section>
+
         {/* Dati Easy read-only */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">

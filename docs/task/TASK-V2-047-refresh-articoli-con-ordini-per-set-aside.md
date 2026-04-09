@@ -1,7 +1,7 @@
 # TASK-V2-047 - Refresh articoli con ordini per set aside
 
 ## Status
-Todo
+Completed
 
 ## Date
 2026-04-09
@@ -134,11 +134,87 @@ Direzione raccomandata:
 
 ## Completion Notes
 
-Da compilare a cura di Claude Code quando il task viene chiuso.
+### File creati/modificati
+
+**Modificati:**
+- `src/nssp_v2/app/api/sync.py`
+  - Aggiunto import `EasyRigheOrdineClienteSource`
+  - `_PRODUZIONE_ENTITIES`: `["articoli", "mag_reale"]` → `["articoli", "mag_reale", "righe_ordine_cliente"]`
+  - `trigger_produzione`: aggiunto `"righe_ordine_cliente": EasyRigheOrdineClienteSource(...)` al dict `sources`
+  - Docstring `trigger_produzione` aggiornata: sequenza completa documentata
+  - Docstring modulo aggiornata
+- `docs/guides/BACKEND_BOOTSTRAP_AND_VERIFY.md`
+  - Migration list: aggiunte `sync_righe_ordine_cliente`, `core_commitments`, `core_customer_set_aside`
+  - Script on-demand: aggiunti `sync_righe_ordine_cliente.py` e `rebuild_customer_set_aside.py`
+  - Endpoint: aggiornata descrizione `POST /api/sync/surface/produzione`
+  - Sequenza bootstrap e smoke flow aggiornate
+- `docs/SYSTEM_OVERVIEW.md`
+  - Sezione "Produzione/Articoli": aggiornato flusso refresh
+  - Nuova sezione "Customer Set Aside"
+  - Dati interni: aggiunto `customer_set_aside`
+  - Prossimo passo aggiornato
+- `docs/roadmap/STATUS.md`
+  - Task completati: aggiornati a TASK-V2-047
+  - Task aperti: aggiornati
+  - Prossima sequenza: aggiornata
+
+**Creati:**
+- `scripts/rebuild_customer_set_aside.py` — script CLI on-demand per il rebuild del fact `customer_set_aside`
+
+### Nessun test aggiuntivo
+
+Il meccanismo di iniezione `righe_ordine_cliente` nel `SyncRunner` è già coperto dai test esistenti di `SyncRunner` (pattern shared tra tutte le sync unit). Il `_run_set_aside_rebuild` è coperto da `tests/unit/test_set_aside_rebuild_helper.py` (TASK-V2-046). Nessun nuovo test di business logic è necessario.
+
+### Sequenza refresh produzione (finale)
+
+```
+POST /api/sync/surface/produzione
+  Step 1 — sync articoli                (EasyArticoloSource)
+  Step 2 — sync mag_reale               (EasyMagRealeSource)
+  Step 3 — sync righe_ordine_cliente    (EasyRigheOrdineClienteSource)  ← nuovo
+  Step 4 — rebuild inventory_positions  (da mirror mag_reale aggiornato)
+  Step 5 — rebuild customer_set_aside   (da mirror righe_ordine_cliente aggiornato)
+```
+
+Restituisce 5 `EntityRunResult`:
+- `articoli`
+- `mag_reale`
+- `righe_ordine_cliente`
+- `inventory_positions`
+- `customer_set_aside`
+
+### Verifica applicativa
+
+Il fatto che `righe_ordine_cliente` sia già registrata in `_UNIT_MAP` del `SyncRunner` (aggiunta in TASK-V2-040) garantisce che il runner la gestisca correttamente. La nuova sorgente `EasyRigheOrdineClienteSource` è stata già validata in produzione con la sync standalone.
+
+### Test eseguiti
+
+Suite completa: 462/462 passed.
+Frontend: `npm run build` — zero errori.
+
+### Test non eseguiti
+
+- Test HTTP end-to-end: non inclusi (pattern coerente con le altre surface).
+- Test con dati reali Easy: non eseguibili senza connessione.
+
+### Assunzioni
+
+- `righe_ordine_cliente` deve essere eseguita dentro il blocco `_try_acquire`/`_release` del `SyncRunner` per il concurrency guard. Questo avviene correttamente: è aggiunta a `_PRODUZIONE_ENTITIES` che viene passata al runner.
+- Il prerequisito operativo "sync_righe_ordine_cliente prima del rebuild customer_set_aside" è ora garantito dalla sequenza hardcoded nel backend, non dal chiamante.
+
+### Limiti noti
+
+- La surface `logistica` e eventuali script standalone di `sync_righe_ordine_cliente` aggiornano lo stesso mirror. Se i due path divergono (es. la surface logistica sincronizza ordini e poi il refresh produzione usa dati più freschi), il comportamento è comunque corretto: `customer_set_aside` usa sempre il mirror più recente disponibile.
+- `freshness_produzione` traccia solo `articoli` e `mag_reale` (`_PRODUZIONE_ENTITIES` prima dell'aggiunta di `righe_ordine_cliente`). Il freshness di `righe_ordine_cliente` non è esposto nel `FreshnessBar` della surface articoli. Questo è accettabile nel V1.
+
+### Follow-up suggeriti
+
+- Aggiornare `freshness_produzione` per includere `righe_ordine_cliente` nel calcolo della freschezza.
+- Computed fact `availability = inventory - commitments - set_aside` (DL-ARCH-V2-019 §8).
 
 ## Completed At
 
-YYYY-MM-DD
+2026-04-09
 
 ## Completed By
 

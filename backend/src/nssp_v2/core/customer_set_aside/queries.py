@@ -29,6 +29,7 @@ from nssp_v2.core.customer_set_aside.read_models import (
     CustomerSetAsideItem,
 )
 from nssp_v2.core.ordini_cliente.queries import list_customer_order_lines
+from nssp_v2.shared.article_codes import normalize_article_code
 
 _SOURCE_TYPE_CUSTOMER_ORDER = "customer_order"
 
@@ -58,13 +59,14 @@ def rebuild_customer_set_aside(session: Session) -> int:
 
     new_records: list[CoreCustomerSetAside] = []
     for line in order_lines:
-        if line.article_code is None:
+        article_code = normalize_article_code(line.article_code)
+        if article_code is None:
             continue
         qty = line.set_aside_qty
         if qty is None or qty <= Decimal("0"):
             continue
         new_records.append(CoreCustomerSetAside(
-            article_code=line.article_code,
+            article_code=article_code,
             source_type=_SOURCE_TYPE_CUSTOMER_ORDER,
             source_reference=f"{line.order_reference}/{line.line_reference}",
             set_aside_qty=qty,
@@ -118,6 +120,7 @@ def get_customer_set_aside_by_article(
 
     Restituisce lista vuota se non ci sono record attivi.
     """
+    normalized_article_code = normalize_article_code(article_code)
     query = (
         session.query(
             CoreCustomerSetAside.article_code,
@@ -128,8 +131,8 @@ def get_customer_set_aside_by_article(
         .group_by(CoreCustomerSetAside.article_code)
         .order_by(CoreCustomerSetAside.article_code)
     )
-    if article_code is not None:
-        query = query.filter(CoreCustomerSetAside.article_code == article_code)
+    if normalized_article_code is not None:
+        query = query.filter(CoreCustomerSetAside.article_code == normalized_article_code)
 
     return [
         CustomerSetAsideByArticleItem(

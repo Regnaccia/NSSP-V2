@@ -64,6 +64,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-018.md](decisions/ARCH/DL-ARCH-V2-018.md) | `Ordine` come entita canonica cross-modulo, distinta da `commitments` e base per futuri stream cliente, produzione, logistica e disponibilita |
 | [decisions/ARCH/DL-ARCH-V2-019.md](decisions/ARCH/DL-ARCH-V2-019.md) | Quantita appartata cliente come fact canonico intermedio, separato da `inventory`, `commitments` e futura `availability` |
 | [decisions/ARCH/DL-ARCH-V2-020.md](decisions/ARCH/DL-ARCH-V2-020.md) | `V_TORDCLI` come mirror operativo delle righe ordine cliente attive, con storico delegato a sorgenti Easy separate |
+| [decisions/ARCH/DL-ARCH-V2-021.md](decisions/ARCH/DL-ARCH-V2-021.md) | `Availability` come computed fact canonico derivato da `inventory`, `customer_set_aside` e `commitments` |
+| [decisions/ARCH/DL-ARCH-V2-022.md](decisions/ARCH/DL-ARCH-V2-022.md) | Refresh backend semantici con dipendenze interne, tracciabilita step-by-step e skip downstream su prerequisiti falliti |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -80,6 +82,7 @@ Sottocartelle per tipo:
 |------|-----------|
 | [guides/BACKEND_BOOTSTRAP_AND_VERIFY.md](guides/BACKEND_BOOTSTRAP_AND_VERIFY.md) | Bootstrap locale backend/frontend, auth browser, admin, logistica, produzione/articoli, sync Easy read-only, catalogo famiglie e sync on demand backend-controlled |
 | [guides/IMPLEMENTATION_PATTERNS.md](guides/IMPLEMENTATION_PATTERNS.md) | Pattern replicabili emersi dai primi slice reali V2, utili per accelerare nuovi stream di sviluppo |
+| [guides/UI_SURFACES_OVERVIEW.md](guides/UI_SURFACES_OVERVIEW.md) | Riepilogo delle schermate UI V2 per funzione, entita logiche usate, dati esposti e azioni principali |
 
 ## Integrations
 
@@ -159,7 +162,17 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-041-core-ordini-cliente.md](task/TASK-V2-041-core-ordini-cliente.md) | Primo Core `ordini cliente`, con `customer_order_lines`, `description_lines` e `open_qty` calcolata |
 | [task/TASK-V2-042-commitments-cliente.md](task/TASK-V2-042-commitments-cliente.md) | Primo computed fact `commitments` da provenienza `customer_order`, basato sul Core ordini cliente |
 | [task/TASK-V2-043-commitments-produzione.md](task/TASK-V2-043-commitments-produzione.md) | Estensione di `commitments` alla provenienza `production`, limitata in V1 ai materiali con `CAT_ART1 != 0` |
+| [task/TASK-V2-044-customer-set-aside.md](task/TASK-V2-044-customer-set-aside.md) | Computed fact `customer_set_aside` da `DOC_QTAP`, separato da `inventory` e `commitments` |
+| [task/TASK-V2-045-set-aside-articoli-nel-dettaglio-ui.md](task/TASK-V2-045-set-aside-articoli-nel-dettaglio-ui.md) | Esposizione read-only del `customer_set_aside` nel dettaglio UI `articoli` |
+| [task/TASK-V2-046-refresh-sequenziale-articoli-giacenza-e-set-aside.md](task/TASK-V2-046-refresh-sequenziale-articoli-giacenza-e-set-aside.md) | Estensione del refresh backend della surface `articoli` per ricalcolare anche `customer_set_aside` |
+| [task/TASK-V2-047-refresh-articoli-con-ordini-per-set-aside.md](task/TASK-V2-047-refresh-articoli-con-ordini-per-set-aside.md) | Correzione del refresh `articoli` con `sync_righe_ordine_cliente` a monte del rebuild `customer_set_aside` |
 | [task/TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md](task/TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md) | Correzione della sync ordini cliente per mantenerla allineata alle sole righe ancora presenti in `V_TORDCLI` |
+| [task/TASK-V2-049-core-availability.md](task/TASK-V2-049-core-availability.md) | Computed fact `availability` come derivato di `inventory`, `customer_set_aside` e `commitments` |
+| [task/TASK-V2-050-availability-e-commitments-articoli-nel-dettaglio-ui.md](task/TASK-V2-050-availability-e-commitments-articoli-nel-dettaglio-ui.md) | Esposizione read-only di `committed_qty` e `availability_qty` nel dettaglio UI `articoli` |
+| [task/TASK-V2-051-refresh-sequenziale-articoli-con-availability.md](task/TASK-V2-051-refresh-sequenziale-articoli-con-availability.md) | Estensione del refresh backend della surface `articoli` per ricalcolare anche `availability` |
+| [task/TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md](task/TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md) | Hardening leggero dei confronti `article_code` cross-source con helper condivisa `normalize_article_code` |
+| [task/TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md](task/TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md) | Estensione del refresh backend della surface `articoli` per aggiornare anche `commitments` cliente e produzione |
+| [task/TASK-V2-054-refresh-semantici-backend.md](task/TASK-V2-054-refresh-semantici-backend.md) | Refactor backend verso refresh semantici con dipendenze interne invece di catene tecniche replicate nei chiamanti |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

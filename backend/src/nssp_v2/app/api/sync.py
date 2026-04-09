@@ -1,15 +1,20 @@
 """
-Router sync on demand (DL-ARCH-V2-011).
+Router sync on demand (DL-ARCH-V2-011, DL-ARCH-V2-022).
 
 Endpoint:
-  POST /api/sync/surface/logistica    — trigger sync clienti + destinazioni in ordine
-  GET  /api/sync/freshness/logistica  — stato freschezza entita della surface logistica
-  POST /api/sync/surface/produzione   — trigger sync articoli + mag_reale + righe_ordine_cliente + rebuild inventory_positions + rebuild customer_set_aside
-  GET  /api/sync/freshness/produzione — stato freschezza entita della surface produzione (articoli + mag_reale)
+  POST /api/sync/surface/logistica    — trigger refresh logistica (clienti + destinazioni)
+  GET  /api/sync/freshness/logistica  — stato freschezza entita surface logistica
+  POST /api/sync/surface/produzione   — trigger refresh articoli (refresh semantico — 8 step)
+  GET  /api/sync/freshness/produzione — stato freschezza entita surface produzione
   POST /api/sync/surface/produzioni   — trigger sync produzioni_attive + produzioni_storiche
-  GET  /api/sync/freshness/produzioni — stato freschezza entita della surface produzioni
+  GET  /api/sync/freshness/produzioni — stato freschezza entita surface produzioni
   POST /api/sync/surface/magazzino    — trigger sync mag_reale (incrementale)
-  GET  /api/sync/freshness/magazzino  — stato freschezza entita della surface magazzino
+  GET  /api/sync/freshness/magazzino  — stato freschezza entita surface magazzino
+
+Pattern refresh semantici (DL-ARCH-V2-022):
+  Gli endpoint non orchestrano direttamente la lista degli step tecnici.
+  Per la surface articoli, la chain reale (8 step, dipendenze condizionali) vive
+  in nssp_v2.app.services.refresh_articoli.refresh_articoli().
 
 Controlli obbligatori (DL-ARCH-V2-011 §4):
 - autenticazione Bearer
@@ -26,20 +31,17 @@ from sqlalchemy.orm import Session
 from nssp_v2.app.deps.auth import get_current_user
 from nssp_v2.app.schemas.sync import (
     EntityFreshness,
-    EntityRunResult,
     FreshnessResponse,
     SyncSurfaceResponse,
 )
-from nssp_v2.app.services.sync_runner import (
+from nssp_v2.app.services.refresh_articoli import (
+    ARTICOLI_SYNC_ENTITIES,
     SyncAlreadyRunningError,
-    SyncRunner,
+    refresh_articoli,
 )
-from nssp_v2.core.customer_set_aside.queries import rebuild_customer_set_aside
-from nssp_v2.core.inventory_positions.queries import rebuild_inventory_positions
+from nssp_v2.app.services.sync_runner import SyncRunner
 from nssp_v2.shared.config import get_settings
 from nssp_v2.shared.db import get_session
-from nssp_v2.sync.articoli.source import EasyArticoloSource
-from nssp_v2.sync.righe_ordine_cliente.source import EasyRigheOrdineClienteSource
 from nssp_v2.sync.clienti.source import EasyClienteSource
 from nssp_v2.sync.destinazioni.source import EasyDestinazioneSource
 from nssp_v2.sync.mag_reale.source import EasyMagRealeSource
@@ -51,76 +53,6 @@ router = APIRouter(prefix="/sync", tags=["sync"])
 
 # Ordine di esecuzione surface logistica (rispetta dipendenze dichiarate)
 _LOGISTICA_ENTITIES = ["clienti", "destinazioni"]
-
-
-# ─── Helper: rebuild inventory_positions ─────────────────────────────────────
-
-def _run_inventory_rebuild(session: Session) -> EntityRunResult:
-    """Esegue il rebuild completo di core_inventory_positions e restituisce un EntityRunResult."""
-    started_at = datetime.now(timezone.utc)
-    try:
-        n = rebuild_inventory_positions(session)
-        session.commit()
-        return EntityRunResult(
-            entity_code="inventory_positions",
-            status="success",
-            run_id=None,
-            rows_seen=n,
-            rows_written=n,
-            rows_deleted=0,
-            error_message=None,
-            started_at=started_at,
-            finished_at=datetime.now(timezone.utc),
-        )
-    except Exception as exc:
-        session.rollback()
-        return EntityRunResult(
-            entity_code="inventory_positions",
-            status="error",
-            run_id=None,
-            rows_seen=0,
-            rows_written=0,
-            rows_deleted=0,
-            error_message=str(exc),
-            started_at=started_at,
-            finished_at=datetime.now(timezone.utc),
-        )
-# ─── Helper: rebuild customer_set_aside ──────────────────────────────────────
-
-def _run_set_aside_rebuild(session: Session) -> EntityRunResult:
-    """Esegue il rebuild completo di core_customer_set_aside e restituisce un EntityRunResult."""
-    started_at = datetime.now(timezone.utc)
-    try:
-        n = rebuild_customer_set_aside(session)
-        session.commit()
-        return EntityRunResult(
-            entity_code="customer_set_aside",
-            status="success",
-            run_id=None,
-            rows_seen=n,
-            rows_written=n,
-            rows_deleted=0,
-            error_message=None,
-            started_at=started_at,
-            finished_at=datetime.now(timezone.utc),
-        )
-    except Exception as exc:
-        session.rollback()
-        return EntityRunResult(
-            entity_code="customer_set_aside",
-            status="error",
-            run_id=None,
-            rows_seen=0,
-            rows_written=0,
-            rows_deleted=0,
-            error_message=str(exc),
-            started_at=started_at,
-            finished_at=datetime.now(timezone.utc),
-        )
-
-
-# Entita surface produzione: articoli + mag_reale + righe_ordine_cliente (i rebuild seguono)
-_PRODUZIONE_ENTITIES = ["articoli", "mag_reale", "righe_ordine_cliente"]
 # Entita surface produzioni (attive + storiche: nessuna dipendenza tra loro)
 _PRODUZIONI_ENTITIES = ["produzioni_attive", "produzioni_storiche"]
 # Entita surface magazzino (mag_reale: nessuna dipendenza esterna)
@@ -162,7 +94,7 @@ def _build_freshness(
     return FreshnessResponse(entities=entity_freshness, surface_ready=surface_ready)
 
 
-# ─── Trigger sync on demand ───────────────────────────────────────────────────
+# ─── Trigger sync on demand — logistica ──────────────────────────────────────
 
 @router.post(
     "/surface/logistica",
@@ -210,7 +142,7 @@ def trigger_logistica(
     )
 
 
-# ─── Freshness state ──────────────────────────────────────────────────────────
+# ─── Freshness state — logistica ──────────────────────────────────────────────
 
 @router.get(
     "/freshness/logistica",
@@ -225,25 +157,25 @@ def freshness_logistica(
     return _build_freshness(session, _LOGISTICA_ENTITIES, _STALENESS_MINUTES * 60)
 
 
-# ─── Trigger sync on demand — produzione ─────────────────────────────────────
+# ─── Trigger refresh semantico — produzione (surface articoli) ────────────────
 
 @router.post(
     "/surface/produzione",
     response_model=SyncSurfaceResponse,
-    summary="Trigger sync on demand: articoli",
+    summary="Trigger refresh semantico surface articoli",
 )
 def trigger_produzione(
     _: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Esegue la sync on demand sequenziale:
-    articoli → mag_reale → righe_ordine_cliente → rebuild inventory_positions → rebuild customer_set_aside.
+    """Esegue il refresh semantico della surface articoli (DL-ARCH-V2-022).
+
+    La chain tecnica interna (8 step, con dipendenze condizionali) e incapsulata
+    in refresh_articoli() e non e visibile da questo endpoint.
 
     Controlli backend:
     - Easy connection string deve essere configurata
-    - Nessuna sync concorrente sul perimetro
-    - I rebuild avvengono dopo la sync, sempre (dallo stato corrente dei mirror)
-    - righe_ordine_cliente va prima di customer_set_aside: e il prerequisito operativo del rebuild
+    - Nessuna sync concorrente sul perimetro articoli
     """
     settings = get_settings()
 
@@ -253,26 +185,13 @@ def trigger_produzione(
             detail="Easy non configurato: EASY_CONNECTION_STRING mancante in .env",
         )
 
-    sources = {
-        "articoli": EasyArticoloSource(settings.easy_connection_string),
-        "mag_reale": EasyMagRealeSource(settings.easy_connection_string),
-        "righe_ordine_cliente": EasyRigheOrdineClienteSource(settings.easy_connection_string),
-    }
-
-    runner = SyncRunner()
     try:
-        results = runner.run_surface(session, _PRODUZIONE_ENTITIES, sources)
+        results = refresh_articoli(session, settings.easy_connection_string)
     except SyncAlreadyRunningError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Sync gia in esecuzione: {', '.join(sorted(exc.running_entities))}",
         )
-
-    # Step 3: rebuild deterministic di inventory_positions dal mirror aggiornato
-    results.append(_run_inventory_rebuild(session))
-
-    # Step 4: rebuild deterministic di customer_set_aside (da sync_righe_ordine_cliente corrente)
-    results.append(_run_set_aside_rebuild(session))
 
     return SyncSurfaceResponse(
         triggered_at=datetime.now(timezone.utc),
@@ -291,8 +210,8 @@ def freshness_produzione(
     _: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Restituisce lo stato di freschezza degli articoli."""
-    return _build_freshness(session, _PRODUZIONE_ENTITIES, _STALENESS_MINUTES * 60)
+    """Restituisce lo stato di freschezza degli articoli e dei loro prerequisiti."""
+    return _build_freshness(session, ARTICOLI_SYNC_ENTITIES, _STALENESS_MINUTES * 60)
 
 
 # ─── Trigger sync on demand — produzioni ─────────────────────────────────────

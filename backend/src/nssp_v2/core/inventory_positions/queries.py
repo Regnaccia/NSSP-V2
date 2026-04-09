@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from nssp_v2.core.inventory_positions.models import CoreInventoryPosition
 from nssp_v2.core.inventory_positions.read_models import InventoryPositionItem
+from nssp_v2.shared.article_codes import normalize_article_code
 from nssp_v2.sync.mag_reale.models import SyncMagReale
 
 
@@ -64,10 +65,13 @@ def rebuild_inventory_positions(session: Session) -> int:
     # Step 3+4: calcola e inserisce
     created = 0
     for row in rows:
+        article_code = normalize_article_code(row.codice_articolo)
+        if article_code is None:
+            continue
         load = Decimal(str(row.total_load))
         unload = Decimal(str(row.total_unload))
         position = CoreInventoryPosition(
-            article_code=row.codice_articolo,
+            article_code=article_code,
             total_load_qty=load,
             total_unload_qty=unload,
             on_hand_qty=load - unload,
@@ -99,9 +103,12 @@ def get_inventory_position(
     article_code: str,
 ) -> InventoryPositionItem | None:
     """Restituisce la posizione inventariale di un singolo articolo, o None se assente."""
+    normalized = normalize_article_code(article_code)
+    if normalized is None:
+        return None
     row = (
         session.query(CoreInventoryPosition)
-        .filter(CoreInventoryPosition.article_code == article_code)
+        .filter(CoreInventoryPosition.article_code == normalized)
         .first()
     )
     return _to_item(row) if row is not None else None

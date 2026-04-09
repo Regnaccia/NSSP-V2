@@ -38,6 +38,7 @@ from nssp_v2.core.ordini_cliente.queries import list_customer_order_lines
 from nssp_v2.core.produzioni.models import CoreProduzioneOverride
 from nssp_v2.sync.articoli.models import SyncArticolo
 from nssp_v2.sync.produzioni_attive.models import SyncProduzioneAttiva
+from nssp_v2.shared.article_codes import normalize_article_code
 
 _SOURCE_TYPE_CUSTOMER_ORDER = "customer_order"
 _SOURCE_TYPE_PRODUCTION = "production"
@@ -67,9 +68,10 @@ def rebuild_commitments(session: Session) -> int:
     # ── Provenienza 1: customer_order ─────────────────────────────────────────
     order_lines = list_customer_order_lines(session)
     for line in order_lines:
-        if line.article_code is not None and line.open_qty > Decimal("0"):
+        article_code = normalize_article_code(line.article_code)
+        if article_code is not None and line.open_qty > Decimal("0"):
             new_commitments.append(CoreCommitment(
-                article_code=line.article_code,
+                article_code=article_code,
                 source_type=_SOURCE_TYPE_CUSTOMER_ORDER,
                 source_reference=f"{line.order_reference}/{line.line_reference}",
                 committed_qty=line.open_qty,
@@ -127,7 +129,8 @@ def _build_production_commitments(
         )
         .join(
             SyncArticolo,
-            SyncArticolo.codice_articolo == SyncProduzioneAttiva.materiale_partenza_codice,
+            func.upper(func.trim(SyncArticolo.codice_articolo))
+            == func.upper(func.trim(SyncProduzioneAttiva.materiale_partenza_codice)),
         )
         .filter(
             # Produzioni attive
@@ -155,7 +158,7 @@ def _build_production_commitments(
 
     return [
         CoreCommitment(
-            article_code=row.materiale_partenza_codice,
+            article_code=normalize_article_code(row.materiale_partenza_codice),
             source_type=_SOURCE_TYPE_PRODUCTION,
             source_reference=str(row.id_dettaglio),
             committed_qty=Decimal(str(row.materiale_partenza_per_pezzo)),
@@ -202,6 +205,7 @@ def get_commitments_by_article(
 
     Restituisce lista vuota se non ci sono commitments attivi.
     """
+    normalized_article_code = normalize_article_code(article_code)
     query = (
         session.query(
             CoreCommitment.article_code,
@@ -212,8 +216,8 @@ def get_commitments_by_article(
         .group_by(CoreCommitment.article_code)
         .order_by(CoreCommitment.article_code)
     )
-    if article_code is not None:
-        query = query.filter(CoreCommitment.article_code == article_code)
+    if normalized_article_code is not None:
+        query = query.filter(CoreCommitment.article_code == normalized_article_code)
 
     return [
         CommitmentsByArticleItem(

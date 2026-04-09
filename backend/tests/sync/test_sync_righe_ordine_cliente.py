@@ -1,5 +1,5 @@
 """
-Test di integrazione per la sync unit `righe_ordine_cliente` (TASK-V2-040).
+Test di integrazione per la sync unit `righe_ordine_cliente` (TASK-V2-040, TASK-V2-048).
 
 Verificano:
 - mapping da record sorgente a target interno (tutti i campi)
@@ -7,10 +7,11 @@ Verificano:
 - righe descrittive con continues_previous_line=True salvate come record separati
 - upsert: aggiornamento riga gia presente
 - idempotenza: stessa sorgente, stesso risultato
-- no_delete_handling: righe non piu in sorgente restano nel mirror
+- delete_absent_keys: righe non piu in sorgente vengono rimosse dal mirror (DL-ARCH-V2-020)
 - set_aside_qty preservato come dato sorgente distinto
 - campi nullable gestiti come None
 - aggiornamento run metadata e freshness anchor
+- propagazione della rimozione ai fact derivati (customer_set_aside, commitments)
 """
 
 from datetime import datetime, timezone
@@ -25,6 +26,13 @@ from nssp_v2.sync.righe_ordine_cliente.models import SyncRigaOrdineCliente
 from nssp_v2.sync.righe_ordine_cliente.source import FakeRigheOrdineClienteSource, RigaOrdineClienteRecord
 from nssp_v2.sync.righe_ordine_cliente.unit import RigheOrdineClienteSyncUnit
 from nssp_v2.sync.models import SyncEntityState, SyncRunLog
+from nssp_v2.core.customer_set_aside.models import CoreCustomerSetAside  # noqa: F401
+from nssp_v2.core.customer_set_aside.queries import rebuild_customer_set_aside, list_customer_set_aside
+from nssp_v2.core.commitments.models import CoreCommitment  # noqa: F401
+from nssp_v2.core.commitments.queries import rebuild_commitments, list_commitments
+from nssp_v2.sync.produzioni_attive.models import SyncProduzioneAttiva  # noqa: F401
+from nssp_v2.sync.articoli.models import SyncArticolo  # noqa: F401
+from nssp_v2.core.produzioni.models import CoreProduzioneOverride  # noqa: F401
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -256,16 +264,101 @@ def test_idempotenza_stessa_sorgente(session):
     assert session.query(SyncRigaOrdineCliente).count() == 2
 
 
-# ─── No delete handling ───────────────────────────────────────────────────────
+# ─── Delete absent keys (DL-ARCH-V2-020) ─────────────────────────────────────
 
-def test_no_delete_handling_riga_sparita_dalla_sorgente(session):
-    """Una riga non piu presente in sorgente resta nel mirror."""
+def test_riga_sparita_dalla_sorgente_viene_rimossa(session):
+    """Una riga non piu presente in sorgente viene rimossa dal mirror (DL-ARCH-V2-020)."""
     _run(session, [_riga("ORD001", 1), _riga("ORD001", 2)])
-    # Seconda sync: solo la riga 1
-    _run(session, [_riga("ORD001", 1)])
+    # Seconda sync: solo la riga 1 — la riga 2 e sparita dalla sorgente
+    meta = _run(session, [_riga("ORD001", 1)])
 
     count = session.query(SyncRigaOrdineCliente).count()
-    assert count == 2  # la riga 2 e ancora nel mirror
+    assert count == 1  # la riga 2 e stata rimossa
+    assert meta.rows_deleted == 1
+
+
+def test_riga_rimossa_e_assente_dal_mirror(session):
+    """La riga rimossa non e piu accessibile tramite query sul mirror."""
+    _run(session, [_riga("ORD001", 1), _riga("ORD001", 2)])
+    _run(session, [_riga("ORD001", 1)])
+
+    rimossa = session.query(SyncRigaOrdineCliente).filter_by(
+        order_reference="ORD001", line_reference=2
+    ).first()
+    assert rimossa is None
+
+
+def test_riga_sparita_e_ricomparsa(session):
+    """Una riga sparita e poi ricomparsa in sorgente viene reinserita."""
+    _run(session, [_riga("ORD001", 1), _riga("ORD001", 2)])
+    _run(session, [_riga("ORD001", 1)])        # riga 2 sparisce
+    meta = _run(session, [_riga("ORD001", 1), _riga("ORD001", 2)])  # riga 2 ricompare
+
+    count = session.query(SyncRigaOrdineCliente).count()
+    assert count == 2
+    assert meta.rows_written == 2
+    assert meta.rows_deleted == 0
+
+
+def test_sorgente_vuota_rimuove_tutto(session):
+    """Una full scan vuota rimuove tutte le righe esistenti nel mirror."""
+    _run(session, [_riga("ORD001", 1), _riga("ORD001", 2)])
+    meta = _run(session, [])
+
+    assert session.query(SyncRigaOrdineCliente).count() == 0
+    assert meta.rows_deleted == 2
+
+
+def test_rows_deleted_nel_run_metadata(session):
+    """rows_deleted nel RunMetadata rispecchia le righe effettivamente rimosse."""
+    _run(session, [_riga("ORD001", 1), _riga("ORD001", 2), _riga("ORD001", 3)])
+    meta = _run(session, [_riga("ORD001", 1)])
+
+    assert meta.rows_deleted == 2
+
+
+# ─── Propagazione ai fact derivati ────────────────────────────────────────────
+
+def test_riga_rimossa_non_alimenta_customer_set_aside(session):
+    """Dopo la rimozione dal mirror, il rebuild customer_set_aside non include la riga sparita."""
+    _run(session, [
+        _riga("ORD001", 1, article_code="ART001", set_aside_qty=Decimal("10.00000")),
+        _riga("ORD001", 2, article_code="ART001", set_aside_qty=Decimal("5.00000")),
+    ])
+    rebuild_customer_set_aside(session)
+    assert len(list_customer_set_aside(session)) == 2
+
+    # La riga 2 sparisce dalla sorgente
+    _run(session, [_riga("ORD001", 1, article_code="ART001", set_aside_qty=Decimal("10.00000"))])
+    rebuild_customer_set_aside(session)
+    items = list_customer_set_aside(session)
+    assert len(items) == 1
+    assert items[0].source_reference == "ORD001/1"
+
+
+def test_riga_rimossa_non_alimenta_commitments(session):
+    """Dopo la rimozione dal mirror, il rebuild commitments non include la riga sparita."""
+    _run(session, [
+        _riga("ORD001", 1, article_code="ART001",
+              ordered_qty=Decimal("100.00000"), fulfilled_qty=Decimal("0.00000"),
+              set_aside_qty=Decimal("0.00000")),
+        _riga("ORD001", 2, article_code="ART001",
+              ordered_qty=Decimal("50.00000"), fulfilled_qty=Decimal("0.00000"),
+              set_aside_qty=Decimal("0.00000")),
+    ])
+    rebuild_commitments(session)
+    assert len(list_commitments(session, source_type="customer_order")) == 2
+
+    # La riga 2 sparisce dalla sorgente
+    _run(session, [
+        _riga("ORD001", 1, article_code="ART001",
+              ordered_qty=Decimal("100.00000"), fulfilled_qty=Decimal("0.00000"),
+              set_aside_qty=Decimal("0.00000")),
+    ])
+    rebuild_commitments(session)
+    items = list_commitments(session, source_type="customer_order")
+    assert len(items) == 1
+    assert items[0].source_reference == "ORD001/1"
 
 
 # ─── set_aside_qty come dato sorgente distinto ───────────────────────────────

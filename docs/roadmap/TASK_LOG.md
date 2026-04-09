@@ -59,8 +59,14 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-041` | Completed | Core `customer_order_lines` con `open_qty` e `description_lines` |
 | `TASK-V2-042` | Completed | Computed fact `commitments` da `customer_order_lines` |
 | `TASK-V2-043` | Completed | Estensione `commitments` alla provenienza `production` per materiali `CAT_ART1 != 0` |
-| `TASK-V2-044` | Todo | Computed fact `customer_set_aside` da `DOC_QTAP` |
-| `TASK-V2-045` | Todo | Esposizione read-only del `customer_set_aside` nel dettaglio UI `articoli` |
-| `TASK-V2-046` | Todo | Estensione del refresh articoli per ricalcolare anche `customer_set_aside` |
-| `TASK-V2-047` | Todo | Refresh articoli esteso con `sync_righe_ordine_cliente` prima di `customer_set_aside` |
-| `TASK-V2-048` | Todo | Correzione della sync ordini cliente per rimuovere dal mirror le righe non piu in `V_TORDCLI` |
+| `TASK-V2-044` | Completed | Computed fact `customer_set_aside` da `DOC_QTAP` |
+| `TASK-V2-045` | Completed | Esposizione read-only del `customer_set_aside` nel dettaglio UI `articoli` |
+| `TASK-V2-046` | Completed | Estensione del refresh articoli per ricalcolare anche `customer_set_aside` |
+| `TASK-V2-047` | Completed | Refresh articoli esteso con `sync_righe_ordine_cliente` prima di `customer_set_aside` |
+| `TASK-V2-048` | Completed | Correzione della sync ordini cliente per rimuovere dal mirror le righe non piu in `V_TORDCLI` |
+| `TASK-V2-049` | Completed | Computed fact `availability` da `inventory`, `customer_set_aside` e `commitments` |
+| `TASK-V2-050` | Completed | Esposizione read-only di `committed_qty` e `availability_qty` nel dettaglio UI `articoli` |
+| `TASK-V2-051` | Completed | Estensione del refresh articoli per ricalcolare anche `availability` |
+| `TASK-V2-052` | Completed | Hardening dei confronti `article_code` cross-source con helper condivisa `normalize_article_code` |
+| `TASK-V2-053` | Completed | Estensione del refresh articoli per aggiornare `commitments` cliente e produzione prima di `availability` |
+| `TASK-V2-054` | Completed | Refactor backend verso refresh semantici con dipendenze interne e skip downstream su prerequisiti falliti |

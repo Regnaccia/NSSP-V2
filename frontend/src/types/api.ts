@@ -139,6 +139,14 @@ export interface ArticoloDetail {
   customer_set_aside_qty: string | null
   /** Timestamp del calcolo set aside */
   set_aside_computed_at: string | null
+  /** Impegni totali (customer_order + production) (DL-ARCH-V2-017) — null se nessun impegno */
+  committed_qty: string | null
+  /** Timestamp del calcolo commitments */
+  commitments_computed_at: string | null
+  /** Disponibilita canonica (DL-ARCH-V2-021) — null se fact non ancora calcolato */
+  availability_qty: string | null
+  /** Timestamp del calcolo availability */
+  availability_computed_at: string | null
 }
 
 // ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────

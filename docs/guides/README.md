@@ -6,3 +6,4 @@ Questa cartella ospita guide e convenzioni operative specifiche della V2.
 |------|-----------|
 | [BACKEND_BOOTSTRAP_AND_VERIFY.md](BACKEND_BOOTSTRAP_AND_VERIFY.md) | Bootstrap locale backend/frontend, auth browser, admin, logistica, produzione/articoli, produzioni, inventory, sync Easy read-only, cataloghi interni e sync on demand backend-controlled |
 | [IMPLEMENTATION_PATTERNS.md](IMPLEMENTATION_PATTERNS.md) | Pattern replicabili emersi dai primi slice reali V2: sync -> core -> ui, enrichments interni, sync on demand, append-only mirror e pattern UIX |
+| [UI_SURFACES_OVERVIEW.md](UI_SURFACES_OVERVIEW.md) | Riepilogo delle schermate UI V2 per funzione, entita logiche usate, dati esposti e azioni principali |

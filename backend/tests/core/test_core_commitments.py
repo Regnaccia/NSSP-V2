@@ -167,6 +167,25 @@ def test_riga_senza_article_code_non_genera_commitment(session):
     assert n == 1  # solo la riga principale
 
 
+def test_rebuild_normalizza_article_code_customer_order(session):
+    """I commitments cliente usano article_code canonico trim+uppercase."""
+    _insert_riga(
+        session,
+        "ORD001",
+        1,
+        article_code=" art001 ",
+        ordered_qty=Decimal("100.00000"),
+        fulfilled_qty=Decimal("0.00000"),
+        set_aside_qty=Decimal("0.00000"),
+    )
+
+    rebuild_commitments(session)
+
+    items = list_commitments(session, source_type="customer_order")
+    assert len(items) == 1
+    assert items[0].article_code == "ART001"
+
+
 # ─── Aggregazione per articolo ────────────────────────────────────────────────
 
 def test_aggregazione_per_articolo_piu_righe(session):

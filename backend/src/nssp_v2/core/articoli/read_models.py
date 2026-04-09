@@ -92,6 +92,14 @@ class ArticoloDetail(BaseModel):
     customer_set_aside_qty: Decimal | None = None
     set_aside_computed_at: datetime | None = None
 
+    # Impegni totali per articolo (DL-ARCH-V2-017, TASK-V2-050) — None se nessun impegno
+    committed_qty: Decimal | None = None
+    commitments_computed_at: datetime | None = None
+
+    # Disponibilita canonica (DL-ARCH-V2-021, TASK-V2-050) — None se fact non ancora calcolato
+    availability_qty: Decimal | None = None
+    availability_computed_at: datetime | None = None
+
 
 class FamigliaItem(BaseModel):
     """Voce del catalogo famiglie articolo.

@@ -276,3 +276,70 @@ def test_get_articolo_inesistente_none(session):
     """get_inventory_position restituisce None se l'articolo non ha posizione."""
     rebuild_inventory_positions(session)
     assert get_inventory_position(session, "INESISTENTE") is None
+
+
+# ─── Normalizzazione article_code cross-source (TASK-V2-052) ─────────────────
+
+def test_rebuild_normalizza_lowercase(session):
+    """rebuild_inventory_positions normalizza codice_articolo lowercase -> uppercase."""
+    session.add(_mov(1, codice_articolo="art001", quantita_caricata="100.000000"))
+    session.flush()
+
+    rebuild_inventory_positions(session)
+    items = list_inventory_positions(session)
+
+    assert len(items) == 1
+    assert items[0].article_code == "ART001"
+
+
+def test_rebuild_normalizza_spazi_esterni(session):
+    """rebuild_inventory_positions rimuove gli spazi esterni dal codice_articolo."""
+    session.add(_mov(1, codice_articolo="  ART001  ", quantita_caricata="100.000000"))
+    session.flush()
+
+    rebuild_inventory_positions(session)
+    items = list_inventory_positions(session)
+
+    assert len(items) == 1
+    assert items[0].article_code == "ART001"
+
+
+def test_rebuild_chiave_canonica_con_codice_misto(session):
+    """rebuild_inventory_positions scrive la chiave canonica (uppercase, trimmed) nel Core.
+
+    Il sync_mag_reale normalizza già al momento della sync, ma il Core applica
+    normalize_article_code in modo difensivo per garantire la chiave canonica
+    indipendentemente da come il mirror è stato popolato (es. test, migrazione).
+    """
+    session.add(_mov(1, codice_articolo="art001", quantita_caricata="100.000000"))
+    session.add(_mov(2, codice_articolo="art001", quantita_caricata="50.000000"))
+    session.flush()
+
+    rebuild_inventory_positions(session)
+    items = list_inventory_positions(session)
+
+    assert len(items) == 1
+    assert items[0].article_code == "ART001"
+    assert items[0].total_load_qty == Decimal("150.000000")
+
+
+def test_get_inventory_position_normalizza_input_lowercase(session):
+    """get_inventory_position trova la posizione anche con input lowercase."""
+    session.add(_mov(1, codice_articolo="ART001", quantita_caricata="100.000000"))
+    session.flush()
+    rebuild_inventory_positions(session)
+
+    item = get_inventory_position(session, "art001")
+    assert item is not None
+    assert item.on_hand_qty == Decimal("100.000000")
+
+
+def test_get_inventory_position_normalizza_input_con_spazi(session):
+    """get_inventory_position trova la posizione anche con input con spazi."""
+    session.add(_mov(1, codice_articolo="ART001", quantita_caricata="100.000000"))
+    session.flush()
+    rebuild_inventory_positions(session)
+
+    item = get_inventory_position(session, "  ART001  ")
+    assert item is not None
+    assert item.on_hand_qty == Decimal("100.000000")

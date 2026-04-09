@@ -152,6 +152,23 @@ def test_article_code_e_materiale_non_articolo_prodotto(session):
     assert items[0].article_code == "MAT001"
 
 
+def test_materiale_codice_case_insensitive_vs_sync_articoli(session):
+    """Il lookup MAT_COD -> CAT_ART1 resta valido anche con differenze di casing/spazi."""
+    _insert_articolo(session, "MAT001", cat_art1="2")
+    _insert_produzione(
+        session,
+        1001,
+        materiale_partenza_codice=" mat001 ",
+        materiale_partenza_per_pezzo=Decimal("3.00000"),
+    )
+
+    rebuild_commitments(session)
+
+    items = list_commitments(session, source_type="production")
+    assert len(items) == 1
+    assert items[0].article_code == "MAT001"
+
+
 # ─── Filtro stato attiva ──────────────────────────────────────────────────────
 
 def test_produzione_completata_per_quantita_esclusa(session):

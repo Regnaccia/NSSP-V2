@@ -60,7 +60,8 @@ Disponibile:
 - flag `considera_in_produzione`
 - giacenza read-only dal Core nel pannello dettaglio
 - computed fact `customer_set_aside` esposto nel pannello dettaglio
-- refresh sequenziale backend-controlled `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
+- `committed_qty` e `availability_qty` esposti nel pannello dettaglio
+- refresh semantico backend-controlled `refresh_articoli()` con chain interna completa a 8 step
 
 ### Produzioni
 
@@ -98,9 +99,10 @@ Disponibile:
 - supporto a `description_lines` per righe con `COLL_RIGA_PREC = true`
 - enrichment cliente/destinazione demand-driven a livello query/read model
 
-Correzione ancora aperta:
+Mirror operativo attivo:
 
-- il mirror ordini cliente deve essere riallineato come specchio delle sole righe ancora presenti in `V_TORDCLI`
+- `delete_absent_keys`: le righe non più presenti in `V_TORDCLI` vengono rimosse dalla sync successiva
+- le righe con `COLL_RIGA_PREC = true` restano finché la sorgente le include
 
 ### Commitments
 
@@ -122,6 +124,20 @@ Disponibile:
 - esposto nel dettaglio UI `articoli` come campo read-only ODE
 - ricalcolato nel refresh sequenziale dopo `sync_righe_ordine_cliente`
 
+### Availability
+
+Disponibile:
+
+- computed fact `availability` — quota libera per articolo
+- formula canonica V1: `availability_qty = inventory_qty - customer_set_aside_qty - committed_qty`
+- rebuild deterministic (`delete-all + re-insert`)
+- valori negativi ammessi (no clamp — sovra-impegno visibile)
+- un record per `article_code` (UniqueConstraint)
+- script on-demand: `scripts/rebuild_availability.py`
+
+Esposto nel dettaglio `articoli` come campo read-only ODE.
+Ricalcolato nel refresh semantico `articoli` come step 8, dopo `inventory`, `customer_set_aside` e `commitments`.
+
 ## Mirror sync attivi
 
 Gia presenti:
@@ -142,6 +158,7 @@ Gia presenti:
 - `inventory_positions`
 - `commitments`
 - `customer_set_aside`
+- `availability`
 
 ## Pattern consolidati
 
@@ -152,20 +169,38 @@ Pattern gia validati:
 - mirror separati + aggregazione nel Core + computed fact con override
 - catalogo interno di riferimento + associazione a entita
 - pattern UIX generale + spec concreta
+- refresh semantici backend con dipendenze interne (DL-ARCH-V2-022)
 
-## Prossimo passo naturale
+### Refresh semantici (DL-ARCH-V2-022)
 
-I building block canonici ora disponibili:
+La surface `articoli` espone un refresh semantico nominato.
+Il router chiama `refresh_articoli()` — non sa nulla degli step interni.
+La chain (8 step, dipendenze condizionali) vive in `app/services/refresh_articoli.py`.
 
-- `inventory` - stock fisico netto
-- `commitments` - domanda operativa aperta (`customer_order` + `production`)
-- `customer_set_aside` - quota gia fisicamente appartata (`DOC_QTAP`)
+Chain completa:
 
-Prima del passo `availability` e aperto un riallineamento necessario:
+```
+POST /api/sync/surface/produzione
+  Step 1 — sync articoli
+  Step 2 — sync mag_reale
+  Step 3 — sync righe_ordine_cliente
+  Step 4 — sync produzioni_attive
+  Step 5 — rebuild inventory_positions     (sempre)
+  Step 6 — rebuild customer_set_aside      (skip se step 3 non OK)
+  Step 7 — rebuild commitments             (skip se step 3 o 4 non OK)
+  Step 8 — rebuild availability            (skip se step 5/6/7 non OK)
+```
 
-- `TASK-V2-048` per rendere `sync_righe_ordine_cliente` un mirror operativo delle sole righe ancora presenti in `V_TORDCLI`
+## Stato attuale
 
-Dopo questo riallineamento, il passo naturale successivo torna a essere `availability` come derivato di questi tre fact (DL-ARCH-V2-019, sezione 8).
+Il perimetro V1 del modello quantitativo e completo e operativo:
+
+- `inventory`, `commitments`, `customer_set_aside`, `availability`
+- tutti e quattro i fact esposti nel dettaglio `articoli`
+- refresh semantico completo: tutti i fact ricalcolati in un solo trigger
+- normalizzazione `article_code` canonica cross-source (`normalize_article_code`)
+
+Nessun task aperto.
 
 ## References
 
@@ -176,3 +211,5 @@ Dopo questo riallineamento, il passo naturale successivo torna a essere `availab
 - `docs/decisions/ARCH/DL-ARCH-V2-018.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-019.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-020.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-021.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-022.md`

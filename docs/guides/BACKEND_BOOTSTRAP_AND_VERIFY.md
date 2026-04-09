@@ -11,21 +11,18 @@ Stato coperto:
 - surface `logistica`
 - surface `produzione`
 - surface `produzioni`
-- sync Easy read-only `clienti`
-- sync Easy read-only `destinazioni`
-- sync Easy read-only `articoli`
-- sync Easy read-only `mag_reale`
+- sync Easy read-only `clienti`, `destinazioni`, `articoli`, `mag_reale`, `righe_ordine_cliente`, `produzioni_attive`
 - sync on demand backend-controlled
 - catalogo interno `famiglie articolo`
 - computed fact `inventory_positions`
-- giacenza read-only nel dettaglio `articoli`
-- sync Easy read-only `righe_ordine_cliente`
 - computed fact `customer_set_aside`
-- `customer_set_aside` read-only nel dettaglio `articoli`
-- refresh sequenziale `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
+- computed fact `commitments` (customer_order + production)
+- computed fact `availability`
+- tutti i fact esposti read-only nel dettaglio `articoli`
+- refresh semantico `articoli` (8 step, dipendenze condizionali) — `DL-ARCH-V2-022`
 - build frontend
 
-Aggiornata dopo: `TASK-V2-047`.
+Aggiornata dopo: `TASK-V2-054`.
 
 ## Prerequisiti
 
@@ -196,7 +193,7 @@ Endpoint principali:
 | `PATCH /api/produzione/famiglie/{code}/active` | attiva/disattiva famiglia | Bearer JWT |
 | `PATCH /api/produzione/famiglie/{code}/considera-produzione` | toggle flag produzione | Bearer JWT |
 | `GET /api/sync/freshness/produzione` | freshness della surface produzione | Bearer JWT |
-| `POST /api/sync/surface/produzione` | trigger sync on demand `articoli + mag_reale + righe_ordine_cliente + rebuild inventory + customer_set_aside` | Bearer JWT |
+| `POST /api/sync/surface/produzione` | trigger refresh semantico articoli (8 step — DL-ARCH-V2-022) | Bearer JWT |
 | `GET /api/sync/freshness/magazzino` | freshness della surface magazzino | Bearer JWT |
 | `POST /api/sync/surface/magazzino` | trigger sync on demand `mag_reale` | Bearer JWT |
 | `GET /api/produzioni` | lista produzioni Core | Bearer JWT |
@@ -255,6 +252,7 @@ python scripts/sync_mag_reale.py --source fake
 python scripts/sync_righe_ordine_cliente.py --source fake
 python scripts/rebuild_inventory_positions.py
 python scripts/rebuild_customer_set_aside.py
+python scripts/rebuild_availability.py
 ```
 
 Per usare Easy reale:
@@ -268,16 +266,18 @@ python scripts/sync_mag_reale.py
 python scripts/sync_righe_ordine_cliente.py
 python scripts/rebuild_inventory_positions.py
 python scripts/rebuild_customer_set_aside.py
+python scripts/rebuild_availability.py
 ```
 
 Regole operative:
 
 - `sync_clienti` va eseguita prima di `sync_destinazioni`
 - `sync_righe_ordine_cliente` va eseguita prima di `rebuild_customer_set_aside`
+- per i fact quantitativi canonici completi, l'ordine corretto e: `sync_mag_reale` → `sync_righe_ordine_cliente` → `sync_produzioni_attive` → `rebuild_inventory_positions` → `rebuild_customer_set_aside` → `rebuild_commitments` (script non ancora presente) → `rebuild_availability`
 - gli script Easy richiedono `EASY_CONNECTION_STRING`
 - gli adapter Easy leggono solo `ANACLI`, `POT_DESTDIV`, `ANAART`, `MAG_REALE` e `V_TORDCLI`
 - gli script scrivono solo sul database interno V2
-- `rebuild_inventory_positions` e `rebuild_customer_set_aside` ricalcolano i fact dal mirror interno, non da Easy
+- il refresh semantico completo della surface articoli e disponibile tramite `POST /api/sync/surface/produzione` (preferito per l'uso operativo)
 
 ## 9. Sync on demand applicativo
 
@@ -437,5 +437,6 @@ Verifica manuale minima:
 17. usare il trigger `POST /api/sync/surface/produzione` o il pulsante UI equivalente e verificare freshness
 18. eseguire `sync_mag_reale` e `rebuild_inventory_positions`, poi verificare che la giacenza articolo sia coerente
 19. verificare che il dettaglio articolo mostri anche `customer_set_aside` read-only ODE
-20. usare il trigger `POST /api/sync/surface/produzione` e verificare che i 5 step vengano completati in sequenza
-21. aprire la surface `produzioni` e verificare lista, dettaglio, sync on demand e `forza_completata`
+20. usare il trigger `POST /api/sync/surface/produzione` e verificare che gli 8 step vengano completati in sequenza (articoli, mag_reale, righe_ordine_cliente, produzioni_attive, inventory_positions, customer_set_aside, commitments, availability)
+21. verificare che il dettaglio articolo mostri anche `committed_qty` e `availability_qty` read-only ODE
+22. aprire la surface `produzioni` e verificare lista, dettaglio, sync on demand e `forza_completata`

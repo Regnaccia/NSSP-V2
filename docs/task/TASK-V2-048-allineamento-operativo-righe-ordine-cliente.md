@@ -1,7 +1,7 @@
 # TASK-V2-048 - Allineamento operativo righe ordine cliente
 
 ## Status
-Todo
+Completed
 
 ## Date
 2026-04-09
@@ -120,11 +120,63 @@ Direzione raccomandata:
 
 ## Completion Notes
 
-Da compilare a cura di Claude Code quando il task viene chiuso.
+### File modificati
+
+- `src/nssp_v2/sync/righe_ordine_cliente/unit.py`
+  - `DELETE_HANDLING`: `"no_delete_handling"` → `"delete_absent_keys"`
+  - Docstring modulo aggiornata: contratto esplicito DELETE_HANDLING e strategia full_scan + delete_absent_keys
+  - Dopo il loop upsert: costruzione `source_keys` (set di tuple `(order_reference, line_reference)`) e iterazione su `existing` per rimuovere con `session.delete` le righe assenti; `meta.rows_deleted` incrementato per ogni rimozione
+
+- `tests/sync/test_sync_righe_ordine_cliente.py`
+  - `test_no_delete_handling_riga_sparita_dalla_sorgente` → invertito e rinominato `test_riga_sparita_dalla_sorgente_viene_rimossa`: ora verifica che la riga sparita venga rimossa (`count == 1`, `rows_deleted == 1`)
+  - Aggiunti 4 nuovi test sul comportamento delete:
+    - `test_riga_rimossa_e_assente_dal_mirror`
+    - `test_riga_sparita_e_ricomparsa`
+    - `test_sorgente_vuota_rimuove_tutto`
+    - `test_rows_deleted_nel_run_metadata`
+  - Aggiunti 2 test di propagazione ai fact derivati:
+    - `test_riga_rimossa_non_alimenta_customer_set_aside`
+    - `test_riga_rimossa_non_alimenta_commitments`
+  - Import modello aggiunti a livello modulo (pattern `# noqa: F401`): `CoreCustomerSetAside`, `CoreCommitment`, `SyncProduzioneAttiva`, `SyncArticolo`, `CoreProduzioneOverride` — necessari perché il fixture `session` chiama `Base.metadata.create_all` prima del corpo dei test
+
+### Nessuna migration aggiuntiva
+
+La tabella `sync_righe_ordine_cliente` è già presente. La modifica è solo comportamentale (il delete era prima assente, ora attivo). Nessuna colonna aggiunta o rimossa.
+
+### Strategia implementata
+
+`full_scan + upsert + delete_absent_keys` (DL-ARCH-V2-020):
+
+1. Fetch completo da sorgente → lista `records`
+2. Carica `existing` (mirror corrente) come dict keyed su `(order_reference, line_reference)`
+3. Loop upsert: INSERT se assente, UPDATE se presente
+4. Costruisce `source_keys = {(r.order_reference, r.line_reference) for r in records}`
+5. Rimuove da `existing` ogni chiave non in `source_keys` con `session.delete`
+6. `meta.rows_deleted` traccia quante righe sono state rimosse
+
+### Caso verificato esplicitamente (Acceptance Criteria §5)
+
+```
+sync([riga_1, riga_2])  # mirror: 2 righe
+sync([riga_1])          # riga_2 non è in sorgente → session.delete → mirror: 1 riga
+rebuild_customer_set_aside() → 1 record (solo riga_1)
+rebuild_commitments() → 1 record (solo riga_1)
+```
+
+### Test eseguiti
+
+Suite completa: 468/468 passed.
+Frontend: `npm run build` — zero errori.
+
+### Assunzioni
+
+- Le righe con `continues_previous_line=True` sono preservate finché la sorgente le include: se `V_TORDCLI` le restituisce, restano nel mirror; se spariscono dalla full scan, vengono rimosse come qualsiasi altra riga.
+- Il comportamento è idempotente: più sync successive con la stessa sorgente producono sempre lo stesso mirror.
+- `meta.rows_written` conta tutte le righe processate (insert + update), `meta.rows_deleted` conta solo le rimosse. Questo è coerente con il pattern delle altre sync unit.
 
 ## Completed At
 
-YYYY-MM-DD
+2026-04-09
 
 ## Completed By
 

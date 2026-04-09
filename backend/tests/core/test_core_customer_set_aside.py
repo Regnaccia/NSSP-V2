@@ -162,6 +162,23 @@ def test_riga_con_set_aside_positivo_inclusa(session):
     assert n == 1
 
 
+def test_rebuild_normalizza_article_code(session):
+    """Il fact usa article_code canonico trim+uppercase."""
+    _insert_riga(
+        session,
+        "ORD001",
+        1,
+        article_code=" art001 ",
+        set_aside_qty=Decimal("10.00000"),
+    )
+
+    rebuild_customer_set_aside(session)
+
+    items = list_customer_set_aside(session)
+    assert len(items) == 1
+    assert items[0].article_code == "ART001"
+
+
 # ─── Aggregazione per articolo ────────────────────────────────────────────────
 
 def test_aggregazione_per_articolo_piu_righe(session):

@@ -1,20 +1,21 @@
 """
-Sync unit `righe_ordine_cliente` (TASK-V2-040).
+Sync unit `righe_ordine_cliente` (TASK-V2-040, aggiornata TASK-V2-048).
 
 Contratto dichiarato esplicitamente (DL-ARCH-V2-009 §2-§8):
 - ENTITY_CODE:         "righe_ordine_cliente"
 - SOURCE_IDENTITY_KEY: "(order_reference, line_reference)"  (= (DOC_NUM, NUM_PROGR) in V_TORDCLI)
 - ALIGNMENT_STRATEGY:  "upsert"
 - CHANGE_ACQUISITION:  "full_scan"
-- DELETE_HANDLING:     "no_delete_handling"
+- DELETE_HANDLING:     "delete_absent_keys"
 - DEPENDENCIES:        []
 
-Strategia full_scan + upsert:
+Strategia full_scan + upsert + delete_absent_keys (DL-ARCH-V2-020):
   La sync legge tutte le righe dalla sorgente a ogni esecuzione.
   Per ogni riga: INSERT se non presente, UPDATE se gia presente (keyed su source identity).
-  Le righe non piu presenti in sorgente restano nel mirror (no_delete_handling).
+  Le righe presenti nel mirror ma assenti nella full scan corrente vengono rimosse.
 
-Righe descrittive con continues_previous_line=True vengono preservate come record separati.
+Questo garantisce che il mirror rappresenti solo le righe operativamente attive in V_TORDCLI.
+Righe descrittive con continues_previous_line=True vengono preservate finche presenti in sorgente.
 set_aside_qty (DOC_QTAP) viene salvato come dato sorgente distinto senza business logic.
 """
 
@@ -47,13 +48,14 @@ class RigheOrdineClienteSyncUnit:
     SOURCE_IDENTITY_KEY = "(order_reference, line_reference)"
     ALIGNMENT_STRATEGY = "upsert"
     CHANGE_ACQUISITION = "full_scan"
-    DELETE_HANDLING = "no_delete_handling"
+    DELETE_HANDLING = "delete_absent_keys"
     DEPENDENCIES: list[str] = []
 
     def run(self, session: Session, source: RigaOrdineClienteSourceAdapter) -> RunMetadata:
         """Esegue la sync `righe_ordine_cliente`.
 
         Idempotente: piu esecuzioni con la stessa sorgente producono lo stesso stato.
+        Le righe non piu presenti in sorgente vengono rimosse dal mirror (DL-ARCH-V2-020).
 
         Args:
             session: sessione SQLAlchemy aperta dall'invocante
@@ -125,7 +127,14 @@ class RigheOrdineClienteSyncUnit:
 
                 meta.rows_written += 1
 
-            # no_delete_handling: le righe non piu in sorgente restano nel mirror senza modifiche
+            # delete_absent_keys: rimuove dal mirror le righe non piu presenti in sorgente
+            source_keys: set[tuple[str, int]] = {
+                (rec.order_reference, rec.line_reference) for rec in records
+            }
+            for key, obj in existing.items():
+                if key not in source_keys:
+                    session.delete(obj)
+                    meta.rows_deleted += 1
 
             session.flush()
             meta.status = "success"

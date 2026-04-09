@@ -17,8 +17,11 @@ from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
 from sqlalchemy import func
 
 from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem, FamigliaRow
+from nssp_v2.core.availability.models import CoreAvailability
+from nssp_v2.core.commitments.models import CoreCommitment
 from nssp_v2.core.customer_set_aside.models import CoreCustomerSetAside
 from nssp_v2.core.inventory_positions.models import CoreInventoryPosition
+from nssp_v2.shared.article_codes import normalize_article_code
 from nssp_v2.sync.articoli.models import SyncArticolo
 
 
@@ -137,11 +140,14 @@ def get_articolo_detail(
     art, config = row
     famiglia_code = config.famiglia_code if config is not None else None
     famiglia = famiglie.get(famiglia_code) if famiglia_code else None
+    normalized_article_code = normalize_article_code(art.codice_articolo)
 
     # Giacenza canonica (DL-ARCH-V2-016) — None se nessun movimento registrato
-    inv = session.query(CoreInventoryPosition).filter(
-        CoreInventoryPosition.article_code == art.codice_articolo.strip().upper()
-    ).first()
+    inv = None
+    if normalized_article_code is not None:
+        inv = session.query(CoreInventoryPosition).filter(
+            CoreInventoryPosition.article_code == normalized_article_code
+        ).first()
 
     # Quota appartata per cliente (DL-ARCH-V2-019) — aggregata su tutte le righe ordine
     csa_row = (
@@ -149,11 +155,28 @@ def get_articolo_detail(
             func.sum(CoreCustomerSetAside.set_aside_qty).label("total"),
             func.max(CoreCustomerSetAside.computed_at).label("computed_at"),
         )
-        .filter(CoreCustomerSetAside.article_code == art.codice_articolo)
+        .filter(CoreCustomerSetAside.article_code == normalized_article_code)
         .first()
     )
     customer_set_aside_qty = csa_row.total if (csa_row and csa_row.total is not None) else None
     set_aside_computed_at = csa_row.computed_at if (csa_row and csa_row.total is not None) else None
+
+    # Impegni totali per articolo (DL-ARCH-V2-017) — aggregati su tutte le provenienze
+    com_row = (
+        session.query(
+            func.sum(CoreCommitment.committed_qty).label("total"),
+            func.max(CoreCommitment.computed_at).label("computed_at"),
+        )
+        .filter(CoreCommitment.article_code == normalized_article_code)
+        .first()
+    )
+    committed_qty = com_row.total if (com_row and com_row.total is not None) else None
+    commitments_computed_at = com_row.computed_at if (com_row and com_row.total is not None) else None
+
+    # Disponibilita canonica (DL-ARCH-V2-021)
+    avail = session.query(CoreAvailability).filter(
+        CoreAvailability.article_code == normalized_article_code
+    ).first()
 
     return ArticoloDetail(
         codice_articolo=art.codice_articolo,
@@ -178,6 +201,10 @@ def get_articolo_detail(
         giacenza_computed_at=inv.computed_at if inv is not None else None,
         customer_set_aside_qty=customer_set_aside_qty,
         set_aside_computed_at=set_aside_computed_at,
+        committed_qty=committed_qty,
+        commitments_computed_at=commitments_computed_at,
+        availability_qty=avail.availability_qty if avail is not None else None,
+        availability_computed_at=avail.computed_at if avail is not None else None,
     )
 
 

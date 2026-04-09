@@ -9,6 +9,10 @@ Regole operative:
 - lo stato parte da `Todo`
 - Claude Code aggiorna il file durante o al termine del lavoro
 - a task completato, Claude Code imposta `Status: Completed` e compila la sezione finale di esecuzione
+- ogni task deve dichiarare esplicitamente il livello di verifica richiesto:
+  - `Mirata`
+  - `Full suite / milestone`
+- di default Claude aggiorna solo il task chiuso; il riallineamento di roadmap, overview, indici e guide trasversali viene fatto successivamente da Codex o da un revisore documentale
 
 Task registrati:
 
@@ -55,8 +59,14 @@ Task registrati:
 - `TASK-V2-041-core-ordini-cliente.md` - completato
 - `TASK-V2-042-commitments-cliente.md` - completato
 - `TASK-V2-043-commitments-produzione.md` - completato
-- `TASK-V2-044-customer-set-aside.md` - todo
-- `TASK-V2-045-set-aside-articoli-nel-dettaglio-ui.md` - todo
-- `TASK-V2-046-refresh-sequenziale-articoli-giacenza-e-set-aside.md` - todo
-- `TASK-V2-047-refresh-articoli-con-ordini-per-set-aside.md` - todo
-- `TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md` - todo
+- `TASK-V2-044-customer-set-aside.md` - completato
+- `TASK-V2-045-set-aside-articoli-nel-dettaglio-ui.md` - completato
+- `TASK-V2-046-refresh-sequenziale-articoli-giacenza-e-set-aside.md` - completato
+- `TASK-V2-047-refresh-articoli-con-ordini-per-set-aside.md` - completato
+- `TASK-V2-048-allineamento-operativo-righe-ordine-cliente.md` - completato
+- `TASK-V2-049-core-availability.md` - completato
+- `TASK-V2-050-availability-e-commitments-articoli-nel-dettaglio-ui.md` - completato
+- `TASK-V2-051-refresh-sequenziale-articoli-con-availability.md` - completato
+- `TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md` - completato
+- `TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md` - completato
+- `TASK-V2-054-refresh-semantici-backend.md` - completato

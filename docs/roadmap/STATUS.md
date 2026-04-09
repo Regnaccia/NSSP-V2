@@ -44,12 +44,21 @@ Sono oggi disponibili:
 - computed fact canonico `customer_set_aside` da `DOC_QTAP`
 - `customer_set_aside` esposto nel dettaglio UI `articoli` come campo read-only ODE
 - refresh sequenziale `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
+- `sync_righe_ordine_cliente` come mirror operativo attivo (`delete_absent_keys`)
+- computed fact canonico `availability` (inventory - set_aside - committed)
+- fix applicato sul bug di `availability` dovuto a `article_code` incoerente tra fact canonici, tramite helper condivisa `normalize_article_code`
+- `committed_qty` e `availability_qty` esposti nel dettaglio UI `articoli` come campi read-only ODE
+- refresh sequenziale `articoli` esteso a 6 step: aggiunto `rebuild_availability` come step finale
+- hardening normalizzazione `article_code` cross-source — `normalize_article_code` in tutti i rebuild Core
+- refresh `articoli` esteso a 8 step: aggiunto `sync_produzioni_attive` + `rebuild_commitments`
+- refresh semantici backend: `refresh_articoli()` in `app/services/refresh_articoli.py` — router thin, chain incapsulata
+- 507 test backend passanti, `npm run build` zero errori
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-020`
+- `ARCH/` fino a `DL-ARCH-V2-022`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -68,7 +77,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-047`
+- `TASK-V2-001` -> `TASK-V2-054`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -110,31 +119,41 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-045` `customer_set_aside` nel dettaglio UI `articoli`
 - `TASK-V2-046` refresh sequenziale esteso a `customer_set_aside`
 - `TASK-V2-047` refresh corretto con `sync_righe_ordine_cliente` a monte del rebuild
+- `TASK-V2-048` allineamento operativo `sync_righe_ordine_cliente` — `delete_absent_keys`
+- `TASK-V2-049` Core `availability` — computed fact canonico
+- `TASK-V2-050` `committed_qty` e `availability_qty` nel dettaglio UI `articoli`
+- `TASK-V2-051` refresh sequenziale `articoli` esteso a `availability` (step 6)
+- `TASK-V2-052` hardening normalizzazione `article_code` cross-source (`normalize_article_code` in `inventory_positions`)
+- `TASK-V2-053` refresh `articoli` esteso a 8 step: `sync_produzioni_attive` + `rebuild_commitments`
+- `TASK-V2-054` refresh semantici backend — `refresh_articoli()` in `app/services/`, router thin
 
 ## Task aperti
 
-- `TASK-V2-048` allineamento operativo di `sync_righe_ordine_cliente`
+Nessuno.
 
 ## Gap noti
 
 - la documentazione `UIX` e separata tra pattern generale e spec caso concreto; i prossimi casi dovranno aggiungere nuove spec dedicate
 - il catalogo `famiglie articolo` e ormai un vero riferimento interno; i prossimi stream dovranno decidere se riusare lo stesso pattern anche per altri cataloghi di dominio
 - i report `docs/test/` coprono formalmente solo i primi test storici; per i task piu recenti la verifica vive nelle `Completion Notes`
+- manca uno script `rebuild_commitments.py` on-demand (analoghi a `rebuild_inventory_positions.py` e `rebuild_availability.py`)
 
 ## Prossima sequenza consigliata
 
-I building block canonici ora disponibili sono:
+Il perimetro V1 del modello quantitativo e ora completamente chiuso e operativo:
 
-- `inventory` (stock fisico netto)
-- `commitments` (domanda operativa aperta - customer_order + production)
-- `customer_set_aside` (quota gia appartata per cliente - `DOC_QTAP`)
+- `inventory`, `commitments`, `customer_set_aside`, `availability`
+- tutti e quattro i fact esposti nel dettaglio `articoli`
+- refresh semantico completo della surface `articoli` in un unico trigger (8 step)
+- normalizzazione `article_code` canonica cross-source
+- router thin: la chain non e piu replicata negli endpoint
 
-Prima di introdurre `availability`, va corretto il mirror operativo ordini cliente:
-
-- `V_TORDCLI` deve restare specchio delle sole righe attive
-- le righe sparite dalla sorgente non devono continuare ad alimentare `customer_set_aside` e `commitments`
-
-Solo dopo questo riallineamento il prossimo passo naturale torna a essere `availability` come derivato di questi tre fact.
+I prossimi stream naturali riguardano:
+- definizione di un modello di logiche di dominio intercambiabili su fact canonici, senza hardcode diretto delle formule nelle surface o nei read model
+- prima logica operativa vera su `articoli`: `criticita` / `stato_copertura`, inizialmente basata su `availability`
+- nuova surface operativa dedicata a disponibilita / criticita articoli
+- scheduler automatico dei refresh
+- `rebuild_commitments.py` script on-demand mancante
 
 ## Notes
 

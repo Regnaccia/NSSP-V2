@@ -168,6 +168,27 @@ La direzione architetturale resta corretta. I rischi aperti sono soprattutto di 
 3. Inserire il cleanup finale di `shared.config` nei prossimi hardening task trasversali.
 4. Considerare paginazione/filtri come requisito di default per tutti i nuovi slice oltre `customer_order_lines`.
 
+## Notes After 2026-04-09
+
+Dal consolidamento successivo e emerso un bug reale nel calcolo di `availability` dovuto a chiavi `article_code` incoerenti tra fact canonici:
+
+- `inventory_positions`
+- `customer_set_aside`
+- `commitments`
+- `availability`
+
+Il fix operativo e gia stato applicato nel backend introducendo la helper condivisa:
+
+- `src/nssp_v2/shared/article_codes.py`
+- `normalize_article_code(value)`
+
+e riallineando i punti critici del calcolo e del dettaglio `articoli`.
+
+Follow-up aperto:
+
+- consolidare tutti i confronti `article_code` cross-source residui con lo stesso pattern, senza cambiare la semantica dei mirror `sync_*`
+- riferimento: `TASK-V2-052`
+
 ## References
 
 - [SYSTEM_OVERVIEW.md](c:/Users/Alberto.REGNANI/Desktop/NSSP/NSSP/V2/docs/SYSTEM_OVERVIEW.md)

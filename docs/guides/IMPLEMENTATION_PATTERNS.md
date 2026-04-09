@@ -222,6 +222,69 @@ Regola:
 > Se la sorgente e append-only, l'ottimizzazione giusta e sincronizzare i nuovi eventi e
 > ricostruire a valle i fact canonici, non comprimere la logica direttamente nel mirror.
 
+## Pattern 12 - Chiave canonica cross-source per article_code
+
+Quando piu fact o slice `core` usano `article_code` come chiave logica condivisa, il confronto non deve dipendere dal formato locale della singola sorgente.
+
+Regola tecnica V1:
+
+- usare sempre una helper condivisa:
+  - `src/nssp_v2/shared/article_codes.py`
+  - `normalize_article_code(value)`
+- semantica ammessa:
+  - trim esterno
+  - uppercase
+  - stringa vuota -> `None`
+
+Applicazione gia necessaria e validata:
+
+- `inventory_positions`
+- `customer_set_aside`
+- `commitments`
+- `availability`
+- dettaglio `articoli`
+
+Problema reale risolto:
+
+- lo stesso articolo poteva comparire come `8x7x40` e `8X7X40`
+- i fact venivano spezzati in chiavi diverse
+- la UI `articoli` mostrava `giacenza` corretta ma `availability` negativa o incoerente
+
+Regola:
+
+> Nei mirror `sync_*` il dato puo restare vicino alla sorgente; nei join, rebuild e fact cross-source del `core` la chiave articolo deve passare da `normalize_article_code`.
+
+## Pattern 13 - Refresh semantici backend con dipendenze interne
+
+Quando una surface dipende da una chain composita di sync e rebuild, la conoscenza della chain non deve essere replicata:
+- nella UI
+- negli endpoint
+- nei task operativi
+
+Il backend espone un refresh logico nominale, che incapsula internamente la sequenza completa con comportamento condizionale sugli errori.
+
+Struttura:
+
+1. introdurre un modulo `services/refresh_<surface>.py`
+2. incapsulare sync + rebuild con dipendenze condizionali nella funzione `refresh_<surface>(session, conn_string)`
+3. il router chiama la funzione e restituisce i risultati step-by-step
+4. la UI chiama un singolo endpoint, non conosce gli step interni
+
+Regole operative:
+- se uno step sync fallisce, gli step rebuild che dipendono da esso producono `status="skipped"`
+- tutti gli step restituiscono un `EntityRunResult` (success, error o skipped)
+- la risposta backend e sempre step-by-step e tracciabile
+
+Primo caso validato:
+
+- `refresh_articoli` — `nssp_v2.app.services.refresh_articoli`
+  - 8 step: sync articoli, mag_reale, righe_ordine_cliente, produzioni_attive + rebuild inventory, set_aside, commitments, availability
+  - invocato da `POST /api/sync/surface/produzione`
+
+Regola:
+
+> Il router non orchestra step tecnici; chiama un refresh semantico nominale. La chain reale con le sue dipendenze vive nel service, non nell'endpoint.
+
 ## Quando riusare questi pattern
 
 Questi pattern vanno riusati soprattutto per:
