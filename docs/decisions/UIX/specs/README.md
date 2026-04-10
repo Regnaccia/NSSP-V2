@@ -31,4 +31,5 @@ File presenti:
 |------|-----------|
 | [UIX_SPEC_ARTICOLI.md](UIX_SPEC_ARTICOLI.md) | Istanziazione del pattern multi-colonna per il caso `articoli`, nella variante a `2 colonne` |
 | [UIX_SPEC_CLIENTI_DESTINAZIONI.md](UIX_SPEC_CLIENTI_DESTINAZIONI.md) | Istanziazione del pattern multi-colonna per la surface logistica clienti/destinazioni |
+| [UIX_SPEC_PLANNING_CANDIDATES.md](UIX_SPEC_PLANNING_CANDIDATES.md) | Prima spec UI della surface `Planning Candidates`, come vista operativa V1 aggregata per articolo |
 | [UIX_SPEC_PRODUZIONI.md](UIX_SPEC_PRODUZIONI.md) | Istanziazione del pattern multi-colonna per la surface `produzioni`, nella variante consultiva a `2 colonne` |

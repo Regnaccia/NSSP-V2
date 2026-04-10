@@ -25,6 +25,28 @@ from nssp_v2.shared.article_codes import normalize_article_code
 from nssp_v2.sync.articoli.models import SyncArticolo
 
 
+# ─── Helper: risoluzione planning policy effettiva ───────────────────────────
+
+def resolve_planning_policy(
+    override: bool | None,
+    family_default: bool | None,
+) -> bool | None:
+    """Regola di risoluzione effective policy (DL-ARCH-V2-026 §4).
+
+    effective = override if override is not None else family_default
+
+    Restituisce:
+    - override (True o False) se l'articolo ha un override esplicito
+    - family_default se override e None e la famiglia e assegnata
+    - None se override e None e non c'e famiglia (valore indefinito)
+
+    I consumer devono consumare questo valore senza ricostruire la precedenza.
+    """
+    if override is not None:
+        return override
+    return family_default
+
+
 # ─── Helper display_label ─────────────────────────────────────────────────────
 
 def _compute_display_label(
@@ -99,6 +121,10 @@ def list_articoli(session: Session) -> list[ArticoloItem]:
     for art, config in rows:
         famiglia_code = config.famiglia_code if config is not None else None
         famiglia = famiglie.get(famiglia_code) if famiglia_code else None
+        family_considera = famiglia.considera_in_produzione if famiglia else None
+        family_aggrega = famiglia.aggrega_codice_in_produzione if famiglia else None
+        override_considera = config.override_considera_in_produzione if config is not None else None
+        override_aggrega = config.override_aggrega_codice_in_produzione if config is not None else None
         result.append(ArticoloItem(
             codice_articolo=art.codice_articolo,
             descrizione_1=art.descrizione_1,
@@ -109,6 +135,8 @@ def list_articoli(session: Session) -> list[ArticoloItem]:
             ),
             famiglia_code=famiglia_code,
             famiglia_label=famiglia.label if famiglia else None,
+            effective_considera_in_produzione=resolve_planning_policy(override_considera, family_considera),
+            effective_aggrega_codice_in_produzione=resolve_planning_policy(override_aggrega, family_aggrega),
         ))
     return result
 
@@ -140,6 +168,10 @@ def get_articolo_detail(
     art, config = row
     famiglia_code = config.famiglia_code if config is not None else None
     famiglia = famiglie.get(famiglia_code) if famiglia_code else None
+    family_considera = famiglia.considera_in_produzione if famiglia else None
+    family_aggrega = famiglia.aggrega_codice_in_produzione if famiglia else None
+    override_considera = config.override_considera_in_produzione if config is not None else None
+    override_aggrega = config.override_aggrega_codice_in_produzione if config is not None else None
     normalized_article_code = normalize_article_code(art.codice_articolo)
 
     # Giacenza canonica (DL-ARCH-V2-016) — None se nessun movimento registrato
@@ -197,6 +229,8 @@ def get_articolo_detail(
         ),
         famiglia_code=famiglia_code,
         famiglia_label=famiglia.label if famiglia else None,
+        effective_considera_in_produzione=resolve_planning_policy(override_considera, family_considera),
+        effective_aggrega_codice_in_produzione=resolve_planning_policy(override_aggrega, family_aggrega),
         on_hand_qty=inv.on_hand_qty if inv is not None else None,
         giacenza_computed_at=inv.computed_at if inv is not None else None,
         customer_set_aside_qty=customer_set_aside_qty,

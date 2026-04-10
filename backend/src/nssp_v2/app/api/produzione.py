@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from nssp_v2.app.deps.auth import get_current_user
 from nssp_v2.core.criticita import CriticitaItem, list_criticita_v1
+from nssp_v2.core.planning_candidates import PlanningCandidateItem, list_planning_candidates_v1
 from nssp_v2.core.produzioni import ProduzioneItem, ProduzioniPaginata, list_produzioni, set_forza_completata
 from nssp_v2.core.articoli import (
     ArticoloDetail,
@@ -201,6 +202,24 @@ def get_criticita(
     La logica di criticita e applicata nel Core (DL-ARCH-V2-023).
     """
     return list_criticita_v1(session, solo_in_produzione=solo_in_produzione)
+
+
+@router.get("/planning-candidates", response_model=list[PlanningCandidateItem])
+def get_planning_candidates(
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Lista planning candidates V1: future_availability_qty < 0, ordinati per fabbisogno minimo decrescente.
+
+    Candidato = articolo scoperto anche dopo la supply gia in corso (produzioni attive).
+    Regola V1: future_availability_qty = availability_qty + incoming_supply_qty < 0.
+
+    Il risultato include effective policy (DL-ARCH-V2-026) per consentire alla UI
+    il filtro solo_in_produzione basato su effective_considera_in_produzione.
+
+    La logica di candidatura e applicata nel Core (DL-ARCH-V2-023, DL-ARCH-V2-025).
+    """
+    return list_planning_candidates_v1(session)
 
 
 @router.patch(

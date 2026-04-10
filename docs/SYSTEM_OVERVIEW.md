@@ -56,8 +56,16 @@ Disponibile:
 - catalogo interno `famiglie articolo`
 - associazione articolo -> famiglia
 - filtro famiglia
+- ricerca separata per:
+  - `codice` con normalizzazione dimensionale
+  - `descrizione` testuale
 - gestione catalogo famiglie
-- flag `considera_in_produzione`
+- planning policy di default a livello famiglia:
+  - `considera_in_produzione`
+  - `aggrega_codice_in_produzione`
+- planning policy effettive esposte dal Core `articoli`:
+  - `effective_considera_in_produzione`
+  - `effective_aggrega_codice_in_produzione`
 - giacenza read-only dal Core nel pannello dettaglio
 - computed fact `customer_set_aside` esposto nel pannello dettaglio
 - `committed_qty` e `availability_qty` esposti nel pannello dettaglio
@@ -151,6 +159,24 @@ Disponibile:
 Esposto nel dettaglio `articoli` come campo read-only ODE.
 Ricalcolato nel refresh semantico `articoli` come step 8, dopo `inventory`, `customer_set_aside` e `commitments`.
 
+### Planning Candidates V1
+
+Disponibile:
+
+- primo slice Core `planning_candidates`
+- modulo customer-driven aggregato per articolo
+- `incoming_supply_qty` aggregata da produzioni attive
+- `future_availability_qty = availability_qty + incoming_supply_qty`
+- candidate presente solo se `future_availability_qty < 0`
+- `required_qty_minimum` come scopertura minima residua
+
+Non ancora disponibile:
+
+- surface UI dedicata
+- scoring
+- planning horizon
+- policy di aggregazione avanzata
+
 ## Mirror sync attivi
 
 Gia presenti:
@@ -168,10 +194,12 @@ Gia presenti:
 - `nickname_destinazione`
 - `famiglia articolo`
 - `considera_in_produzione`
+- `aggrega_codice_in_produzione`
 - `inventory_positions`
 - `commitments`
 - `customer_set_aside`
 - `availability`
+- `planning_candidates`
 
 ## Pattern consolidati
 
@@ -185,6 +213,8 @@ Pattern gia validati:
 - refresh semantici backend con dipendenze interne (DL-ARCH-V2-022)
 - logiche di dominio come funzioni intercambiabili su fact canonici (DL-ARCH-V2-023)
 - distinzione esplicita tra chiave articolo raw e chiave articolo canonica (DL-ARCH-V2-024)
+- primo DL del modulo `Planning Candidates` nella V1 ridotta customer-driven aggregata per articolo (DL-ARCH-V2-025)
+- planning policy con default a livello famiglia e override puntuale a livello articolo (DL-ARCH-V2-026)
 
 ### Refresh semantici (DL-ARCH-V2-022)
 
@@ -216,9 +246,9 @@ Il perimetro V1 del modello quantitativo e completo e operativo:
 - normalizzazione `article_code` canonica cross-source (`normalize_article_code`)
 - prima vista operativa `criticita articoli` gia attiva e coerente con la surface `articoli`
 
-Task aperto corrente:
+Task aperti correnti:
 
-- `TASK-V2-061` separazione ricerca `codice` / `descrizione` nella vista `articoli`
+- `TASK-V2-065` UI `Planning Candidates` V1
 
 ## References
 
@@ -233,3 +263,5 @@ Task aperto corrente:
 - `docs/decisions/ARCH/DL-ARCH-V2-022.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-023.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-024.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-025.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-026.md`

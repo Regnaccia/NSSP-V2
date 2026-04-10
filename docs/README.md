@@ -19,6 +19,14 @@ docs/
 | File | Contenuto |
 |------|-----------|
 | [SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) | Panoramica rapida dello stato reale del sistema V2: stream operativi, mirror sync attivi, dati interni, surface e pattern consolidati |
+| [AI_HANDOFF_CURRENT_STATE.md](AI_HANDOFF_CURRENT_STATE.md) | Handoff sintetico per un altro agente AI: cosa fa oggi il software, quali fact e surface sono reali, quali limiti restano e da dove iniziare i ragionamenti successivi |
+
+## Specs
+
+| File | Contenuto |
+|------|-----------|
+| [specs/PLANNING_CANDIDATES_SPEC_V1_1.md](specs/PLANNING_CANDIDATES_SPEC_V1_1.md) | Spec ampia del modulo `Planning Candidates`, utile come intent document e base di ragionamento |
+| [specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Planning Candidates`, allineata al modello canonico attuale della V2 |
 
 ## Reviews
 
@@ -68,6 +76,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-022.md](decisions/ARCH/DL-ARCH-V2-022.md) | Refresh backend semantici con dipendenze interne, tracciabilita step-by-step e skip downstream su prerequisiti falliti |
 | [decisions/ARCH/DL-ARCH-V2-023.md](decisions/ARCH/DL-ARCH-V2-023.md) | Logiche di dominio come funzioni intercambiabili su fact canonici, separate dai computed fact e sostituibili senza rompere il modello |
 | [decisions/ARCH/DL-ARCH-V2-024.md](decisions/ARCH/DL-ARCH-V2-024.md) | Distinzione esplicita tra chiave articolo raw e chiave articolo canonica, con divieto di join diretti misti nei read model e nei fact cross-source |
+| [decisions/ARCH/DL-ARCH-V2-025.md](decisions/ARCH/DL-ARCH-V2-025.md) | Prima definizione di `Planning Candidates` come projection customer-driven aggregata per articolo, basata su `future_availability_qty` e supply gia in corso |
+| [decisions/ARCH/DL-ARCH-V2-026.md](decisions/ARCH/DL-ARCH-V2-026.md) | Policy operative di planning con default a livello famiglia e override articolo, inclusi `considera_in_produzione` e `aggrega_codice_in_produzione` |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -182,6 +192,10 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-059-hardening-criticita-join-article-code.md](task/TASK-V2-059-hardening-criticita-join-article-code.md) | Correggere le join cross-source della vista `criticita articoli` per allinearle alla chiave articolo canonica dei fact |
 | [task/TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md](task/TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md) | Limitare la vista `criticita articoli` ai soli articoli presenti e attivi nella surface `articoli` |
 | [task/TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md](task/TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md) | Separare nella vista `articoli` la ricerca per `codice` da quella per `descrizione`, mantenendo la normalizzazione dimensionale solo sul codice |
+| [task/TASK-V2-062-core-planning-candidates-v1.md](task/TASK-V2-062-core-planning-candidates-v1.md) | Primo slice Core di `Planning Candidates` V1, customer-driven e aggregato per articolo, basato su `future_availability_qty` |
+| [task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md](task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md) | Evolvere il modello `famiglia + articolo` per supportare planning policy con default di famiglia e override articolo |
+| [task/TASK-V2-064-core-effective-planning-policy-articoli.md](task/TASK-V2-064-core-effective-planning-policy-articoli.md) | Esporre nel Core `articoli` i valori effettivi delle planning policy, risolti con precedenza override articolo > default famiglia |
+| [task/TASK-V2-065-ui-planning-candidates-v1.md](task/TASK-V2-065-ui-planning-candidates-v1.md) | Prima surface UI di `Planning Candidates` V1, aggregata per articolo e coerente con i valori effettivi di planning policy |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

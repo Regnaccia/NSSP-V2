@@ -40,6 +40,12 @@ class ArticoloItem(BaseModel):
     famiglia_code: str | None
     famiglia_label: str | None
 
+    # Planning policy effettive (DL-ARCH-V2-026 §Effective policy, TASK-V2-064):
+    #   override articolo se valorizzato, altrimenti default famiglia.
+    #   None se l'articolo non ha famiglia e non ha override (valore indefinito).
+    effective_considera_in_produzione: bool | None
+    effective_aggrega_codice_in_produzione: bool | None
+
 
 class ArticoloDetail(BaseModel):
     """Dettaglio completo di un articolo — popola la colonna destra della UI.
@@ -83,6 +89,12 @@ class ArticoloDetail(BaseModel):
     # Famiglia articolo interna (DL-ARCH-V2-014) — nullable nel primo slice
     famiglia_code: str | None
     famiglia_label: str | None
+
+    # Planning policy effettive (DL-ARCH-V2-026 §Effective policy, TASK-V2-064):
+    #   override articolo se valorizzato, altrimenti default famiglia.
+    #   None se l'articolo non ha famiglia e non ha override (valore indefinito).
+    effective_considera_in_produzione: bool | None = None
+    effective_aggrega_codice_in_produzione: bool | None = None
 
     # Giacenza canonica (DL-ARCH-V2-016, TASK-V2-038) — None se nessun movimento registrato
     on_hand_qty: Decimal | None = None

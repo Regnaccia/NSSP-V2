@@ -191,6 +191,31 @@ export interface CriticitaItem {
   computed_at: string
 }
 
+// ─── Core slice planning candidates (DL-ARCH-V2-025, TASK-V2-062, TASK-V2-065) ─
+
+/** Articolo planning candidate V1: future_availability_qty < 0 */
+export interface PlanningCandidateItem {
+  article_code: string
+  /** Campo sintetico di presentazione */
+  display_label: string
+  famiglia_code: string | null
+  famiglia_label: string | null
+  /** Planning policy effettive (DL-ARCH-V2-026) — null se articolo senza famiglia e senza override */
+  effective_considera_in_produzione: boolean | null
+  effective_aggrega_codice_in_produzione: boolean | null
+  /** Quota libera attuale (core_availability) */
+  availability_qty: string
+  /** Domanda cliente aperta aggregata per articolo */
+  customer_open_demand_qty: string
+  /** Supply aggregata da produzioni attive */
+  incoming_supply_qty: string
+  /** future = availability + incoming_supply (negativa se candidate) */
+  future_availability_qty: string
+  /** abs(future_availability_qty) — fabbisogno minimo */
+  required_qty_minimum: string
+  computed_at: string
+}
+
 /** Dettaglio completo della destinazione selezionata */
 export interface DestinazioneDetail {
   // Dati Easy read-only — destinazione

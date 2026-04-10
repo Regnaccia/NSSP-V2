@@ -24,6 +24,13 @@ class ArticoloFamiglia(Base):
 
     Seed iniziale (DL-ARCH-V2-014 §2):
         materia_prima, articolo_standard, speciale, barre, conto_lavorazione
+
+    Planning policy defaults (DL-ARCH-V2-026):
+        considera_in_produzione: default di inclusione nel perimetro operativo planning/produzione.
+        aggrega_codice_in_produzione: default di aggregabilita per codice nelle logiche operative.
+
+    I valori effettivi per un articolo si ottengono risolvendo:
+        effective = override_articolo if override_articolo is not None else family_default
     """
 
     __tablename__ = "articolo_famiglie"
@@ -33,7 +40,10 @@ class ArticoloFamiglia(Base):
     label: Mapped[str] = mapped_column(String(128), nullable=False)
     sort_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Planning policy defaults (DL-ARCH-V2-026)
     considera_in_produzione: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    aggrega_codice_in_produzione: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class CoreArticoloConfig(Base):
@@ -44,6 +54,17 @@ class CoreArticoloConfig(Base):
 
     famiglia_code: riferimento stabile al code in articolo_famiglie.
                    Nullable: la mancanza di famiglia non blocca la surface.
+
+    Override nullable tri-state (DL-ARCH-V2-026 §Override articolo):
+        null  = eredita dalla famiglia (default)
+        True  = sovrascrive con True indipendentemente dalla famiglia
+        False = sovrascrive con False indipendentemente dalla famiglia
+
+    override_considera_in_produzione: override puntuale per l'inclusione nel perimetro operativo.
+    override_aggrega_codice_in_produzione: override puntuale per l'aggregabilita per codice.
+
+    Risoluzione (effective policy):
+        effective_value = override if override is not None else family_default
     """
 
     __tablename__ = "core_articolo_config"
@@ -51,3 +72,7 @@ class CoreArticoloConfig(Base):
     codice_articolo: Mapped[str] = mapped_column(String(25), primary_key=True)
     famiglia_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    # Override nullable tri-state (DL-ARCH-V2-026)
+    override_considera_in_produzione: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    override_aggrega_codice_in_produzione: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

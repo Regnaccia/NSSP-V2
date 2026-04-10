@@ -48,6 +48,20 @@ Sono oggi disponibili:
 - fix applicato sul bug di `availability` dovuto a `article_code` incoerente tra fact canonici, tramite helper condivisa `normalize_article_code`
 - `committed_qty` e `availability_qty` esposti nel dettaglio UI `articoli` come campi read-only ODE
 - refresh semantici backend: `refresh_articoli()` in `app/services/refresh_articoli.py`, router thin, chain incapsulata
+- planning policy defaults a livello famiglia:
+  - `considera_in_produzione`
+  - `aggrega_codice_in_produzione`
+- override articolo nullable per planning policy
+- valori effettivi nel Core `articoli`:
+  - `effective_considera_in_produzione`
+  - `effective_aggrega_codice_in_produzione`
+- ricerca `articoli` separata in:
+  - `codice` con normalizzazione dimensionale
+  - `descrizione` testuale libera
+- primo slice Core `Planning Candidates` V1:
+  - aggregato per articolo
+  - customer-driven
+  - basato su `future_availability_qty`
 - prima surface operativa `criticita articoli`
 - toggle del perimetro `considera_in_produzione` nella vista `criticita`
 - refresh della vista `criticita` agganciato al refresh semantico completo della surface `articoli`
@@ -58,7 +72,7 @@ Sono oggi disponibili:
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-024`
+- `ARCH/` fino a `DL-ARCH-V2-026`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -77,7 +91,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-060`
+- `TASK-V2-001` -> `TASK-V2-064`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -132,10 +146,14 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-058` pulsante `Aggiorna` della vista `criticita` collegato al refresh semantico `refresh_articoli()`
 - `TASK-V2-059` hardening join raw/canonical nel slice `criticita`
 - `TASK-V2-060` perimetro `criticita` ristretto ai soli articoli presenti e attivi in `articoli`
+- `TASK-V2-061` ricerca `articoli` separata tra `codice` e `descrizione`
+- `TASK-V2-062` Core `Planning Candidates` V1 aggregato per articolo con `future_availability_qty`
+- `TASK-V2-063` modello `famiglia + articolo` esteso a planning policy defaults + override
+- `TASK-V2-064` Core `articoli` esteso con `effective_considera_in_produzione` e `effective_aggrega_codice_in_produzione`
 
 ## Task aperti
 
-- `TASK-V2-061` separare nella vista `articoli` la ricerca per codice dalla ricerca per descrizione
+- `TASK-V2-065` introdurre la prima surface UI `Planning Candidates` V1
 
 ## Gap noti
 
@@ -157,7 +175,7 @@ Il perimetro V1 del modello quantitativo e ora completamente chiuso e operativo:
 
 I prossimi stream naturali riguardano:
 
-- refinement UX della ricerca `articoli`: campo `codice` con normalizzazione dimensionale e campo `descrizione` testuale separato
+- prima vista UI `Planning Candidates` solo dopo il consolidamento del Core V1 e dei valori effettivi di policy
 - evoluzione futura della surface `criticita articoli` verso logiche piu ricche: famiglie, scorte, policy di aggregazione e slice temporali
 - scheduler automatico dei refresh
 - `rebuild_commitments.py` script on-demand mancante

@@ -76,4 +76,8 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-058` | Completed | Pulsante `Aggiorna` della vista criticita collegato al refresh semantico completo della surface articoli |
 | `TASK-V2-059` | Completed | Hardening delle join cross-source della vista criticita sulla chiave articolo canonica |
 | `TASK-V2-060` | Completed | Perimetro criticita ristretto ai soli articoli presenti e attivi nella surface articoli |
-| `TASK-V2-061` | Todo | Separare nella vista articoli la ricerca per codice da quella per descrizione |
+| `TASK-V2-061` | Completed | Separazione della ricerca articoli in campi distinti `codice` e `descrizione` |
+| `TASK-V2-062` | Completed | Primo slice Core di Planning Candidates V1 customer-driven aggregato per articolo |
+| `TASK-V2-063` | Completed | Evoluzione del modello `famiglia + articolo` per planning policy di default e override |
+| `TASK-V2-064` | Completed | Esposizione nel Core `articoli` dei valori effettivi delle planning policy |
+| `TASK-V2-065` | Todo | Prima surface UI di Planning Candidates V1 aggregata per articolo |

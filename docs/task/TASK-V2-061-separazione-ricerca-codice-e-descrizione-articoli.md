@@ -1,7 +1,7 @@
 # TASK-V2-061 - Separazione ricerca codice e descrizione articoli
 
 ## Status
-Todo
+Done
 
 ## Date
 2026-04-10
@@ -125,3 +125,69 @@ Direzione raccomandata:
 
 Claude aggiorna solo questo task con completion notes ricche.
 Il riallineamento di roadmap, overview, indici e guide trasversali viene fatto successivamente da Codex o da un revisore documentale.
+
+---
+
+## Completion Notes
+
+### Separazione logica di ricerca
+
+Prima di questo task, un singolo campo di ricerca applicava `normalizeSearch` (che converte
+`.` → `x`, varianti `X`/spazi → `x`) su codice, `descrizione_1` e `descrizione_2`
+contemporaneamente.
+
+La normalizzazione è corretta per il codice articolo (dove `8.7.160` deve matchare `8x7x160`)
+ma inappropriata per la descrizione libera (dove un utente che cerca `"rosso"` non deve
+subire alcuna conversione di separatori).
+
+### Modifiche — solo `ProduzioneHome.tsx`
+
+**Funzioni di matching** — `matchesSearch` è stata sostituita da due funzioni distinte:
+
+```typescript
+// Codice: normalizzazione DL-UIX-V2-004 attiva
+function matchesCodice(articolo: ArticoloItem, raw: string): boolean {
+  if (!raw.trim()) return true
+  const needle = normalizeSearch(raw)   // . → x, X → x, lowercase
+  return articolo.codice_articolo.toLowerCase().includes(needle)
+}
+
+// Descrizione: testo libero, nessuna conversione dimensionale
+function matchesDesc(articolo: ArticoloItem, raw: string): boolean {
+  if (!raw.trim()) return true
+  const needle = raw.trim().toLowerCase()
+  return (
+    (articolo.descrizione_1 ?? '').toLowerCase().includes(needle) ||
+    (articolo.descrizione_2 ?? '').toLowerCase().includes(needle)
+  )
+}
+```
+
+**`ColonnaArticoli`** — due input distinti nel pannello laterale sinistro:
+
+- `Codice…` — placeholder esplicito, applica `matchesCodice`
+- `Descrizione…` — placeholder esplicito, applica `matchesDesc`
+
+Il filtro famiglia si compone con entrambi: `filter(family) → filter(codice) → filter(desc)`.
+
+Il contatore risultati si attiva se almeno uno dei tre filtri è attivo
+(`filterCodice.trim() || filterDesc.trim() || familyFilter !== 'all'`).
+
+**`ProduzioneHome`** — stato separato: `filterCodice` e `filterDesc` invece del singolo `filter`.
+
+Nessuna modifica al backend — il contratto API della lista articoli non è coinvolto.
+
+### Verifica
+
+```
+npm run build
+✓ built in 7.29s
+```
+
+## Completed At
+
+2026-04-10
+
+## Completed By
+
+Claude Code

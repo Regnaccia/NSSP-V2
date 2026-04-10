@@ -80,4 +80,8 @@ Task registrati:
 - `TASK-V2-058-refresh-criticita-collegato-a-refresh-articoli.md` - completato
 - `TASK-V2-059-hardening-criticita-join-article-code.md` - completato
 - `TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md` - completato
-- `TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md` - todo
+- `TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md` - completato
+- `TASK-V2-062-core-planning-candidates-v1.md` - completato
+- `TASK-V2-063-model-planning-policy-defaults-e-overrides.md` - completato
+- `TASK-V2-064-core-effective-planning-policy-articoli.md` - completato
+- `TASK-V2-065-ui-planning-candidates-v1.md` - todo

@@ -159,6 +159,7 @@ DL:
 - `docs/decisions/ARCH/DL-ARCH-V2-019.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-021.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-022.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-026.md`
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
 - `docs/decisions/UIX/DL-UIX-V2-004.md`
 - `docs/decisions/UIX/specs/UIX_SPEC_ARTICOLI.md`
@@ -182,6 +183,8 @@ Task:
 - `docs/task/TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md`
 - `docs/task/TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md`
 - `docs/task/TASK-V2-054-refresh-semantici-backend.md`
+- `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
+- `docs/task/TASK-V2-064-core-effective-planning-policy-articoli.md`
 
 ### Pattern UI
 
@@ -195,6 +198,7 @@ Task:
 - `customer_set_aside`
 - `commitments`
 - `availability`
+- planning policy effettive articolo
 
 ### Cosa espone
 
@@ -208,6 +212,9 @@ Colonna 2:
 
 - dati anagrafici read-only Easy
 - `famiglia articolo`
+- policy effettive di planning disponibili nel Core:
+  - `effective_considera_in_produzione`
+  - `effective_aggrega_codice_in_produzione`
 - `giacenza`
 - `customer_set_aside`
 - `committed_qty`
@@ -251,6 +258,7 @@ Gestione del catalogo interno `famiglie articolo`.
 DL:
 
 - `docs/decisions/ARCH/DL-ARCH-V2-014.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-026.md`
 - `docs/decisions/UIX/DL-UIX-V2-002.md`
 - `docs/decisions/UIX/specs/UIX_SPEC_ARTICOLI.md`
 
@@ -260,6 +268,7 @@ Task:
 - `docs/task/TASK-V2-025-ui-tabella-famiglia-articoli.md`
 - `docs/task/TASK-V2-026-gestione-famiglie-articoli.md`
 - `docs/task/TASK-V2-027-flag-considera-in-produzione-famiglie.md`
+- `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
 
 ### Entita logiche usate
 
@@ -270,12 +279,14 @@ Task:
 - elenco famiglie
 - stato attivo/inattivo
 - flag `considera_in_produzione`
+- flag `aggrega_codice_in_produzione`
 
 ### Azioni principali
 
 - creare famiglia
 - attivare/disattivare famiglia
 - modificare `considera_in_produzione`
+- modificare `aggrega_codice_in_produzione`
 
 ### Note
 
