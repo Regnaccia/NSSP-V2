@@ -46,6 +46,33 @@ Spiegare il problema e il perche del task.
 - vincoli tecnici
 - limiti operativi o di rollout
 
+## Refresh / Sync Behavior
+
+Da compilare sempre quando il task introduce o modifica una vista UI che consuma:
+
+- mirror `sync_*`
+- fact canonici derivati
+- freshness
+- trigger di aggiornamento dati
+
+Indicare esplicitamente uno di questi casi:
+
+- `La vista non ha refresh on demand`
+- `La vista riusa un refresh semantico backend gia esistente`
+- `Il task introduce o modifica un refresh semantico backend dedicato`
+
+Se la vista ha un pulsante `Aggiorna` o un comportamento equivalente, dichiarare:
+
+- quale funzione semantica backend deve essere chiamata
+- quali fact o slice vengono riallineati
+- se al termine viene ricaricata solo la vista corrente o anche altro
+
+Regola:
+
+- non lasciare mai implicito il comportamento di refresh di una nuova vista UI
+- evitare reload locali che sembrano refresh completi ma non riallineano le dipendenze
+- se una vista dipende da fact derivati, il task deve dire esplicitamente come vengono aggiornati
+
 ## Acceptance Criteria
 
 - criterio verificabile 1
@@ -150,6 +177,7 @@ Indicare esplicitamente:
 - sequence / refresh chain cambiate
 - fact o read model aggiunti o modificati
 - comportamento utente visibile cambiato
+- comportamento del refresh della vista, se presente
 
 ### Dependencies Introduced
 

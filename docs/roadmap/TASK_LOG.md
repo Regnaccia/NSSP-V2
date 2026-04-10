@@ -70,3 +70,10 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-052` | Completed | Hardening dei confronti `article_code` cross-source con helper condivisa `normalize_article_code` |
 | `TASK-V2-053` | Completed | Estensione del refresh articoli per aggiornare `commitments` cliente e produzione prima di `availability` |
 | `TASK-V2-054` | Completed | Refactor backend verso refresh semantici con dipendenze interne e skip downstream su prerequisiti falliti |
+| `TASK-V2-055` | Completed | Prima vista operativa minima di criticita articoli basata su `availability_qty < 0` |
+| `TASK-V2-056` | Completed | Refinement UI criticita articoli con perimetro `considera_in_produzione`, filtro famiglia e ordinamenti quantitativi |
+| `TASK-V2-057` | Completed | Toggle del filtro `considera_in_produzione` nella vista criticita, con default attivo e disattivazione per debug |
+| `TASK-V2-058` | Completed | Pulsante `Aggiorna` della vista criticita collegato al refresh semantico completo della surface articoli |
+| `TASK-V2-059` | Completed | Hardening delle join cross-source della vista criticita sulla chiave articolo canonica |
+| `TASK-V2-060` | Completed | Perimetro criticita ristretto ai soli articoli presenti e attivi nella surface articoli |
+| `TASK-V2-061` | Todo | Separare nella vista articoli la ricerca per codice da quella per descrizione |

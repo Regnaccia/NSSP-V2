@@ -1,15 +1,16 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-09
+2026-04-10
 
 ## Stato generale
 
-La V2 ha completato il bootstrap architetturale principale e ha chiuso tre stream applicativi minimi:
+La V2 ha completato il bootstrap architetturale principale e ha chiuso quattro stream applicativi minimi:
 
 - `logistica`
 - `produzione/articoli`
 - `produzioni`
+- `criticita articoli`
 
 Sono oggi disponibili:
 
@@ -28,7 +29,6 @@ Sono oggi disponibili:
 - vista dedicata al catalogo `famiglie articolo`
 - gestione minima del catalogo famiglie
 - flag `considera_in_produzione` nel catalogo famiglie
-- mapping tecnico iniziale `produzioni` da Easy (`DPRE_PROD` / `SDPRE_PROD`)
 - sync reale Easy read-only per `produzioni_attive` e `produzioni_storiche`
 - Core `produzioni` con `bucket`, `stato_produzione` e `forza_completata`
 - UI browser `produzioni` consultiva a `2 colonne`
@@ -43,22 +43,22 @@ Sono oggi disponibili:
 - estensione `commitments` alla provenienza `production` per materiali `CAT_ART1 != 0`
 - computed fact canonico `customer_set_aside` da `DOC_QTAP`
 - `customer_set_aside` esposto nel dettaglio UI `articoli` come campo read-only ODE
-- refresh sequenziale `articoli -> mag_reale -> righe_ordine_cliente -> inventory_positions -> customer_set_aside`
 - `sync_righe_ordine_cliente` come mirror operativo attivo (`delete_absent_keys`)
 - computed fact canonico `availability` (inventory - set_aside - committed)
 - fix applicato sul bug di `availability` dovuto a `article_code` incoerente tra fact canonici, tramite helper condivisa `normalize_article_code`
 - `committed_qty` e `availability_qty` esposti nel dettaglio UI `articoli` come campi read-only ODE
-- refresh sequenziale `articoli` esteso a 6 step: aggiunto `rebuild_availability` come step finale
-- hardening normalizzazione `article_code` cross-source — `normalize_article_code` in tutti i rebuild Core
-- refresh `articoli` esteso a 8 step: aggiunto `sync_produzioni_attive` + `rebuild_commitments`
-- refresh semantici backend: `refresh_articoli()` in `app/services/refresh_articoli.py` — router thin, chain incapsulata
-- 507 test backend passanti, `npm run build` zero errori
+- refresh semantici backend: `refresh_articoli()` in `app/services/refresh_articoli.py`, router thin, chain incapsulata
+- prima surface operativa `criticita articoli`
+- toggle del perimetro `considera_in_produzione` nella vista `criticita`
+- refresh della vista `criticita` agganciato al refresh semantico completo della surface `articoli`
+- hardening delle join cross-source della vista `criticita` sulla chiave articolo canonica
+- perimetro `criticita` ristretto ai soli articoli presenti e attivi nella surface `articoli`
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-022`
+- `ARCH/` fino a `DL-ARCH-V2-024`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -77,7 +77,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-054`
+- `TASK-V2-001` -> `TASK-V2-060`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -120,23 +120,29 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-046` refresh sequenziale esteso a `customer_set_aside`
 - `TASK-V2-047` refresh corretto con `sync_righe_ordine_cliente` a monte del rebuild
 - `TASK-V2-048` allineamento operativo `sync_righe_ordine_cliente` — `delete_absent_keys`
-- `TASK-V2-049` Core `availability` — computed fact canonico
+- `TASK-V2-049` Core `availability`
 - `TASK-V2-050` `committed_qty` e `availability_qty` nel dettaglio UI `articoli`
-- `TASK-V2-051` refresh sequenziale `articoli` esteso a `availability` (step 6)
-- `TASK-V2-052` hardening normalizzazione `article_code` cross-source (`normalize_article_code` in `inventory_positions`)
-- `TASK-V2-053` refresh `articoli` esteso a 8 step: `sync_produzioni_attive` + `rebuild_commitments`
-- `TASK-V2-054` refresh semantici backend — `refresh_articoli()` in `app/services/`, router thin
+- `TASK-V2-051` refresh sequenziale `articoli` esteso a `availability`
+- `TASK-V2-052` hardening normalizzazione `article_code` cross-source
+- `TASK-V2-053` refresh `articoli` esteso a `sync_produzioni_attive` + `rebuild_commitments`
+- `TASK-V2-054` refresh semantici backend con `refresh_articoli()`
+- `TASK-V2-055` prima vista operativa minima `criticita articoli`
+- `TASK-V2-056` refinement UI `criticita`: perimetro `considera_in_produzione`, filtro famiglia e ordinamenti
+- `TASK-V2-057` toggle del perimetro `considera_in_produzione` con default attivo e disattivazione per debug
+- `TASK-V2-058` pulsante `Aggiorna` della vista `criticita` collegato al refresh semantico `refresh_articoli()`
+- `TASK-V2-059` hardening join raw/canonical nel slice `criticita`
+- `TASK-V2-060` perimetro `criticita` ristretto ai soli articoli presenti e attivi in `articoli`
 
 ## Task aperti
 
-Nessuno.
+- `TASK-V2-061` separare nella vista `articoli` la ricerca per codice dalla ricerca per descrizione
 
 ## Gap noti
 
 - la documentazione `UIX` e separata tra pattern generale e spec caso concreto; i prossimi casi dovranno aggiungere nuove spec dedicate
 - il catalogo `famiglie articolo` e ormai un vero riferimento interno; i prossimi stream dovranno decidere se riusare lo stesso pattern anche per altri cataloghi di dominio
 - i report `docs/test/` coprono formalmente solo i primi test storici; per i task piu recenti la verifica vive nelle `Completion Notes`
-- manca uno script `rebuild_commitments.py` on-demand (analoghi a `rebuild_inventory_positions.py` e `rebuild_availability.py`)
+- manca uno script `rebuild_commitments.py` on-demand (analogo a `rebuild_inventory_positions.py` e `rebuild_availability.py`)
 
 ## Prossima sequenza consigliata
 
@@ -147,11 +153,12 @@ Il perimetro V1 del modello quantitativo e ora completamente chiuso e operativo:
 - refresh semantico completo della surface `articoli` in un unico trigger (8 step)
 - normalizzazione `article_code` canonica cross-source
 - router thin: la chain non e piu replicata negli endpoint
+- prima vista operativa `criticita articoli` gia coerente con la surface `articoli`
 
 I prossimi stream naturali riguardano:
-- definizione di un modello di logiche di dominio intercambiabili su fact canonici, senza hardcode diretto delle formule nelle surface o nei read model
-- prima logica operativa vera su `articoli`: `criticita` / `stato_copertura`, inizialmente basata su `availability`
-- nuova surface operativa dedicata a disponibilita / criticita articoli
+
+- refinement UX della ricerca `articoli`: campo `codice` con normalizzazione dimensionale e campo `descrizione` testuale separato
+- evoluzione futura della surface `criticita articoli` verso logiche piu ricche: famiglie, scorte, policy di aggregazione e slice temporali
 - scheduler automatico dei refresh
 - `rebuild_commitments.py` script on-demand mancante
 

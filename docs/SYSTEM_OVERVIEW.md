@@ -1,7 +1,7 @@
 # ODE V2 - System Overview
 
 ## Date
-2026-04-09
+2026-04-10
 
 ## Scopo
 
@@ -63,6 +63,19 @@ Disponibile:
 - `committed_qty` e `availability_qty` esposti nel pannello dettaglio
 - refresh semantico backend-controlled `refresh_articoli()` con chain interna completa a 8 step
 
+### Produzione / Criticita Articoli
+
+Disponibile:
+
+- vista operativa minima di criticita basata su `availability_qty < 0`
+- logica di dominio V1 applicata nel Core backend
+- filtro famiglia
+- ordinamenti quantitativi
+- toggle del perimetro `considera_in_produzione` con default attivo
+- refresh della vista agganciato al refresh semantico completo `refresh_articoli()`
+- perimetro ristretto ai soli articoli presenti e attivi nella surface `articoli`
+- hardening delle join cross-source sulla chiave articolo canonica
+
 ### Produzioni
 
 Disponibile:
@@ -101,8 +114,8 @@ Disponibile:
 
 Mirror operativo attivo:
 
-- `delete_absent_keys`: le righe non più presenti in `V_TORDCLI` vengono rimosse dalla sync successiva
-- le righe con `COLL_RIGA_PREC = true` restano finché la sorgente le include
+- `delete_absent_keys`: le righe non piu presenti in `V_TORDCLI` vengono rimosse dalla sync successiva
+- le righe con `COLL_RIGA_PREC = true` restano finche la sorgente le include
 
 ### Commitments
 
@@ -120,7 +133,7 @@ Disponibile:
 
 - computed fact `customer_set_aside` da `DOC_QTAP`
 - `set_aside_qty = DOC_QTAP` per righe ordine con quota appartata > 0
-- separato da `commitments` (open_qty) e da `inventory` (stock fisico)
+- separato da `commitments` e da `inventory`
 - esposto nel dettaglio UI `articoli` come campo read-only ODE
 - ricalcolato nel refresh sequenziale dopo `sync_righe_ordine_cliente`
 
@@ -128,10 +141,10 @@ Disponibile:
 
 Disponibile:
 
-- computed fact `availability` — quota libera per articolo
+- computed fact `availability`
 - formula canonica V1: `availability_qty = inventory_qty - customer_set_aside_qty - committed_qty`
 - rebuild deterministic (`delete-all + re-insert`)
-- valori negativi ammessi (no clamp — sovra-impegno visibile)
+- valori negativi ammessi
 - un record per `article_code` (UniqueConstraint)
 - script on-demand: `scripts/rebuild_availability.py`
 
@@ -170,25 +183,27 @@ Pattern gia validati:
 - catalogo interno di riferimento + associazione a entita
 - pattern UIX generale + spec concreta
 - refresh semantici backend con dipendenze interne (DL-ARCH-V2-022)
+- logiche di dominio come funzioni intercambiabili su fact canonici (DL-ARCH-V2-023)
+- distinzione esplicita tra chiave articolo raw e chiave articolo canonica (DL-ARCH-V2-024)
 
 ### Refresh semantici (DL-ARCH-V2-022)
 
 La surface `articoli` espone un refresh semantico nominato.
-Il router chiama `refresh_articoli()` — non sa nulla degli step interni.
+Il router chiama `refresh_articoli()` e non conosce gli step interni.
 La chain (8 step, dipendenze condizionali) vive in `app/services/refresh_articoli.py`.
 
 Chain completa:
 
-```
+```text
 POST /api/sync/surface/produzione
-  Step 1 — sync articoli
-  Step 2 — sync mag_reale
-  Step 3 — sync righe_ordine_cliente
-  Step 4 — sync produzioni_attive
-  Step 5 — rebuild inventory_positions     (sempre)
-  Step 6 — rebuild customer_set_aside      (skip se step 3 non OK)
-  Step 7 — rebuild commitments             (skip se step 3 o 4 non OK)
-  Step 8 — rebuild availability            (skip se step 5/6/7 non OK)
+  Step 1 - sync articoli
+  Step 2 - sync mag_reale
+  Step 3 - sync righe_ordine_cliente
+  Step 4 - sync produzioni_attive
+  Step 5 - rebuild inventory_positions
+  Step 6 - rebuild customer_set_aside
+  Step 7 - rebuild commitments
+  Step 8 - rebuild availability
 ```
 
 ## Stato attuale
@@ -199,8 +214,11 @@ Il perimetro V1 del modello quantitativo e completo e operativo:
 - tutti e quattro i fact esposti nel dettaglio `articoli`
 - refresh semantico completo: tutti i fact ricalcolati in un solo trigger
 - normalizzazione `article_code` canonica cross-source (`normalize_article_code`)
+- prima vista operativa `criticita articoli` gia attiva e coerente con la surface `articoli`
 
-Nessun task aperto.
+Task aperto corrente:
+
+- `TASK-V2-061` separazione ricerca `codice` / `descrizione` nella vista `articoli`
 
 ## References
 
@@ -213,3 +231,5 @@ Nessun task aperto.
 - `docs/decisions/ARCH/DL-ARCH-V2-020.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-021.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-022.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-023.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-024.md`

@@ -23,6 +23,11 @@ Serve come mappa rapida per capire "cosa fa la schermata" senza dover inseguire 
 - i dati Easy sono mostrati come read-only
 - i dati interni V2 sono configurabili solo dove esiste una logica esplicita
 - i refresh sono backend-controlled
+- ogni nuova vista UI deve dichiarare esplicitamente se:
+  - non ha refresh on demand
+  - riusa un refresh semantico backend gia esistente
+  - richiede un refresh semantico backend dedicato
+- un pulsante `Aggiorna` non deve mai limitarsi a un semplice reload locale se la vista dipende da fact derivati che hanno prerequisiti a monte
 
 ## 1. Admin
 
@@ -342,7 +347,77 @@ Colonna 2:
 - `sync_produzioni_storiche`
 - Core `produzioni`
 
-## 6. Relazione tra schermate e fact canonici
+## 6. Produzione - Criticita Articoli
+
+### Funzione
+
+Vista operativa minima degli articoli critici, basata sulla disponibilita negativa e pensata come primo punto di lavoro sulle logiche di dominio.
+
+### Dipendenze documentali
+
+DL:
+
+- `docs/decisions/ARCH/DL-ARCH-V2-021.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-022.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-023.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-024.md`
+
+Task:
+
+- `docs/task/TASK-V2-055-criticita-articoli-v1.md`
+- `docs/task/TASK-V2-056-refinement-ui-criticita-articoli.md`
+- `docs/task/TASK-V2-057-toggle-considera-in-produzione-criticita.md`
+- `docs/task/TASK-V2-058-refresh-criticita-collegato-a-refresh-articoli.md`
+- `docs/task/TASK-V2-059-hardening-criticita-join-article-code.md`
+- `docs/task/TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md`
+
+### Pattern UI
+
+- vista tabellare full-width
+
+### Entita logiche usate
+
+- `availability`
+- `commitments`
+- `customer_set_aside`
+- `inventory_positions`
+- `articoli`
+- `famiglie articolo`
+- logica `criticita_articoli_v1`
+
+### Cosa espone
+
+- lista articoli critici
+- descrizione articolo
+- famiglia
+- `giacenza`
+- `appartata`
+- `impegnata`
+- `disponibilita`
+- toggle `solo_in_produzione`
+- filtro famiglia
+
+### Azioni principali
+
+- refresh on demand criticita, che riusa il refresh semantico completo `refresh_articoli`
+- attivazione/disattivazione del perimetro `considera_in_produzione`
+- filtro per famiglia
+- ordinamento per famiglia e campi quantitativi
+
+### Catena dati principale
+
+- `refresh_articoli()` come refresh semantico backend completo
+- Core `availability`
+- Core `criticita`
+- anagrafica `articoli` come perimetro esplicito della vista
+
+### Note
+
+- la vista `criticita` e un sottoinsieme operativo della surface `articoli`
+- mostra solo articoli presenti e attivi in `articoli`
+- non ricalcola localmente la logica: consuma solo esiti del Core
+
+## 7. Relazione tra schermate e fact canonici
 
 ### Inventory
 
@@ -367,8 +442,9 @@ Usato oggi in:
 Usato oggi in:
 
 - dettaglio `articoli`
+- vista `criticita articoli`
 
-## 7. Prossimi step UI naturali
+## 8. Prossimi step UI naturali
 
 - decidere in futuro se introdurre una schermata dedicata a:
   - stock / disponibilita

@@ -12,6 +12,10 @@ Regole operative:
 - ogni task deve dichiarare esplicitamente il livello di verifica richiesto:
   - `Mirata`
   - `Full suite / milestone`
+- ogni task che introduce o modifica una vista UI deve dichiarare esplicitamente il comportamento di refresh:
+  - nessun refresh on demand
+  - refresh semantico backend riusato
+  - refresh semantico backend introdotto o modificato
 - di default Claude aggiorna solo il task chiuso; il riallineamento di roadmap, overview, indici e guide trasversali viene fatto successivamente da Codex o da un revisore documentale
 
 Task registrati:
@@ -70,3 +74,10 @@ Task registrati:
 - `TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md` - completato
 - `TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md` - completato
 - `TASK-V2-054-refresh-semantici-backend.md` - completato
+- `TASK-V2-055-criticita-articoli-v1.md` - completato
+- `TASK-V2-056-refinement-ui-criticita-articoli.md` - completato
+- `TASK-V2-057-toggle-considera-in-produzione-criticita.md` - completato
+- `TASK-V2-058-refresh-criticita-collegato-a-refresh-articoli.md` - completato
+- `TASK-V2-059-hardening-criticita-join-article-code.md` - completato
+- `TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md` - completato
+- `TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md` - todo

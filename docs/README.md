@@ -66,6 +66,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-020.md](decisions/ARCH/DL-ARCH-V2-020.md) | `V_TORDCLI` come mirror operativo delle righe ordine cliente attive, con storico delegato a sorgenti Easy separate |
 | [decisions/ARCH/DL-ARCH-V2-021.md](decisions/ARCH/DL-ARCH-V2-021.md) | `Availability` come computed fact canonico derivato da `inventory`, `customer_set_aside` e `commitments` |
 | [decisions/ARCH/DL-ARCH-V2-022.md](decisions/ARCH/DL-ARCH-V2-022.md) | Refresh backend semantici con dipendenze interne, tracciabilita step-by-step e skip downstream su prerequisiti falliti |
+| [decisions/ARCH/DL-ARCH-V2-023.md](decisions/ARCH/DL-ARCH-V2-023.md) | Logiche di dominio come funzioni intercambiabili su fact canonici, separate dai computed fact e sostituibili senza rompere il modello |
+| [decisions/ARCH/DL-ARCH-V2-024.md](decisions/ARCH/DL-ARCH-V2-024.md) | Distinzione esplicita tra chiave articolo raw e chiave articolo canonica, con divieto di join diretti misti nei read model e nei fact cross-source |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -173,6 +175,13 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md](task/TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md) | Hardening leggero dei confronti `article_code` cross-source con helper condivisa `normalize_article_code` |
 | [task/TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md](task/TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md) | Estensione del refresh backend della surface `articoli` per aggiornare anche `commitments` cliente e produzione |
 | [task/TASK-V2-054-refresh-semantici-backend.md](task/TASK-V2-054-refresh-semantici-backend.md) | Refactor backend verso refresh semantici con dipendenze interne invece di catene tecniche replicate nei chiamanti |
+| [task/TASK-V2-055-criticita-articoli-v1.md](task/TASK-V2-055-criticita-articoli-v1.md) | Prima vista operativa minima di `criticita articoli`, basata su una logica V1 semplice: articolo critico se `availability_qty < 0` |
+| [task/TASK-V2-056-refinement-ui-criticita-articoli.md](task/TASK-V2-056-refinement-ui-criticita-articoli.md) | Refinement della vista `criticita articoli` con perimetro `considera_in_produzione`, filtro famiglia e ordinamenti per famiglia e campi quantitativi |
+| [task/TASK-V2-057-toggle-considera-in-produzione-criticita.md](task/TASK-V2-057-toggle-considera-in-produzione-criticita.md) | Toggle del filtro `considera_in_produzione` nella vista `criticita articoli`, con default attivo e possibilita di disattivarlo per debug |
+| [task/TASK-V2-058-refresh-criticita-collegato-a-refresh-articoli.md](task/TASK-V2-058-refresh-criticita-collegato-a-refresh-articoli.md) | Collegare il pulsante `Aggiorna` della vista `criticita articoli` al refresh semantico completo della surface `produzione/articoli` |
+| [task/TASK-V2-059-hardening-criticita-join-article-code.md](task/TASK-V2-059-hardening-criticita-join-article-code.md) | Correggere le join cross-source della vista `criticita articoli` per allinearle alla chiave articolo canonica dei fact |
+| [task/TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md](task/TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md) | Limitare la vista `criticita articoli` ai soli articoli presenti e attivi nella surface `articoli` |
+| [task/TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md](task/TASK-V2-061-separazione-ricerca-codice-e-descrizione-articoli.md) | Separare nella vista `articoli` la ricerca per `codice` da quella per `descrizione`, mantenendo la normalizzazione dimensionale solo sul codice |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

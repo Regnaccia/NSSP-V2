@@ -174,6 +174,23 @@ export interface ProduzioneItem {
   forza_completata: boolean
 }
 
+// ─── Core slice criticita articoli (DL-ARCH-V2-023, TASK-V2-055) ─────────────
+
+/** Articolo critico V1: availability_qty < 0 */
+export interface CriticitaItem {
+  article_code: string
+  descrizione_1: string | null
+  descrizione_2: string | null
+  display_label: string
+  famiglia_code: string | null
+  famiglia_label: string | null
+  inventory_qty: string
+  customer_set_aside_qty: string
+  committed_qty: string
+  availability_qty: string
+  computed_at: string
+}
+
 /** Dettaglio completo della destinazione selezionata */
 export interface DestinazioneDetail {
   // Dati Easy read-only — destinazione

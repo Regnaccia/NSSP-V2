@@ -27,17 +27,20 @@ function normalizeSearch(input: string): string {
     .toLowerCase()
 }
 
-function matchesSearch(articolo: ArticoloItem, raw: string): boolean {
+/** Ricerca per codice: applica normalizzazione dimensionale (DL-UIX-V2-004). */
+function matchesCodice(articolo: ArticoloItem, raw: string): boolean {
   if (!raw.trim()) return true
   const needle = normalizeSearch(raw)
-  const codice = articolo.codice_articolo.toLowerCase()
-  const desc1 = normalizeSearch(articolo.descrizione_1 ?? '')
-  const desc2 = normalizeSearch(articolo.descrizione_2 ?? '')
-  return (
-    codice.includes(needle) ||
-    desc1.includes(needle) ||
-    desc2.includes(needle)
-  )
+  return articolo.codice_articolo.toLowerCase().includes(needle)
+}
+
+/** Ricerca per descrizione: testo libero, nessuna conversione separatori. */
+function matchesDesc(articolo: ArticoloItem, raw: string): boolean {
+  if (!raw.trim()) return true
+  const needle = raw.trim().toLowerCase()
+  const desc1 = (articolo.descrizione_1 ?? '').toLowerCase()
+  const desc2 = (articolo.descrizione_2 ?? '').toLowerCase()
+  return desc1.includes(needle) || desc2.includes(needle)
 }
 
 // ─── Stili condivisi ─────────────────────────────────────────────────────────
