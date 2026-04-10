@@ -29,5 +29,5 @@ env/*.env
 *.log
 
 # Zip
-*.zip
+.zip
 
