@@ -89,3 +89,15 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-071` | Completed | Evoluzione del Core Planning Candidates al branching reale `by_article` / `by_customer_order_line` |
 | `TASK-V2-072` | Completed | Evoluzione della UI Planning Candidates per rappresentare il branching reale `by_article` / `by_customer_order_line` |
 | `TASK-V2-073` | Completed | Re-bootstrap completo di `sync_mag_reale`, riallineamento exact-match con Easy e rebuild della chain inventory -> availability |
+| `TASK-V2-074` | Completed | Refinement finale del Core Planning Candidates: clamp stock a zero, reason esplicita, descrizione ordine e misura |
+| `TASK-V2-075` | Completed | Refinement finale della UI Planning Candidates: reason, misura e descrizione ordine nel ramo per-riga |
+| `TASK-V2-076` | Completed | Primo slice Core del modulo trasversale Warnings con tipo iniziale `NEGATIVE_STOCK` |
+| `TASK-V2-077` | Completed | Prima configurazione admin della visibilita warning, ancora modellata per surface |
+| `TASK-V2-078` | Completed | Prima surface UI dedicata del modulo `Warnings`, con filtro implicito sulla visibilita configurata |
+| `TASK-V2-079` | Deferred | Integrazione badge warning in `articoli` e `Planning Candidates`, parcheggiata per lasciare `Warnings` come modulo autonomo |
+| `TASK-V2-080` | Completed | Deprecazione formale della surface `criticita articoli` senza rimozione tecnica |
+| `TASK-V2-081` | Completed | Riallineamento warning visibility da surface a aree/reparti operativi |
+| `TASK-V2-082` | Completed | Correzione della surface `Warnings` per filtrare i warning per area/reparto corrente con bypass admin |
+| `TASK-V2-083` | Todo | Modello configurativo stock policy V1 con default famiglia e override articolo |
+| `TASK-V2-084` | Todo | Core stock policy metrics V1 con target/trigger e logica base mensile sostituibile |
+| `TASK-V2-085` | Todo | Integrazione stock-driven nel ramo `Planning Candidates by_article` con candidate unico e breakdown cliente/scorta |

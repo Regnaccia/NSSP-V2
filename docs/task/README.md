@@ -7,6 +7,7 @@ Regole operative:
 - ogni task vive in un file dedicato
 - il naming consigliato e `TASK-V2-XXX.md`
 - lo stato parte da `Todo`
+- uno stato puo essere portato a `Deferred` quando il task resta tracciato ma viene esplicitamente parcheggiato
 - Claude Code aggiorna il file durante o al termine del lavoro
 - a task completato, Claude Code imposta `Status: Completed` e compila la sezione finale di esecuzione
 - ogni task deve dichiarare esplicitamente il livello di verifica richiesto:
@@ -93,3 +94,15 @@ Task registrati:
 - `TASK-V2-071-core-planning-candidates-v2-branching.md` - completato
 - `TASK-V2-072-ui-planning-candidates-v2-branching.md` - completato
 - `TASK-V2-073-fix-mag-reale-rebootstrap.md` - completato
+- `TASK-V2-074-core-planning-candidates-final-refinement.md` - completato
+- `TASK-V2-075-ui-planning-candidates-final-refinement.md` - completato
+- `TASK-V2-076-core-warnings-v1.md` - completato
+- `TASK-V2-077-admin-warning-visibility-config.md` - completato
+- `TASK-V2-078-ui-warnings-surface-v1.md` - completato
+- `TASK-V2-079-warning-badges-articoli-e-planning.md` - deferred
+- `TASK-V2-080-deprecazione-surface-criticita-articoli.md` - completato
+- `TASK-V2-081-realign-warning-visibility-by-area.md` - completato
+- `TASK-V2-082-warnings-surface-filter-by-current-area.md` - completato
+- `TASK-V2-083-model-stock-policy-defaults-and-overrides.md` - todo
+- `TASK-V2-084-core-stock-policy-metrics-v1.md` - todo
+- `TASK-V2-085-planning-candidates-stock-driven-v1.md` - todo

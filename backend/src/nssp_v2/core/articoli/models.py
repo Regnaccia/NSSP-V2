@@ -9,8 +9,9 @@ Ownership: Core layer — nessun dato qui viene scritto dal layer sync.
 """
 
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from nssp_v2.shared.db import Base
@@ -45,6 +46,12 @@ class ArticoloFamiglia(Base):
     considera_in_produzione: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     aggrega_codice_in_produzione: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Stock policy defaults V1 (DL-ARCH-V2-030, TASK-V2-083)
+    # Nullable: None = famiglia non ha configurazione stock; non impone comportamento.
+    # Validi solo per articoli con planning_mode = by_article.
+    stock_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    stock_trigger_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+
 
 class CoreArticoloConfig(Base):
     """Configurazione interna per articolo.
@@ -76,3 +83,10 @@ class CoreArticoloConfig(Base):
     # Override nullable tri-state (DL-ARCH-V2-026)
     override_considera_in_produzione: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     override_aggrega_codice_in_produzione: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Stock policy overrides articolo V1 (DL-ARCH-V2-030, TASK-V2-083)
+    # Nullable: None = eredita il default famiglia; valore = sovrascrive.
+    # capacity_override_qty: non ha default famiglia (proprieta articolo-specifica).
+    override_stock_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    override_stock_trigger_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    capacity_override_qty: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)

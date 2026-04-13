@@ -1,5 +1,6 @@
 """
-Router surface produzione — Core slice articoli + produzioni (TASK-V2-020, TASK-V2-022, TASK-V2-030).
+Router surface produzione — Core slice articoli + produzioni + warnings (TASK-V2-020,
+TASK-V2-022, TASK-V2-030, TASK-V2-078).
 
 Endpoint:
   GET   /api/produzione/articoli                                  — lista articoli attivi
@@ -8,6 +9,7 @@ Endpoint:
   PATCH /api/produzione/articoli/{codice}/famiglia                — imposta famiglia articolo
   GET   /api/produzione/produzioni                                — lista produzioni (attive + storiche)
   PATCH /api/produzione/produzioni/{id_dettaglio}/forza-completata — override flag forza_completata
+  GET   /api/produzione/warnings                                  — tutti i warning canonici (surface Warnings e punto trasversale)
 
 Tutti gli endpoint richiedono autenticazione Bearer.
 Il Core non espone mai i target sync_* grezzi.
@@ -20,6 +22,8 @@ from sqlalchemy.orm import Session
 from nssp_v2.app.deps.auth import get_current_user
 from nssp_v2.core.criticita import CriticitaItem, list_criticita_v1
 from nssp_v2.core.planning_candidates import PlanningCandidateItem, list_planning_candidates_v1
+from nssp_v2.core.warnings import WarningItem, list_warnings_v1, filter_warnings_by_areas
+from nssp_v2.core.warnings.config import KNOWN_AREAS
 from nssp_v2.core.produzioni import ProduzioneItem, ProduzioniPaginata, list_produzioni, set_forza_completata
 from nssp_v2.core.articoli import (
     ArticoloDetail,
@@ -302,3 +306,25 @@ def patch_policy_override(
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Articolo '{codice_articolo}' non trovato")
     return detail
+
+
+# ─── Warnings surface (TASK-V2-078, TASK-V2-081, TASK-V2-082) ────────────────
+
+@router.get("/warnings", response_model=list[WarningItem])
+def get_warnings(
+    payload: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Lista warning visibili all'area/reparto dell'utente corrente (TASK-V2-082).
+
+    Filtra i warning canonici sulle aree dell'utente, derivate dai ruoli JWT:
+    - produzione / magazzino / logistica: vede solo i warning della propria area
+    - admin: vede tutti i warning senza filtro
+
+    La visibilita per area e governata da admin tramite visible_to_areas (TASK-V2-081).
+    """
+    roles: list[str] = payload.get("roles", [])
+    is_admin = "admin" in roles
+    user_areas = [r for r in roles if r in KNOWN_AREAS]
+    all_warnings = list_warnings_v1(session)
+    return filter_warnings_by_areas(all_warnings, user_areas, is_admin)

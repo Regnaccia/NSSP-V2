@@ -1,6 +1,6 @@
 /**
  * Surface Produzione — Planning Candidates V2 (TASK-V2-065, TASK-V2-071, TASK-V2-072,
- * DL-ARCH-V2-025, DL-ARCH-V2-026, DL-ARCH-V2-027).
+ * TASK-V2-075, DL-ARCH-V2-025, DL-ARCH-V2-026, DL-ARCH-V2-027, DL-ARCH-V2-028).
  *
  * Vista operativa con branching reale tra:
  * - planning_mode = by_article  → logica aggregata per articolo (V1)
@@ -15,6 +15,11 @@
  *
  * Ordinamento iniziale: required_qty_minimum decrescente (UIX_SPEC_PLANNING_CANDIDATES).
  * La logica di candidatura e applicata nel Core backend — la UI consuma esiti.
+ *
+ * Colonne TASK-V2-075:
+ * - "Motivo" → reason_text esplicito (DL-ARCH-V2-028 §4)
+ * - misura → inline nel Codice (DL-ARCH-V2-028 §3)
+ * - Descrizione by_customer_order_line → order_line_description come primaria (via display_label backend)
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -117,6 +122,26 @@ function cmpItems(
   if (av < bv) return dir === 'asc' ? -1 : 1
   if (av > bv) return dir === 'asc' ? 1 : -1
   return 0
+}
+
+// ─── Badge reason (DL-ARCH-V2-028 §4) ────────────────────────────────────────
+
+/**
+ * Badge visivo per il reason_code (DL-ARCH-V2-028 §4).
+ * Mostra reason_text — il reason_code determina il colore.
+ */
+function ReasonBadge({ reasonCode, reasonText }: { reasonCode: string; reasonText: string }) {
+  const cls =
+    reasonCode === 'future_availability_negative'
+      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+      : reasonCode === 'line_demand_uncovered'
+      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+      : 'bg-muted text-muted-foreground'
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${cls}`}>
+      {reasonText}
+    </span>
+  )
 }
 
 // ─── Badge planning_mode ───────────────────────────────────────────────────────
@@ -364,6 +389,7 @@ function TabellaCandidates({
               onSort={onSort}
             />
             <th className={thBase}>Mode</th>
+            <th className={thBase}>Motivo</th>
             <th className={thBase}>Ordine / Riga</th>
             <Th
               label="Domanda"
@@ -426,7 +452,12 @@ function TabellaCandidates({
                 className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
               >
                 <td className={tdCls}>
-                  <span className="font-mono text-xs">{item.article_code}</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-mono text-xs">{item.article_code}</span>
+                    {item.misura && (
+                      <span className="text-[10px] text-muted-foreground">{item.misura}</span>
+                    )}
+                  </div>
                 </td>
                 <td className={tdCls}>
                   <span className="text-foreground">{item.display_label}</span>
@@ -440,6 +471,9 @@ function TabellaCandidates({
                 </td>
                 <td className={tdCls}>
                   <PlanningModeBadge mode={item.planning_mode} />
+                </td>
+                <td className={tdCls}>
+                  <ReasonBadge reasonCode={item.reason_code} reasonText={item.reason_text} />
                 </td>
                 <td className={tdCls}>
                   {isByCol && item.order_reference != null ? (

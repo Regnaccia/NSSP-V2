@@ -1,10 +1,11 @@
 """
-Logiche di dominio Core slice `planning_candidates` (TASK-V2-062, TASK-V2-071, DL-ARCH-V2-025, DL-ARCH-V2-027).
+Logiche di dominio Core slice `planning_candidates` (TASK-V2-062, TASK-V2-071, TASK-V2-074, DL-ARCH-V2-025, DL-ARCH-V2-027, DL-ARCH-V2-028).
 
 Struttura:
 - PlanningContext: contesto per la logica by_article (V1)
 - PlanningContextOrderLine: contesto per la logica by_customer_order_line (V2)
-- future_availability_v1: copertura futura per by_article
+- effective_stock: clamp giacenza fisica a 0 (DL-ARCH-V2-028)
+- future_availability_v1: copertura futura per by_article (usa stock_effective)
 - required_qty_minimum_v1: scopertura minima by_article
 - is_planning_candidate_v1: candidatura by_article (future_availability_qty < 0)
 - line_future_coverage_v2: copertura futura per by_customer_order_line
@@ -12,10 +13,11 @@ Struttura:
 - is_planning_candidate_by_order_line: candidatura by_customer_order_line (line_future_coverage_qty < 0)
 
 Regole:
-- by_article: future_availability_qty = availability_qty + incoming_supply_qty < 0
+- by_article: stock_effective = max(on_hand, 0); future_availability_qty = availability_qty + incoming_supply_qty < 0
 - by_customer_order_line: line_future_coverage_qty = linked_incoming_supply_qty - line_open_demand_qty < 0
 - le due logiche sono indipendenti e non si mischiano
 - la logica e separata e testabile in isolamento (DL-ARCH-V2-023)
+- la sola giacenza negativa senza domanda non genera candidate (DL-ARCH-V2-028)
 """
 
 from decimal import Decimal
@@ -54,6 +56,22 @@ class PlanningContextOrderLine:
     line_reference: int
     line_open_demand_qty: Decimal
     linked_incoming_supply_qty: Decimal
+
+
+def effective_stock(inventory_qty: Decimal | None) -> Decimal:
+    """Giacenza fisica effettiva per il planning (DL-ARCH-V2-028 §1).
+
+    Formula: max(inventory_qty, 0)
+
+    La giacenza fisica negativa e un'anomalia inventariale, non un fabbisogno produttivo.
+    Il clamp a zero impedisce che anomalie dati (movimenti fantasma, rettifiche non
+    ancora sincronizzate) generino candidate fittizi.
+
+    Il valore raw (stock_calculated) rimane disponibile nel layer di persistenza
+    per diagnostica e futura gestione nel modulo Warnings.
+    """
+    raw = inventory_qty if inventory_qty is not None else Decimal("0")
+    return raw if raw > Decimal("0") else Decimal("0")
 
 
 def future_availability_v1(ctx: PlanningContext) -> Decimal | None:

@@ -1,15 +1,16 @@
 """
-Query del Core slice `articoli` (DL-ARCH-V2-013, DL-ARCH-V2-014).
+Query del Core slice `articoli` (DL-ARCH-V2-013, DL-ARCH-V2-014, DL-ARCH-V2-030).
 
 Regole:
 - legge da sync_articoli (mai modifica)
-- legge e scrive core_articolo_config (solo per dati interni: famiglia)
+- legge e scrive core_articolo_config (solo per dati interni: famiglia, stock policy overrides)
 - legge articolo_famiglie (catalogo controllato)
 - costruisce i read model applicativi
 - non espone dati sync_articoli grezzi alla UI
 """
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -42,6 +43,26 @@ def resolve_planning_policy(
     - None se override e None e non c'e famiglia (valore indefinito)
 
     I consumer devono consumare questo valore senza ricostruire la precedenza.
+    """
+    if override is not None:
+        return override
+    return family_default
+
+
+def resolve_stock_policy(
+    override: Decimal | None,
+    family_default: Decimal | None,
+) -> Decimal | None:
+    """Regola di risoluzione effective stock policy (DL-ARCH-V2-030, TASK-V2-083).
+
+    Stessa regola di resolve_planning_policy, adattata per valori Decimal nullable.
+
+    effective = override if override is not None else family_default
+
+    Restituisce:
+    - override se l'articolo ha un override esplicito (anche zero)
+    - family_default se override e None e la famiglia e assegnata
+    - None se nessun valore configurato
     """
     if override is not None:
         return override
@@ -211,6 +232,13 @@ def get_articolo_detail(
         CoreAvailability.article_code == normalized_article_code
     ).first()
 
+    # Stock policy: override articolo > default famiglia (DL-ARCH-V2-030)
+    family_stock_months = famiglia.stock_months if famiglia else None
+    family_stock_trigger_months = famiglia.stock_trigger_months if famiglia else None
+    override_stock_months = config.override_stock_months if config is not None else None
+    override_stock_trigger_months = config.override_stock_trigger_months if config is not None else None
+    capacity_override = config.capacity_override_qty if config is not None else None
+
     return ArticoloDetail(
         codice_articolo=art.codice_articolo,
         descrizione_1=art.descrizione_1,
@@ -243,6 +271,26 @@ def get_articolo_detail(
         commitments_computed_at=commitments_computed_at,
         availability_qty=avail.availability_qty if avail is not None else None,
         availability_computed_at=avail.computed_at if avail is not None else None,
+        effective_stock_months=resolve_stock_policy(override_stock_months, family_stock_months),
+        effective_stock_trigger_months=resolve_stock_policy(override_stock_trigger_months, family_stock_trigger_months),
+        capacity_override_qty=capacity_override,
+    )
+
+
+# ─── Helper: costruisce FamigliaRow da oggetto ORM ───────────────────────────
+
+def _famiglia_to_row(famiglia: ArticoloFamiglia, n_articoli: int) -> FamigliaRow:
+    """Costruisce FamigliaRow da un oggetto ArticoloFamiglia ORM."""
+    return FamigliaRow(
+        code=famiglia.code,
+        label=famiglia.label,
+        sort_order=famiglia.sort_order,
+        is_active=famiglia.is_active,
+        considera_in_produzione=famiglia.considera_in_produzione,
+        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
+        stock_months=famiglia.stock_months,
+        stock_trigger_months=famiglia.stock_trigger_months,
+        n_articoli=n_articoli,
     )
 
 
@@ -269,18 +317,7 @@ def list_famiglie_catalog(session: Session) -> list[FamigliaRow]:
         .order_by(ArticoloFamiglia.sort_order, ArticoloFamiglia.code)
         .all()
     )
-    return [
-        FamigliaRow(
-            code=r.code,
-            label=r.label,
-            sort_order=r.sort_order,
-            is_active=r.is_active,
-            considera_in_produzione=r.considera_in_produzione,
-            aggrega_codice_in_produzione=r.aggrega_codice_in_produzione,
-            n_articoli=counts.get(r.code, 0),
-        )
-        for r in rows
-    ]
+    return [_famiglia_to_row(r, counts.get(r.code, 0)) for r in rows]
 
 
 # ─── Write: gestione catalogo famiglie ───────────────────────────────────────
@@ -310,15 +347,7 @@ def create_famiglia(
     famiglia = ArticoloFamiglia(code=code, label=label, sort_order=sort_order, is_active=True)
     session.add(famiglia)
     session.flush()
-    return FamigliaRow(
-        code=famiglia.code,
-        label=famiglia.label,
-        sort_order=famiglia.sort_order,
-        is_active=famiglia.is_active,
-        considera_in_produzione=famiglia.considera_in_produzione,
-        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
-        n_articoli=0,
-    )
+    return _famiglia_to_row(famiglia, 0)
 
 
 def toggle_famiglia_active(
@@ -336,15 +365,7 @@ def toggle_famiglia_active(
     famiglia.is_active = not famiglia.is_active
     session.flush()
     n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
-    return FamigliaRow(
-        code=famiglia.code,
-        label=famiglia.label,
-        sort_order=famiglia.sort_order,
-        is_active=famiglia.is_active,
-        considera_in_produzione=famiglia.considera_in_produzione,
-        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
-        n_articoli=n,
-    )
+    return _famiglia_to_row(famiglia, n)
 
 
 def toggle_famiglia_considera_produzione(
@@ -362,15 +383,7 @@ def toggle_famiglia_considera_produzione(
     famiglia.considera_in_produzione = not famiglia.considera_in_produzione
     session.flush()
     n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
-    return FamigliaRow(
-        code=famiglia.code,
-        label=famiglia.label,
-        sort_order=famiglia.sort_order,
-        is_active=famiglia.is_active,
-        considera_in_produzione=famiglia.considera_in_produzione,
-        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
-        n_articoli=n,
-    )
+    return _famiglia_to_row(famiglia, n)
 
 
 def toggle_famiglia_aggrega_codice_produzione(
@@ -388,15 +401,7 @@ def toggle_famiglia_aggrega_codice_produzione(
     famiglia.aggrega_codice_in_produzione = not famiglia.aggrega_codice_in_produzione
     session.flush()
     n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
-    return FamigliaRow(
-        code=famiglia.code,
-        label=famiglia.label,
-        sort_order=famiglia.sort_order,
-        is_active=famiglia.is_active,
-        considera_in_produzione=famiglia.considera_in_produzione,
-        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
-        n_articoli=n,
-    )
+    return _famiglia_to_row(famiglia, n)
 
 
 # ─── Write: imposta famiglia articolo ────────────────────────────────────────

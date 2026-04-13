@@ -1,5 +1,6 @@
 """
-Query Core slice `planning_candidates` V2 (TASK-V2-062, TASK-V2-065, TASK-V2-068, TASK-V2-071, DL-ARCH-V2-025, DL-ARCH-V2-027).
+Query Core slice `planning_candidates` V2 (TASK-V2-062, TASK-V2-065, TASK-V2-068,
+TASK-V2-071, TASK-V2-074, DL-ARCH-V2-025, DL-ARCH-V2-027, DL-ARCH-V2-028).
 
 Branching:
 - by_article (effective_aggrega = True o None): logica V1 retrocompatibile, anchorata a
@@ -13,10 +14,12 @@ Regole comuni:
 - ordinamento finale: required_qty_minimum decrescente (maggiore scopertura sopra — UIX_SPEC)
 
 Ramo by_article:
-- availability_qty da core_availability (se assente l'articolo non genera candidati)
+- stock_effective = max(inventory_qty, 0): clamp giacenza fisica (DL-ARCH-V2-028 §1)
+- availability_qty = stock_effective - set_aside - committed (valore clamped, non raw)
 - incoming_supply_qty: aggregata da sync_produzioni_attive per codice articolo
 - customer_open_demand_qty: aggregata da sync_righe_ordine_cliente per codice articolo (informativa)
 - candidate se future_availability_qty = availability_qty + incoming_supply_qty < 0
+- reason_code = "future_availability_negative"
 
 Ramo by_customer_order_line:
 - nessun uso di core_availability (modalita commessa-oriented, non stock-oriented)
@@ -24,6 +27,8 @@ Ramo by_customer_order_line:
 - supply: produzioni con riferimento_numero_ordine_cliente / riferimento_riga_ordine_cliente
   coincidenti con order_reference / line_reference della riga ordine
 - candidate se line_future_coverage_qty = linked_incoming_supply_qty - line_open_demand_qty < 0
+- display_label usa la descrizione dalla riga ordine se valorizzata (DL-ARCH-V2-028 §2)
+- reason_code = "line_demand_uncovered"
 """
 
 from dataclasses import dataclass
@@ -38,6 +43,7 @@ from nssp_v2.core.availability.models import CoreAvailability
 from nssp_v2.core.planning_candidates.logic import (
     PlanningContext,
     PlanningContextOrderLine,
+    effective_stock,
     future_availability_v1,
     is_planning_candidate_v1,
     is_planning_candidate_by_order_line,
@@ -78,6 +84,7 @@ class _ArticoloInfo:
     effective_considera: bool | None
     effective_aggrega: bool | None
     planning_mode: PlanningMode | None
+    misura: str | None         # misura_articolo da SyncArticolo (ART_MISURA)
 
 
 # ─── Step 1: caricamento articoli con policy ──────────────────────────────────
@@ -120,6 +127,7 @@ def _load_articoli_info(session: Session) -> list[_ArticoloInfo]:
             effective_considera=effective_considera,
             effective_aggrega=effective_aggrega,
             planning_mode=resolve_planning_mode(effective_aggrega),
+            misura=(art.misura_articolo or "").strip() or None,
         ))
     return result
 
@@ -287,9 +295,16 @@ def _list_by_article_candidates(
         incoming_qty = incoming.get(avail.article_code, Decimal("0"))
         demand_qty = demand.get(avail.article_code, Decimal("0"))
 
+        # DL-ARCH-V2-028 §1: clamp giacenza fisica a 0.
+        # La giacenza negativa e un'anomalia inventariale, non un fabbisogno produttivo.
+        # stock_effective = max(on_hand, 0) — impedisce che anomalie dati (movimenti
+        # fantasma, rettifiche non sincronizzate) generino candidate fittizi.
+        stock_eff = effective_stock(avail.inventory_qty)
+        avail_eff = stock_eff - avail.customer_set_aside_qty - avail.committed_qty
+
         ctx = PlanningContext(
             article_code=avail.article_code,
-            availability_qty=avail.availability_qty,
+            availability_qty=avail_eff,
             incoming_supply_qty=incoming_qty,
             customer_open_demand_qty=demand_qty,
         )
@@ -308,10 +323,13 @@ def _list_by_article_candidates(
             effective_considera_in_produzione=art.effective_considera,
             effective_aggrega_codice_in_produzione=art.effective_aggrega,
             planning_mode=art.planning_mode,
+            reason_code="future_availability_negative",
+            reason_text="Disponibilita futura negativa anche considerando la supply in corso",
+            misura=art.misura,
             required_qty_minimum=req,
             computed_at=avail.computed_at,
-            # by_article
-            availability_qty=avail.availability_qty,
+            # by_article — availability_qty usa il valore clamped (stock_effective)
+            availability_qty=avail_eff,
             customer_open_demand_qty=demand_qty,
             incoming_supply_qty=incoming_qty,
             future_availability_qty=fav,
@@ -380,19 +398,31 @@ def _list_by_customer_order_line_candidates(
         coverage = line_future_coverage_v2(ctx)
         req = required_qty_minimum_by_order_line(coverage)
 
+        # DL-ARCH-V2-028 §2: per by_customer_order_line la descrizione primaria
+        # e quella della riga ordine cliente, non quella anagrafica articolo.
+        order_line_desc = (riga.article_description_segment or "").strip() or None
+        display = order_line_desc or art.display_label
+
+        # Misura dalla riga ordine (DL-ARCH-V2-028 §3)
+        misura_col = (riga.article_measure or "").strip() or None
+
         candidates.append((req, PlanningCandidateItem(
             article_code=canonical,
-            display_label=art.display_label,
+            display_label=display,
             famiglia_code=art.famiglia_code,
             famiglia_label=art.famiglia_label,
             effective_considera_in_produzione=art.effective_considera,
             effective_aggrega_codice_in_produzione=art.effective_aggrega,
             planning_mode=art.planning_mode,
+            reason_code="line_demand_uncovered",
+            reason_text="Domanda sulla riga ordine non coperta dalla supply collegata",
+            misura=misura_col,
             required_qty_minimum=req,
             computed_at=riga.synced_at,
             # by_customer_order_line
             order_reference=riga.order_reference,
             line_reference=riga.line_reference,
+            order_line_description=order_line_desc,
             line_open_demand_qty=line_demand,
             linked_incoming_supply_qty=linked_qty,
             line_future_coverage_qty=coverage,

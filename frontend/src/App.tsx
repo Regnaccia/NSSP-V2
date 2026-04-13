@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Login from '@/pages/Login'
 import SurfaceChooser from '@/pages/SurfaceChooser'
 import AdminHome from '@/pages/surfaces/AdminHome'
+import AdminWarningsPage from '@/pages/surfaces/AdminWarningsPage'
 import LogisticaHome from '@/pages/surfaces/LogisticaHome'
 import MagazzinoHome from '@/pages/surfaces/MagazzinoHome'
 import ProduzioneHome from '@/pages/surfaces/ProduzioneHome'
@@ -12,6 +13,7 @@ import FamigliePage from '@/pages/surfaces/FamigliePage'
 import ProduzioniPage from '@/pages/surfaces/ProduzioniPage'
 import CriticitaPage from '@/pages/surfaces/CriticitaPage'
 import PlanningCandidatesPage from '@/pages/surfaces/PlanningCandidatesPage'
+import WarningsPage from '@/pages/surfaces/WarningsPage'
 
 /**
  * Redirect iniziale dopo login (DL-UIX-V2-001 §4).
@@ -67,6 +69,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/warnings"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminWarningsPage />
               </ProtectedRoute>
             }
           />
@@ -135,6 +145,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['produzione']}>
                 <PlanningCandidatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/produzione/warnings"
+            element={
+              <ProtectedRoute roles={['produzione']}>
+                <WarningsPage />
               </ProtectedRoute>
             }
           />

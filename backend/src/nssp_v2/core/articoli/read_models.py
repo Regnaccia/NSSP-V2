@@ -123,6 +123,17 @@ class ArticoloDetail(BaseModel):
     availability_qty: Decimal | None = None
     availability_computed_at: datetime | None = None
 
+    # Stock policy effettiva V1 (DL-ARCH-V2-030, TASK-V2-083):
+    #   override articolo se presente, altrimenti default famiglia.
+    #   None se nessun valore configurato a nessun livello.
+    #   Significativi solo per planning_mode = by_article.
+    effective_stock_months: Decimal | None = None
+    effective_stock_trigger_months: Decimal | None = None
+
+    # Capacity override articolo-specifica (DL-ARCH-V2-030, TASK-V2-083):
+    #   nessun default famiglia — proprieta dell'articolo.
+    capacity_override_qty: Decimal | None = None
+
 
 class FamigliaItem(BaseModel):
     """Voce del catalogo famiglie articolo.
@@ -152,3 +163,7 @@ class FamigliaRow(BaseModel):
     considera_in_produzione: bool
     aggrega_codice_in_produzione: bool
     n_articoli: int
+
+    # Stock policy defaults V1 (DL-ARCH-V2-030, TASK-V2-083)
+    stock_months: Decimal | None = None
+    stock_trigger_months: Decimal | None = None

@@ -9,72 +9,44 @@ Questo documento riassume le schermate UI oggi presenti nella V2, con focus su:
 - dati esposti
 - azioni utente principali
 
-Non sostituisce:
-
-- i `DL-UIX`
-- le `UIX_SPEC_*`
-- i singoli task
-
-Serve come mappa rapida per capire "cosa fa la schermata" senza dover inseguire subito task e codice.
-
 ## Regole generali
 
 - la UI legge da API/Core, mai direttamente dai mirror `sync_*`
 - i dati Easy sono mostrati come read-only
-- i dati interni V2 sono configurabili solo dove esiste una logica esplicita
 - i refresh sono backend-controlled
-- ogni nuova vista UI deve dichiarare esplicitamente se:
-  - non ha refresh on demand
-  - riusa un refresh semantico backend gia esistente
-  - richiede un refresh semantico backend dedicato
-- un pulsante `Aggiorna` non deve mai limitarsi a un semplice reload locale se la vista dipende da fact derivati che hanno prerequisiti a monte
+- un pulsante `Aggiorna` non deve limitarsi a un reload locale se la vista dipende da fact derivati a monte
 
 ## 1. Admin
 
 ### Funzione
 
-Gestione accessi e identita applicative.
-
-### Dipendenze documentali
-
-DL:
-
-- `docs/decisions/ARCH/DL-ARCH-V2-004.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-005.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-006.md`
-- `docs/decisions/UIX/DL-UIX-V2-001.md`
-
-Task:
-
-- `docs/task/TASK-V2-004-browser-auth-and-role-routing.md`
-- `docs/task/TASK-V2-005-admin-access-management.md`
-- `docs/task/TASK-V2-006-ui-navigation-refactor.md`
-- `docs/task/TASK-V2-017-sidebar-navigation-contestuale.md`
+Gestione accessi e configurazioni interne trasversali.
 
 ### Entita logiche usate
 
 - `users`
 - `roles`
 - `user_roles`
-- `available_surfaces`
+- configurazione warning visibility
 
 ### Cosa espone
 
 - elenco utenti
 - stato attivo/inattivo
 - ruoli assegnati
-- surface disponibili in base ai ruoli
+- pagina admin per configurare la visibilita warning
 
 ### Azioni principali
 
 - creare/modificare utenti
 - attivare/disattivare utenti
 - assegnare o rimuovere ruoli
+- configurare la visibilita warning
 
 ### Note
 
-- e la prima surface amministrativa della V2
-- non dipende da Easy
+- la warning visibility usa `visible_to_areas`
+- `admin` governa la configurazione e mantiene vista trasversale
 
 ## 2. Logistica - Clienti / Destinazioni
 
@@ -82,52 +54,18 @@ Task:
 
 Consultazione e configurazione minima del dominio clienti/destinazioni.
 
-### Dipendenze documentali
-
-DL:
-
-- `docs/decisions/ARCH/DL-ARCH-V2-010.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-012.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-011.md`
-- `docs/decisions/UIX/DL-UIX-V2-002.md`
-- `docs/decisions/UIX/DL-UIX-V2-003.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`
-
-Task:
-
-- `docs/task/TASK-V2-010-sync-clienti-reale.md`
-- `docs/task/TASK-V2-011-sync-destinazioni.md`
-- `docs/task/TASK-V2-012-core-clienti-destinazioni.md`
-- `docs/task/TASK-V2-013-ui-clienti-destinazioni.md`
-- `docs/task/TASK-V2-014-sync-on-demand-clienti-destinazioni.md`
-- `docs/task/TASK-V2-015-destinazione-principale-derivata.md`
-- `docs/task/TASK-V2-016-ui-scroll-colonne-clienti-destinazioni.md`
-
-### Pattern UI
-
-- layout a `3 colonne`
-
 ### Entita logiche usate
 
 - `clienti`
 - `destinazioni`
-- destinazione principale derivata dal cliente
+- destinazione principale derivata
 - `nickname_destinazione`
 
 ### Cosa espone
 
-Colonna 1:
-
 - elenco clienti
-
-Colonna 2:
-
-- destinazione principale
-- destinazioni aggiuntive
-
-Colonna 3:
-
-- dati anagrafici read-only
+- destinazioni del cliente
+- dettaglio anagrafico read-only
 - `nickname_destinazione`
 
 ### Azioni principali
@@ -137,60 +75,11 @@ Colonna 3:
 - modifica `nickname_destinazione`
 - refresh on demand logistica
 
-### Dipendenze Core
-
-- Core `clienti + destinazioni`
-- regola architetturale della destinazione principale derivata
-
 ## 3. Produzione - Articoli
 
 ### Funzione
 
-Consultazione anagrafica articoli e configurazione minima di dominio.
-
-### Dipendenze documentali
-
-DL:
-
-- `docs/decisions/ARCH/DL-ARCH-V2-013.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-014.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-016.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-017.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-019.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-021.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-022.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-026.md`
-- `docs/decisions/UIX/DL-UIX-V2-002.md`
-- `docs/decisions/UIX/DL-UIX-V2-004.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_ARTICOLI.md`
-
-Task:
-
-- `docs/task/TASK-V2-018-sync-articoli-reale.md`
-- `docs/task/TASK-V2-019-core-articoli.md`
-- `docs/task/TASK-V2-020-ui-articoli.md`
-- `docs/task/TASK-V2-021-sync-on-demand-articoli.md`
-- `docs/task/TASK-V2-022-famiglia-articoli.md`
-- `docs/task/TASK-V2-023-ui-famiglia-articoli.md`
-- `docs/task/TASK-V2-024-filtro-famiglia-articoli.md`
-- `docs/task/TASK-V2-025-ui-tabella-famiglia-articoli.md`
-- `docs/task/TASK-V2-026-gestione-famiglie-articoli.md`
-- `docs/task/TASK-V2-027-flag-considera-in-produzione-famiglie.md`
-- `docs/task/TASK-V2-038-giacenza-articoli-nel-dettaglio-ui.md`
-- `docs/task/TASK-V2-045-set-aside-articoli-nel-dettaglio-ui.md`
-- `docs/task/TASK-V2-050-availability-e-commitments-articoli-nel-dettaglio-ui.md`
-- `docs/task/TASK-V2-051-refresh-sequenziale-articoli-con-availability.md`
-- `docs/task/TASK-V2-052-hardening-normalizzazione-article-code-cross-source.md`
-- `docs/task/TASK-V2-053-refresh-sequenziale-articoli-con-commitments.md`
-- `docs/task/TASK-V2-054-refresh-semantici-backend.md`
-- `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
-- `docs/task/TASK-V2-064-core-effective-planning-policy-articoli.md`
-- `docs/task/TASK-V2-067-ui-override-e-effective-policy-articoli.md`
-- `docs/task/TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md`
-
-### Pattern UI
-
-- layout a `2 colonne`
+Consultazione anagrafica articoli, configurazione minima di dominio e validazione dei fact quantitativi.
 
 ### Entita logiche usate
 
@@ -205,16 +94,11 @@ Task:
 
 ### Cosa espone
 
-Colonna 1:
-
 - lista articoli
 - ricerca `codice`
 - ricerca `descrizione`
 - filtro famiglia
-
-Colonna 2:
-
-- dati anagrafici read-only Easy
+- dati anagrafici Easy read-only
 - `famiglia articolo`
 - override tri-state:
   - `considera_in_produzione`
@@ -223,64 +107,29 @@ Colonna 2:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
   - `planning_mode`
-- `giacenza`
-- `customer_set_aside`
-- `committed_qty`
-- `availability_qty`
+- metriche quantitative:
+  - `giacenza`
+  - `customer_set_aside`
+  - `committed_qty`
+  - `availability_qty`
 
 ### Azioni principali
 
 - selezione articolo
 - modifica `famiglia articolo`
-- gestione catalogo famiglie
+- modifica override planning policy
 - refresh on demand articoli
-
-### Catena dati principale
-
-La schermata articoli si appoggia a:
-
-- `sync_articoli`
-- `sync_mag_reale`
-- `sync_righe_ordine_cliente`
-- `sync_produzioni_attive`
-- Core `articoli`
-- Core `inventory_positions`
-- Core `customer_set_aside`
-- Core `commitments`
-- Core `availability`
 
 ### Note
 
-- e oggi la schermata piu trasversale tra anagrafica, stock e domanda
-- viene usata anche come punto di validazione visiva dei fact canonici
-- il refresh e oggi un refresh semantico backend (`refresh_articoli`) con chain interna completa
-- il dettaglio articolo consente ora di configurare gli override di planning policy e di ispezionare i valori effettivi
-- la nomenclatura UI e gia riallineata a `planning_mode` come vocabolario esplicito
+- e la schermata piu trasversale tra anagrafica, stock e domanda
+- usa `refresh_articoli()` come refresh semantico completo
 
 ## 4. Produzione - Catalogo Famiglie Articolo
 
 ### Funzione
 
-Gestione del catalogo interno `famiglie articolo`.
-
-### Dipendenze documentali
-
-DL:
-
-- `docs/decisions/ARCH/DL-ARCH-V2-014.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-026.md`
-- `docs/decisions/UIX/DL-UIX-V2-002.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_ARTICOLI.md`
-
-Task:
-
-- `docs/task/TASK-V2-022-famiglia-articoli.md`
-- `docs/task/TASK-V2-025-ui-tabella-famiglia-articoli.md`
-- `docs/task/TASK-V2-026-gestione-famiglie-articoli.md`
-- `docs/task/TASK-V2-027-flag-considera-in-produzione-famiglie.md`
-- `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
-- `docs/task/TASK-V2-066-ui-planning-policy-famiglie.md`
-- `docs/task/TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md`
+Gestione del catalogo interno `famiglie articolo` e dei default di planning policy.
 
 ### Entita logiche usate
 
@@ -290,9 +139,10 @@ Task:
 
 - elenco famiglie
 - stato attivo/inattivo
-- flag `considera_in_produzione`
-- flag `aggrega_codice_in_produzione`
-- vocabolario UI coerente con:
+- default planning policy:
+  - `considera_in_produzione`
+  - `aggrega_codice_in_produzione`
+- vocabolario planning allineato a:
   - `by_article`
   - `by_customer_order_line`
 
@@ -300,44 +150,41 @@ Task:
 
 - creare famiglia
 - attivare/disattivare famiglia
-- modificare `considera_in_produzione`
-- modificare `aggrega_codice_in_produzione`
+- modificare i default di planning policy
 
-### Note
-
-- e una schermata di supporto al dominio articoli
-- non dipende da Easy
-- la schermata governa oggi entrambi i default di planning policy a livello famiglia
-
-## 5. Produzione - Planning Candidates
+## 5. Produzioni
 
 ### Funzione
 
-Prima vista operativa planning customer-driven, ora capace di mostrare sia candidate aggregati per articolo sia candidate per riga ordine cliente.
+Consultazione operativa delle produzioni attive/storiche e del loro stato applicativo.
 
-### Dipendenze documentali
+### Entita logiche usate
 
-DL:
+- `produzioni`
+- `bucket`
+- `stato_produzione`
+- `forza_completata`
 
-- `docs/decisions/ARCH/DL-ARCH-V2-022.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-023.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-025.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-026.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_PLANNING_CANDIDATES.md`
+### Cosa espone
 
-Task:
+- lista produzioni
+- bucket `active | historical`
+- ricerca per articolo/documento
+- filtro stato produzione
+- dettaglio read-only della produzione
+- evidenza del flag `forza_completata`
 
-- `docs/task/TASK-V2-062-core-planning-candidates-v1.md`
-- `docs/task/TASK-V2-064-core-effective-planning-policy-articoli.md`
-- `docs/task/TASK-V2-065-ui-planning-candidates-v1.md`
-- `docs/task/TASK-V2-068-hardening-planning-candidates-escludi-completate.md`
-- `docs/task/TASK-V2-069-allineamento-nomenclatura-planning-mode.md`
-- `docs/task/TASK-V2-071-core-planning-candidates-v2-branching.md`
-- `docs/task/TASK-V2-072-ui-planning-candidates-v2-branching.md`
+### Azioni principali
 
-### Pattern UI
+- selezione produzione
+- refresh on demand produzioni
+- impostazione/rimozione `forza_completata`
 
-- vista tabellare full-width
+## 6. Produzione - Planning Candidates
+
+### Funzione
+
+Vista operativa planning customer-driven, capace di mostrare sia candidate aggregati per articolo sia candidate per riga ordine cliente.
 
 ### Entita logiche usate
 
@@ -354,6 +201,8 @@ Task:
 - codice articolo
 - descrizione
 - famiglia
+- `planning_mode`
+- `reason`
 - per il ramo `by_article`:
   - `customer_open_demand_qty`
   - `availability_qty`
@@ -362,128 +211,63 @@ Task:
 - per il ramo `by_customer_order_line`:
   - `order_reference`
   - `line_reference`
+  - `misura`
+  - descrizione ordine primaria
   - `line_open_demand_qty`
   - `linked_incoming_supply_qty`
   - `line_future_coverage_qty`
 - `required_qty_minimum`
-- badge / distinzione visiva di `planning_mode`
-- toggle `solo_in_produzione`
-- filtro famiglia
 
 ### Azioni principali
 
-- refresh on demand planning, che riusa il refresh semantico completo `refresh_articoli`
+- refresh on demand planning, che riusa `refresh_articoli()`
 - filtro per famiglia
 - ricerca per `codice` e `descrizione`
 - toggle del perimetro `effective_considera_in_produzione`
-- ordinamento tabellare sui campi planning
-
-### Catena dati principale
-
-- `refresh_articoli()` come refresh semantico backend completo
-- Core `planning_candidates`
-- Core `articoli` per famiglia e planning policy effettive
-- Core `produzioni` per la supply in corso
+- ordinamento tabellare
 
 ### Note
 
-- la vista puo mostrare sia candidate aggregati per articolo sia candidate per riga ordine
-- `incoming_supply_qty` esclude le produzioni completate, anche via override `forza_completata`
-- il branching reale segue `planning_mode`
-- le policy di aggregazione avanzata oltre le due modalita base non sono ancora attive
+- `incoming_supply_qty` esclude le produzioni completate, anche via override
+- la logica planning usa stock clampato a zero
 
-## 6. Produzioni
+## 7. Produzione - Warnings
 
 ### Funzione
 
-Consultazione operativa delle produzioni attive/storiche e del loro stato applicativo.
-
-### Dipendenze documentali
-
-DL:
-
-- `docs/decisions/ARCH/DL-ARCH-V2-015.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-011.md`
-- `docs/decisions/UIX/DL-UIX-V2-002.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_PRODUZIONI.md`
-
-Task:
-
-- `docs/task/TASK-V2-028-sync-produzioni-attive.md`
-- `docs/task/TASK-V2-029-sync-produzioni-storiche.md`
-- `docs/task/TASK-V2-030-core-produzioni-bucket-e-stato.md`
-- `docs/task/TASK-V2-031-ui-produzioni.md`
-- `docs/task/TASK-V2-032-sync-on-demand-produzioni.md`
-- `docs/task/TASK-V2-033-forza-completata-produzioni.md`
-- `docs/task/TASK-V2-034-performance-produzioni-active-default.md`
-- `docs/task/TASK-V2-035-filtri-e-ricerca-produzioni.md`
-
-### Pattern UI
-
-- layout a `2 colonne`
+Consultazione esplicita del modulo trasversale `Warnings`.
 
 ### Entita logiche usate
 
-- `produzioni`
-- `bucket`
-- `stato_produzione`
-- `forza_completata`
+- `warnings`
+- configurazione admin della warning visibility
 
 ### Cosa espone
 
-Colonna 1:
-
-- lista produzioni
-- bucket `active | historical`
-- ricerca per articolo/documento
-- filtro stato produzione
-
-Colonna 2:
-
-- dettaglio read-only della produzione
-- bucket
-- stato produzione
-- evidenza del flag `forza_completata`
+- tipo warning
+- severita
+- entita / articolo
+- messaggio
+- giacenza calcolata
+- quantita anomala
+- timestamp di rilevazione
 
 ### Azioni principali
 
-- selezione produzione
-- refresh on demand produzioni
-- impostazione/rimozione `forza_completata`
+- consultazione lista warning
 
-### Catena dati principale
+### Note
 
-- `sync_produzioni_attive`
-- `sync_produzioni_storiche`
-- Core `produzioni`
+- oggi il primo tipo warning e `NEGATIVE_STOCK`
+- la surface esiste gia ed e dedicata
+- gli utenti operativi vedono solo warning coerenti con la propria area
+- `admin` vede la lista trasversale completa
 
-## 7. Produzione - Criticita Articoli
+## 8. Produzione - Criticita Articoli
 
 ### Funzione
 
-Vista operativa minima degli articoli critici, basata sulla disponibilita negativa e pensata come primo punto di lavoro sulle logiche di dominio.
-
-### Dipendenze documentali
-
-DL:
-
-- `docs/decisions/ARCH/DL-ARCH-V2-021.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-022.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-023.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-024.md`
-
-Task:
-
-- `docs/task/TASK-V2-055-criticita-articoli-v1.md`
-- `docs/task/TASK-V2-056-refinement-ui-criticita-articoli.md`
-- `docs/task/TASK-V2-057-toggle-considera-in-produzione-criticita.md`
-- `docs/task/TASK-V2-058-refresh-criticita-collegato-a-refresh-articoli.md`
-- `docs/task/TASK-V2-059-hardening-criticita-join-article-code.md`
-- `docs/task/TASK-V2-060-perimetro-criticita-solo-articoli-presenti.md`
-
-### Pattern UI
-
-- vista tabellare full-width
+Vista legacy degli articoli critici, basata su `availability_qty < 0`.
 
 ### Entita logiche usate
 
@@ -493,7 +277,6 @@ Task:
 - `inventory_positions`
 - `articoli`
 - `famiglie articolo`
-- logica `criticita_articoli_v1`
 
 ### Cosa espone
 
@@ -504,30 +287,20 @@ Task:
 - `appartata`
 - `impegnata`
 - `disponibilita`
-- toggle `solo_in_produzione`
-- filtro famiglia
 
 ### Azioni principali
 
-- refresh on demand criticita, che riusa il refresh semantico completo `refresh_articoli`
+- refresh on demand criticita, che riusa `refresh_articoli()`
 - attivazione/disattivazione del perimetro `considera_in_produzione`
 - filtro per famiglia
 - ordinamento per famiglia e campi quantitativi
 
-### Catena dati principale
-
-- `refresh_articoli()` come refresh semantico backend completo
-- Core `availability`
-- Core `criticita`
-- anagrafica `articoli` come perimetro esplicito della vista
-
 ### Note
 
-- la vista `criticita` e un sottoinsieme operativo della surface `articoli`
-- mostra solo articoli presenti e attivi in `articoli`
-- non ricalcola localmente la logica: consuma solo esiti del Core
+- resta disponibile ma non e piu la surface primaria
+- la deprecazione formale e aperta in `TASK-V2-080`
 
-## 8. Relazione tra schermate e fact canonici
+## 9. Relazione tra schermate e fact canonici
 
 ### Inventory
 
@@ -552,6 +325,7 @@ Usato oggi in:
 Usato oggi in:
 
 - dettaglio `articoli`
+- vista `Planning Candidates`
 - vista `criticita articoli`
 
 ### Planning Candidates
@@ -560,18 +334,20 @@ Usato oggi in:
 
 - vista `Planning Candidates`
 
-## 9. Prossimi step UI naturali
+### Warnings
 
-- decidere in futuro se introdurre una schermata dedicata a:
-  - stock / disponibilita
-  - ordini cliente
+Usato oggi in:
+
+- vista `Warnings`
+
+## 10. Prossimi step UI naturali
+
+- integrare badge warning in:
+  - `articoli`
+  - `Planning Candidates`
+- deprecare formalmente `criticita articoli` senza rimozione tecnica
 
 ## References
 
 - `docs/SYSTEM_OVERVIEW.md`
 - `docs/roadmap/STATUS.md`
-- `docs/decisions/UIX/DL-UIX-V2-001.md`
-- `docs/decisions/UIX/DL-UIX-V2-002.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_ARTICOLI.md`
-- `docs/decisions/UIX/specs/UIX_SPEC_PRODUZIONI.md`

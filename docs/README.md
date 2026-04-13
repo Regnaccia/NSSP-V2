@@ -28,8 +28,10 @@ docs/
 | [specs/PLANNING_CANDIDATES_SPEC_V1_1.md](specs/PLANNING_CANDIDATES_SPEC_V1_1.md) | Spec ampia del modulo `Planning Candidates`, utile come intent document e base di ragionamento |
 | [specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Planning Candidates`, allineata al modello canonico attuale della V2 |
 | [specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md) | Estensione ridotta della logica `Planning Candidates` con due modalita esplicite: `by_article` e `by_customer_order_line` |
+| [specs/STOCK_POLICY_V1_REDUCED_SPEC.md](specs/STOCK_POLICY_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della prima stock policy V1, limitata al ramo `by_article` e basata su `future_availability_qty`, target stock e trigger stock |
 | [specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md](specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md) | Spec iniziale del modulo `Production Proposals`, separato da `Planning Candidates` e focalizzato su proposal persistenti, override, workflow, export e warnings |
 | [specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md](specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Production Proposals`, centrata su proposal persistenti, override, workflow minimo e riconciliazione con Easy |
+| [specs/WARNINGS_SPEC_V1.md](specs/WARNINGS_SPEC_V1.md) | Spec iniziale del modulo trasversale `Warnings`, con warning canonici unici e visibilita differenziata per surface o ruolo |
 
 ## Reviews
 
@@ -84,6 +86,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-026.md](decisions/ARCH/DL-ARCH-V2-026.md) | Policy operative di planning con default a livello famiglia e override articolo, inclusi `considera_in_produzione` e `aggrega_codice_in_produzione` |
 | [decisions/ARCH/DL-ARCH-V2-027.md](decisions/ARCH/DL-ARCH-V2-027.md) | Evoluzione di `Planning Candidates` verso due modalita esplicite di aggregazione: `by_article` e `by_customer_order_line`, governate da `effective_aggrega_codice_in_produzione` |
 | [decisions/ARCH/DL-ARCH-V2-028.md](decisions/ARCH/DL-ARCH-V2-028.md) | Refinement finale di `Planning Candidates` prima di `Production Proposals`: stock clampato a zero, reason esplicita, misura esposta e descrizione ordine nel ramo per-riga |
+| [decisions/ARCH/DL-ARCH-V2-029.md](decisions/ARCH/DL-ARCH-V2-029.md) | `Warnings` come modulo trasversale canonico: un warning esiste una sola volta e la visibilita per reparti o surface si modella via audience, non con duplicazione |
+| [decisions/ARCH/DL-ARCH-V2-030.md](decisions/ARCH/DL-ARCH-V2-030.md) | Prima definizione della stock policy V1 come estensione minima del planning `by_article`, basata su `future_availability_qty`, target stock e trigger stock |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -211,6 +215,8 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-071-core-planning-candidates-v2-branching.md](task/TASK-V2-071-core-planning-candidates-v2-branching.md) | Evolvere il Core `Planning Candidates` dal modello V1 unico al branching reale tra modalita `by_article` e `by_customer_order_line` |
 | [task/TASK-V2-072-ui-planning-candidates-v2-branching.md](task/TASK-V2-072-ui-planning-candidates-v2-branching.md) | Evolvere la UI `Planning Candidates` per rappresentare correttamente il branching reale tra candidate `by_article` e `by_customer_order_line` |
 | [task/TASK-V2-073-fix-mag-reale-rebootstrap.md](task/TASK-V2-073-fix-mag-reale-rebootstrap.md) | Re-bootstrap completo di `sync_mag_reale` per eliminare movimenti fantasma e riallineare giacenza, availability e planning ai dati Easy corretti |
+| [task/TASK-V2-074-core-planning-candidates-final-refinement.md](task/TASK-V2-074-core-planning-candidates-final-refinement.md) | Refinement finale del Core `Planning Candidates`: clamp stock a zero, reason esplicita, descrizione ordine e misura |
+| [task/TASK-V2-075-ui-planning-candidates-final-refinement.md](task/TASK-V2-075-ui-planning-candidates-final-refinement.md) | Refinement finale della UI `Planning Candidates` per mostrare reason, misura e descrizione ordine nel ramo per-riga |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

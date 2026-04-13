@@ -80,8 +80,27 @@ def _next_riga() -> int:
     return _riga_counter
 
 
-def _avail(session, article_code, availability_qty, inventory_qty=Decimal("0"),
-           set_aside_qty=Decimal("0"), committed_qty=Decimal("0")):
+def _avail(session, article_code, availability_qty, inventory_qty=None,
+           set_aside_qty=Decimal("0"), committed_qty=None):
+    """Inserisce una riga CoreAvailability in modo semanticamente consistente.
+
+    Convenzione default (DL-ARCH-V2-028 §1):
+    - Se inventory_qty non e specificato e committed_qty non e specificato:
+      - la domanda aperta (committed) e la causa della disponibilita negativa
+        → committed_qty = max(-availability_qty, 0), inventory_qty = 0
+      - questo rappresenta il caso reale: stock=0, domanda=N, availability=-N
+    - Per testare anomalie inventariali (giacenza fisica negativa senza domanda):
+      specificare esplicitamente inventory_qty negativo e committed_qty=0
+    """
+    if inventory_qty is None and committed_qty is None:
+        # Scenario default: disponibilita negativa = domanda che eccede lo stock
+        committed_qty = max(-availability_qty, Decimal("0"))
+        inventory_qty = Decimal("0")
+    elif inventory_qty is None:
+        inventory_qty = Decimal("0")
+    elif committed_qty is None:
+        committed_qty = Decimal("0")
+
     session.add(CoreAvailability(
         article_code=article_code,
         inventory_qty=inventory_qty,

@@ -1,7 +1,7 @@
 # ODE V2 - System Overview
 
 ## Date
-2026-04-10
+2026-04-13
 
 ## Scopo
 
@@ -18,7 +18,7 @@ La V2 adotta quattro layer espliciti:
 
 Regole stabili:
 
-- Easy e sempre `read-only`
+- Easy e `read-only`
 - il `sync` costruisce mirror tecnici
 - il `core` aggrega, arricchisce e calcola significato applicativo
 - la UI consuma solo API/Core, mai mirror sync direttamente
@@ -33,6 +33,12 @@ Disponibile:
 - ruoli multipli
 - surface `admin`
 - gestione utenti e ruoli
+- prima pagina admin per la configurazione warning visibility
+
+Nota:
+
+- la configurazione warning usa `visible_to_areas`
+- `admin` governa la configurazione e ha vista trasversale
 
 ### Logistica
 
@@ -63,51 +69,32 @@ Disponibile:
 - planning policy di default a livello famiglia:
   - `considera_in_produzione`
   - `aggrega_codice_in_produzione`
-- UI catalogo famiglie estesa ai due default di planning policy
+- override articolo tri-state per le stesse policy
 - planning policy effettive esposte dal Core `articoli`:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
-- `planning_mode` esposto dai contratti Core come vocabolario esplicito derivato da `effective_aggrega_codice_in_produzione`
-- sezione UI nel dettaglio articolo per:
-  - override tri-state di planning policy
-  - valori effettivi read-only
-  - nomenclatura allineata a:
-    - `by_article`
-    - `by_customer_order_line`
-- giacenza read-only dal Core nel pannello dettaglio
-- computed fact `customer_set_aside` esposto nel pannello dettaglio
-- `committed_qty` e `availability_qty` esposti nel pannello dettaglio
-- refresh semantico backend-controlled `refresh_articoli()` con chain interna completa a 8 step
-
-### Produzione / Criticita Articoli
-
-Disponibile:
-
-- vista operativa minima di criticita basata su `availability_qty < 0`
-- logica di dominio V1 applicata nel Core backend
-- filtro famiglia
-- ordinamenti quantitativi
-- toggle del perimetro `considera_in_produzione` con default attivo
-- refresh della vista agganciato al refresh semantico completo `refresh_articoli()`
-- perimetro ristretto ai soli articoli presenti e attivi nella surface `articoli`
-- hardening delle join cross-source sulla chiave articolo canonica
+  - `planning_mode`
+- metriche quantitative read-only nel dettaglio:
+  - `giacenza`
+  - `customer_set_aside`
+  - `committed_qty`
+  - `availability_qty`
+- refresh semantico backend-controlled `refresh_articoli()` con chain interna completa
 
 ### Produzioni
 
 Disponibile:
 
-- mapping Easy da `DPRE_PROD` e `SDPRE_PROD`
 - mirror sync separati per attive e storiche
 - Core aggregato con `bucket`
 - computed fact `stato_produzione`
 - override interno `forza_completata`
-- UI consultiva a `2 colonne`
+- UI consultiva a 2 colonne
 - sync on demand backend-controlled
-- prima gestione operativa di `forza_completata`
 - default lista su `active`
 - storico disponibile solo in modo esplicito
 - filtro `stato_produzione`
-- ricerca per `codice_articolo` e `numero_documento`
+- ricerca per articolo/documento
 
 ### Inventory
 
@@ -116,8 +103,12 @@ Disponibile:
 - mirror `sync_mag_reale`
 - computed fact `inventory_positions`
 - formula canonica `on_hand_qty = sum(load) - sum(unload)`
-- integrazione read-only della giacenza nella surface `articoli`
-- re-bootstrap completo del mirror gia eseguito per eliminare i movimenti fantasma accumulati e riallineare il dataset a Easy
+- integrazione della giacenza nella surface `articoli`
+- re-bootstrap completo del mirror gia eseguito con `TASK-V2-073`
+
+Nota:
+
+- il problema strutturale `append_only + no_delete_handling` resta aperto in [KNOWN_BUGS.md](/c:/Users/Alberto.REGNANI/Desktop/NSSP/NSSP/V2/docs/reviews/KNOWN_BUGS.md#L1)
 
 ### Ordini cliente
 
@@ -126,22 +117,15 @@ Disponibile:
 - mirror `sync_righe_ordine_cliente` da `V_TORDCLI`
 - Core `customer_order_lines`
 - `open_qty = max(DOC_QTOR - DOC_QTAP - DOC_QTEV, 0)`
-- supporto a `description_lines` per righe con `COLL_RIGA_PREC = true`
+- supporto a `description_lines`
 - enrichment cliente/destinazione demand-driven a livello query/read model
-
-Mirror operativo attivo:
-
-- `delete_absent_keys`: le righe non piu presenti in `V_TORDCLI` vengono rimosse dalla sync successiva
-- le righe con `COLL_RIGA_PREC = true` restano finche la sorgente le include
 
 ### Commitments
 
 Disponibile:
 
 - computed fact `commitments` da provenienza `customer_order`
-- `committed_qty = open_qty` per righe ordine ancora aperte
 - estensione `commitments` alla provenienza `production`
-- perimetro V1 `production` limitato a materiali con `CAT_ART1 != 0`
 - `commitments` mantenuto separato da `inventory`
 
 ### Customer Set Aside
@@ -149,51 +133,45 @@ Disponibile:
 Disponibile:
 
 - computed fact `customer_set_aside` da `DOC_QTAP`
-- `set_aside_qty = DOC_QTAP` per righe ordine con quota appartata > 0
-- separato da `commitments` e da `inventory`
-- esposto nel dettaglio UI `articoli` come campo read-only ODE
-- ricalcolato nel refresh sequenziale dopo `sync_righe_ordine_cliente`
+- esposto nel dettaglio UI `articoli`
 
 ### Availability
 
 Disponibile:
 
 - computed fact `availability`
-- formula canonica V1: `availability_qty = inventory_qty - customer_set_aside_qty - committed_qty`
-- rebuild deterministic (`delete-all + re-insert`)
+- formula canonica:
+  - `availability_qty = inventory_qty - customer_set_aside_qty - committed_qty`
 - valori negativi ammessi
-- un record per `article_code` (UniqueConstraint)
-- script on-demand: `scripts/rebuild_availability.py`
-
-Esposto nel dettaglio `articoli` come campo read-only ODE.
-Ricalcolato nel refresh semantico `articoli` come step 8, dopo `inventory`, `customer_set_aside` e `commitments`.
+- rebuild deterministic
 
 ### Planning Candidates
 
 Disponibile:
 
-- primo slice Core `planning_candidates`
-- prima surface UI dedicata nella area produzione
 - modulo customer-driven con due modalita:
   - `by_article`
   - `by_customer_order_line`
 - nel ramo `by_article`:
-  - `incoming_supply_qty` aggregata da produzioni attive
+  - `incoming_supply_qty`
   - `future_availability_qty = availability_qty + incoming_supply_qty`
 - nel ramo `by_customer_order_line`:
-  - identity per ordine/riga cliente
   - `line_open_demand_qty`
   - `linked_incoming_supply_qty`
   - `line_future_coverage_qty`
-- le produzioni completate sono escluse, anche via override `forza_completata`
-- `required_qty_minimum` come scopertura minima residua in entrambi i rami
-- toolbar con:
+- le produzioni completate sono escluse, anche via `forza_completata`
+- `required_qty_minimum` come scopertura minima residua
+- refinement finale gia applicato:
+  - `stock_effective = max(stock_calculated, 0)`
+  - `reason_code` / `reason_text`
+  - `misura`
+  - descrizione ordine primaria nel ramo per-riga
+- surface UI dedicata con:
   - ricerca `codice`
   - ricerca `descrizione`
   - filtro famiglia
   - toggle `solo_in_produzione`
   - `Aggiorna`
-- contratti/read model gia riallineati al vocabolario `planning_mode`
 
 Non ancora disponibile:
 
@@ -201,9 +179,38 @@ Non ancora disponibile:
 - planning horizon
 - policy di aggregazione avanzata
 
-## Mirror sync attivi
+### Warnings
 
-Gia presenti:
+Disponibile:
+
+- modulo trasversale `warnings`
+- primo warning canonico `NEGATIVE_STOCK`
+- surface dedicata `Warnings`
+- configurazione admin iniziale della visibilita
+
+Stato attuale:
+
+- il warning e unico e non duplicato per reparto
+- la configurazione attuale usa gia `visible_to_areas`
+- gli utenti operativi vedono nella surface `Warnings` solo i warning inclusi nella propria area
+- `admin` mantiene vista trasversale completa
+
+### Criticita Articoli
+
+Disponibile:
+
+- vista operativa minima basata su `availability_qty < 0`
+- filtro famiglia
+- ordinamenti quantitativi
+- toggle `solo_in_produzione`
+- refresh agganciato a `refresh_articoli()`
+
+Nota:
+
+- resta disponibile ma non e piu lo stream operativo primario
+- la deprecazione formale e aperta in `TASK-V2-080`
+
+## Mirror sync attivi
 
 - `sync_clienti`
 - `sync_destinazioni`
@@ -224,70 +231,40 @@ Gia presenti:
 - `customer_set_aside`
 - `availability`
 - `planning_candidates`
+- `warnings`
 
 ## Pattern consolidati
 
-Pattern gia validati:
-
 - mapping -> sync -> core -> ui -> sync on demand
 - mirror esterno + arricchimento interno
-- mirror separati + aggregazione nel Core + computed fact con override
-- catalogo interno di riferimento + associazione a entita
-- pattern UIX generale + spec concreta
-- refresh semantici backend con dipendenze interne (DL-ARCH-V2-022)
-- logiche di dominio come funzioni intercambiabili su fact canonici (DL-ARCH-V2-023)
-- distinzione esplicita tra chiave articolo raw e chiave articolo canonica (DL-ARCH-V2-024)
-- primo DL del modulo `Planning Candidates` nella V1 ridotta customer-driven aggregata per articolo (DL-ARCH-V2-025)
-- planning policy con default a livello famiglia e override puntuale a livello articolo (DL-ARCH-V2-026)
-- evoluzione pianificata di `Planning Candidates` verso due modalita esplicite, `by_article` e `by_customer_order_line`, guidate da `effective_aggrega_codice_in_produzione` (DL-ARCH-V2-027)
-- refinement finale di `Planning Candidates` prima di `Production Proposals`: stock clampato a zero, reason esplicita, misura esposta e descrizione ordine nel ramo `by_customer_order_line` (DL-ARCH-V2-028)
-
-### Refresh semantici (DL-ARCH-V2-022)
-
-La surface `articoli` espone un refresh semantico nominato.
-Il router chiama `refresh_articoli()` e non conosce gli step interni.
-La chain (8 step, dipendenze condizionali) vive in `app/services/refresh_articoli.py`.
-
-Chain completa:
-
-```text
-POST /api/sync/surface/produzione
-  Step 1 - sync articoli
-  Step 2 - sync mag_reale
-  Step 3 - sync righe_ordine_cliente
-  Step 4 - sync produzioni_attive
-  Step 5 - rebuild inventory_positions
-  Step 6 - rebuild customer_set_aside
-  Step 7 - rebuild commitments
-  Step 8 - rebuild availability
-```
+- refresh semantici backend con dipendenze interne
+- logiche di dominio sopra fact canonici
+- planning policy con default famiglia + override articolo
+- distinzione tra chiave articolo raw e chiave canonica
+- `Planning Candidates` come modulo planning customer-driven
+- `Warnings` come modulo trasversale separato dal planning
+- stock policy V1 come estensione del ramo `by_article`, senza flag separato e con riuso di `future_availability_qty`
 
 ## Stato attuale
 
-Il perimetro V1 del modello quantitativo e completo e operativo:
+Il perimetro quantitativo e planning V1/V2 di base e operativo:
 
 - `inventory`, `commitments`, `customer_set_aside`, `availability`
-- tutti e quattro i fact esposti nel dettaglio `articoli`
-- refresh semantico completo: tutti i fact ricalcolati in un solo trigger
-- normalizzazione `article_code` canonica cross-source (`normalize_article_code`)
-- prima vista operativa `criticita articoli` gia attiva e coerente con la surface `articoli`
-- nomenclatura planning gia riallineata nei contratti e nelle UI principali coinvolte
-- `Planning Candidates` V2 gia attivo con branching reale tra candidate aggregati per articolo e candidate per riga ordine
+- `Planning Candidates` V2 con branching reale
+- primo slice `Warnings` V1
 
 Task aperti correnti:
 
 Nessuno nello snapshot corrente.
 
+Task deferred:
+
+- `TASK-V2-079` badge warning in `articoli` e `Planning Candidates`
+
 ## References
 
 - `docs/roadmap/STATUS.md`
 - `docs/guides/IMPLEMENTATION_PATTERNS.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-016.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-017.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-018.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-019.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-020.md`
-- `docs/decisions/ARCH/DL-ARCH-V2-021.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-022.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-023.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-024.md`
@@ -295,3 +272,5 @@ Nessuno nello snapshot corrente.
 - `docs/decisions/ARCH/DL-ARCH-V2-026.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-027.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-028.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-029.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-030.md`

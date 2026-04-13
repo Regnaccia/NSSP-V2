@@ -1,11 +1,13 @@
 """
-Router surface admin — access management.
+Router surface admin — access management e warning config.
 
 Endpoint:
-  GET  /api/admin/users              — lista utenti
-  POST /api/admin/users              — crea utente
-  PATCH /api/admin/users/{id}/active — attiva/disattiva utente
-  PUT  /api/admin/users/{id}/roles   — sostituisce i ruoli dell'utente
+  GET  /api/admin/users                          — lista utenti
+  POST /api/admin/users                          — crea utente
+  PATCH /api/admin/users/{id}/active             — attiva/disattiva utente
+  PUT  /api/admin/users/{id}/roles               — sostituisce i ruoli dell'utente
+  GET  /api/admin/warnings/config                — lista config visibilita warning (TASK-V2-077)
+  PUT  /api/admin/warnings/config/{warning_type} — aggiorna visibilita per un tipo warning
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,10 +20,18 @@ from nssp_v2.app.schemas.admin import (
     CreateUserRequest,
     SetActiveRequest,
     SetRolesRequest,
+    UpdateWarningConfigRequest,
     UserListItem,
 )
 from nssp_v2.app.schemas.auth import Surface
 from nssp_v2.app.services.admin_policy import assert_not_last_active_admin
+from nssp_v2.core.warnings import (
+    KNOWN_WARNING_TYPES,
+    WarningTypeConfigItem,
+    list_warning_configs,
+    set_warning_config,
+)
+from nssp_v2.core.warnings.config import KNOWN_AREAS
 from nssp_v2.shared.db import get_session
 from nssp_v2.shared.security import get_available_surfaces, hash_password
 
@@ -161,3 +171,41 @@ def set_user_roles(
         select(User).where(User.id == user_id).options(_LOAD_ROLES)
     ).one()
     return _to_item(user)
+
+
+# ─── Warning config (TASK-V2-077) ─────────────────────────────────────────────
+
+@router.get("/warnings/config", response_model=list[WarningTypeConfigItem])
+def get_warnings_config(
+    _: dict = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """Lista la configurazione di visibilita per tutti i tipi warning noti."""
+    return list_warning_configs(session)
+
+
+@router.put("/warnings/config/{warning_type}", response_model=WarningTypeConfigItem)
+def update_warning_config(
+    warning_type: str,
+    body: UpdateWarningConfigRequest,
+    _: dict = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """Aggiorna le aree/reparti in cui un tipo warning e visibile.
+
+    warning_type deve essere un tipo noto (es. NEGATIVE_STOCK).
+    visible_to_areas e la lista aggiornata di codici area (magazzino, produzione, logistica).
+    Valori non in KNOWN_AREAS vengono accettati ma ignorati nelle surface operative.
+    """
+    if warning_type not in KNOWN_WARNING_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Tipo warning non ammesso: {warning_type}. Ammessi: {KNOWN_WARNING_TYPES}",
+        )
+    unknown = [a for a in body.visible_to_areas if a not in KNOWN_AREAS]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Aree non ammesse: {unknown}. Ammesse: {KNOWN_AREAS}",
+        )
+    return set_warning_config(session, warning_type, body.visible_to_areas)

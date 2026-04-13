@@ -28,6 +28,7 @@ interface SurfaceFunction {
 const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
   admin: [
     { path: '/admin/utenti', label: 'Utenti' },
+    { path: '/admin/warnings', label: 'Warning Config' },
   ],
   logistica: [
     { path: '/logistica/clienti-destinazioni', label: 'Clienti / Destinazioni' },
@@ -36,8 +37,9 @@ const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
     { path: '/produzione/articoli', label: 'Articoli' },
     { path: '/produzione/famiglie', label: 'Famiglie' },
     { path: '/produzione/produzioni', label: 'Produzioni' },
-    { path: '/produzione/criticita', label: 'Criticità' },
+    { path: '/produzione/criticita', label: 'Criticità (legacy)' },
     { path: '/produzione/planning-candidates', label: 'Planning' },
+    { path: '/produzione/warnings', label: 'Avvertimenti' },
   ],
 }
 

@@ -200,12 +200,12 @@ export interface CriticitaItem {
   computed_at: string
 }
 
-// ─── Core slice planning candidates (DL-ARCH-V2-025, TASK-V2-062, TASK-V2-065, TASK-V2-069, TASK-V2-071) ─
+// ─── Core slice planning candidates (DL-ARCH-V2-025, TASK-V2-062, TASK-V2-065, TASK-V2-069, TASK-V2-071, TASK-V2-074) ─
 
 /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
 export type PlanningMode = 'by_article' | 'by_customer_order_line'
 
-/** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071) */
+/** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071, TASK-V2-074) */
 export interface PlanningCandidateItem {
   article_code: string
   /** Campo sintetico di presentazione */
@@ -217,12 +217,18 @@ export interface PlanningCandidateItem {
   effective_aggrega_codice_in_produzione: boolean | null
   /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
   planning_mode: PlanningMode | null
+  /** Codice reason esplicito della candidatura (DL-ARCH-V2-028 §4) */
+  reason_code: string
+  /** Testo leggibile della reason (DL-ARCH-V2-028 §4) */
+  reason_text: string
+  /** Unità di misura / misura articolo (DL-ARCH-V2-028 §3) — null se non disponibile */
+  misura: string | null
   /** abs del deficit — fabbisogno minimo in entrambe le modalità */
   required_qty_minimum: string
   computed_at: string
 
   // ─── by_article (null per by_customer_order_line) ────────────────────────
-  /** Quota libera attuale (core_availability) — null per by_customer_order_line */
+  /** Quota libera effettiva = max(on_hand,0) - set_aside - committed — null per by_customer_order_line */
   availability_qty: string | null
   /** Domanda cliente aggregata per articolo — null per by_customer_order_line */
   customer_open_demand_qty: string | null
@@ -236,6 +242,8 @@ export interface PlanningCandidateItem {
   order_reference: string | null
   /** Numero riga ordine cliente — null per by_article */
   line_reference: number | null
+  /** Descrizione dalla riga ordine cliente (DL-ARCH-V2-028 §2) — null per by_article */
+  order_line_description: string | null
   /** max(ordered - set_aside - fulfilled, 0) per la riga — null per by_article */
   line_open_demand_qty: string | null
   /** Supply da produzioni collegate a questa riga — null per by_article */
@@ -263,4 +271,36 @@ export interface DestinazioneDetail {
   display_label: string
   // True se destinazione principale derivata da ANACLI (DL-ARCH-V2-012)
   is_primary: boolean
+}
+
+
+// ─── Core slice warnings (DL-ARCH-V2-029, TASK-V2-076, TASK-V2-077, TASK-V2-078, TASK-V2-081) ─
+
+/** Warning canonico — shape minima V1 */
+export interface WarningItem {
+  warning_id: string
+  type: string
+  severity: string
+  entity_type: string
+  entity_key: string
+  message: string
+  source_module: string
+  /** Aree/reparti operativi abilitati — governa badge nei moduli operativi (TASK-V2-081) */
+  visible_to_areas: string[]
+  created_at: string
+  // Campi specifici NEGATIVE_STOCK
+  article_code: string
+  stock_calculated: string
+  anomaly_qty: string
+}
+
+/** Configurazione visibilita per un tipo warning — governata da admin */
+export interface WarningTypeConfigItem {
+  warning_type: string
+  /** Aree/reparti operativi (magazzino, produzione, logistica) — TASK-V2-081 */
+  visible_to_areas: string[]
+  /** True se nessuna riga in DB — si usa il default del tipo */
+  is_default: boolean
+  /** null quando is_default=true */
+  updated_at: string | null
 }
