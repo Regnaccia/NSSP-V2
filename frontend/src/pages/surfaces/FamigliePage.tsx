@@ -1,10 +1,12 @@
 /**
- * Surface Produzione — tabella gestione famiglie articolo (TASK-V2-025, TASK-V2-026).
+ * Surface Produzione — tabella gestione famiglie articolo (TASK-V2-025, TASK-V2-026, TASK-V2-066).
  *
  * Consuma:
- *   GET   /api/produzione/famiglie/catalog  — tutte le famiglie + is_active + n_articoli
- *   POST  /api/produzione/famiglie          — crea nuova famiglia
- *   PATCH /api/produzione/famiglie/{code}/active — toggle is_active
+ *   GET   /api/produzione/famiglie/catalog                              — tutte le famiglie + is_active + n_articoli
+ *   POST  /api/produzione/famiglie                                      — crea nuova famiglia
+ *   PATCH /api/produzione/famiglie/{code}/active                        — toggle is_active
+ *   PATCH /api/produzione/famiglie/{code}/considera-produzione          — toggle considera_in_produzione (default planning)
+ *   PATCH /api/produzione/famiglie/{code}/aggrega-codice-produzione     — toggle planning_mode default (by_article / by_customer_order_line)
  */
 
 import { useEffect, useState } from 'react'
@@ -101,6 +103,7 @@ function RigaFamiglia({
 }) {
   const [togglingActive, setTogglingActive] = useState(false)
   const [togglingProd, setTogglingProd] = useState(false)
+  const [togglingAggrega, setTogglingAggrega] = useState(false)
 
   const handleToggleActive = async () => {
     setTogglingActive(true)
@@ -127,6 +130,20 @@ function RigaFamiglia({
       toast.error('Impossibile aggiornare il flag produzione')
     } finally {
       setTogglingProd(false)
+    }
+  }
+
+  const handleToggleAggrega = async () => {
+    setTogglingAggrega(true)
+    try {
+      const { data } = await apiClient.patch<FamigliaRow>(
+        `/produzione/famiglie/${encodeURIComponent(famiglia.code)}/aggrega-codice-produzione`
+      )
+      onToggled(data)
+    } catch {
+      toast.error('Impossibile aggiornare la modalità planning')
+    } finally {
+      setTogglingAggrega(false)
     }
   }
 
@@ -160,7 +177,17 @@ function RigaFamiglia({
           onChange={handleToggleProd}
           disabled={togglingProd}
           className="h-4 w-4 cursor-pointer accent-primary disabled:cursor-wait"
-          title={famiglia.considera_in_produzione ? 'Considerata in produzione' : 'Non considerata in produzione'}
+          title={famiglia.considera_in_produzione ? 'Nel perimetro produzione' : 'Fuori perimetro produzione'}
+        />
+      </td>
+      <td className="py-2.5 pr-6 text-center">
+        <input
+          type="checkbox"
+          checked={famiglia.aggrega_codice_in_produzione}
+          onChange={handleToggleAggrega}
+          disabled={togglingAggrega}
+          className="h-4 w-4 cursor-pointer accent-primary disabled:cursor-wait"
+          title={famiglia.aggrega_codice_in_produzione ? 'by_article — aggrega per codice articolo' : 'by_customer_order_line — per riga ordine cliente'}
         />
       </td>
       <td className="py-2.5">
@@ -242,7 +269,8 @@ export default function FamigliePage() {
                   <th className="text-left py-2 pr-6 font-medium">Label</th>
                   <th className="text-right py-2 pr-6 font-medium">Articoli</th>
                   <th className="text-left py-2 pr-6 font-medium">Stato</th>
-                  <th className="text-center py-2 pr-6 font-medium">In produzione</th>
+                  <th className="text-center py-2 pr-6 font-medium" title="Default planning: articoli nel perimetro produzione">In produzione</th>
+                  <th className="text-center py-2 pr-6 font-medium" title="Planning mode default della famiglia: by_article = aggrega per codice articolo, by_customer_order_line = per riga ordine cliente">Planning mode</th>
                   <th className="text-left py-2 font-medium"></th>
                 </tr>
               </thead>

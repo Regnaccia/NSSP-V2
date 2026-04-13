@@ -1,483 +1,276 @@
-# 📄 PLANNING CANDIDATES — MODULE SPEC (V1.1)
-
----
+# PLANNING_CANDIDATES_SPEC_V1_1
 
 ## 1. Contesto
 
 Il sistema dispone di:
 
-* sincronizzazione dati da EasyJob (read-only)
-* fact canonici:
+- sincronizzazione dati da Easy in read-only
+- fact canonici:
+  - `inventory`
+  - `commitments`
+  - `customer_set_aside`
+  - `availability`
+- dati su produzioni attive e stato effettivo di completamento
+- planning policy a livello famiglia e articolo
+- refresh semantico backend
 
-  * inventory
-  * commitments
-  * availability
-* dati su produzioni attive
-* logiche di dominio sugli articoli
-* refresh semantico backend
-
-È presente una vista **“criticità articoli”** basata su disponibilità negativa (`availability < 0`), utile ma limitata.
-
----
+E gia presente una vista `criticita articoli` basata su `availability_qty < 0`, utile ma limitata come segnale immediato.
 
 ## 2. Obiettivo del modulo
 
-Il modulo **Planning Candidates** ha lo scopo di:
+Il modulo `Planning Candidates` ha lo scopo di:
 
-> Identificare e rappresentare i fabbisogni produttivi che meritano attenzione, tenendo conto di domanda, stock e copertura già in essere.
+> identificare e rappresentare i fabbisogni produttivi che meritano attenzione, tenendo conto di domanda, stock operativo e copertura gia in essere.
 
 Produce una lista:
 
-* spiegabile
-* non duplicata
-* prioritizzata
-
----
+- spiegabile
+- non duplicata
+- utilizzabile come input del futuro modulo `Production Proposals`
 
 ## 3. Scope
 
-### ✔ Il modulo FA
+### Il modulo FA
 
-* identifica fabbisogni produttivi
-* integra domanda cliente, stock e produzioni attive
-* evita duplicazioni logiche
-* distingue aggregazione / non aggregazione
-* introduce dimensione temporale
-* priorizza tramite scoring
+- identifica fabbisogni produttivi
+- integra domanda cliente, stock operativo e produzioni attive
+- distingue aggregazione e non aggregazione
+- espone una reason esplicita per cui il candidate compare
+- prepara il passaggio verso `Production Proposals`
 
----
+### Il modulo NON FA
 
-### ❌ Il modulo NON FA
-
-* non calcola quantità produttive finali
-* non applica lotti o multipli
-* non schedula produzione
-* non assegna risorse/macchine
-
----
+- non calcola la quantita produttiva finale
+- non applica ancora lotti o multipli finali
+- non schedula produzione
+- non assegna risorse o macchine
+- non gestisce ancora anomalie inventariali come modulo dedicato
 
 ## 4. Posizionamento architetturale
 
 Layer:
 
-* Core / Domain Logic (read model / projection)
+- `Core / Domain Logic`
 
 Input:
 
-* articoli
-* righe ordine cliente
-* stock
-* commitments
-* produzioni attive
+- `articoli`
+- `righe ordine cliente`
+- `availability`
+- `produzioni attive`
+- planning policy effettive
 
 Output:
 
-* lista Planning Candidates
-
----
+- lista `Planning Candidates`
 
 ## 5. Concetti chiave
 
----
-
 ### 5.1 Planning Identity
 
-Unità logica su cui si genera un candidate:
+Unita logica su cui si genera un candidate:
 
-* articolo (se aggregabile)
-* riga ordine (se non aggregabile)
+- `article` se il planning mode e `by_article`
+- `customer_order_line` se il planning mode e `by_customer_order_line`
 
----
+### 5.2 Unicita del candidate
 
-### 5.2 Unicità del candidate
+Per ogni planning identity esiste al massimo un candidate principale.
 
-> Per ogni Planning Identity esiste al massimo un candidate principale.
+Non sono ammessi duplicati logici per la stessa identity.
 
-Non sono ammessi duplicati per:
+### 5.3 Planning Mode
 
-* shortage cliente
-* reintegro stock
+Il comportamento e governato da:
 
----
+- `planning_mode = by_article`
+- `planning_mode = by_customer_order_line`
 
-### 5.3 Origine del fabbisogno
+Il planning mode deriva dalla policy effettiva dell'articolo.
 
-```text
-customer
-stock
-```
+### 5.4 Reason esplicita
 
----
+Ogni candidate deve esporre in modo esplicito:
 
-### 5.4 Comportamento di aggregazione
+- `reason_code`
+- `reason_text`
 
-```text
-aggregable
-non_aggregable
-```
+per spiegare perche la riga e mostrata.
 
----
+La reason non deve essere implicita nella sola presenza della riga.
 
-### 5.5 Candidate multi-causale
-
-Un candidate può avere più cause attive:
-
-Esempi:
-
-* `customer_shortage`
-* `stock_below_target`
-* `future_shortage`
-
----
-
-## 6. Dimensione temporale
-
-Parametro:
-
-* **planning_horizon**
-
-Distinzione:
-
-* domanda entro orizzonte
-* domanda oltre orizzonte
-
----
-
-## 7. Stati del candidate
-
-```text
-immediate
-monitor
-```
-
----
-
-### Immediate
-
-* scopertura entro orizzonte
-
-### Monitor
-
-* copertura nel breve
-* scopertura futura
-
----
-
-## 8. Integrazione produzioni attive
+## 6. Copertura da produzioni attive
 
 Le produzioni attive sono considerate:
 
-> copertura futura (incoming supply)
+> copertura futura gia in corso
 
-NON sono origine del candidate.
+Non sono origine autonoma del candidate.
 
----
+Nel planning:
 
-### Campi chiave
+- la supply in corso riduce la scopertura reale
+- le produzioni completate devono essere escluse, anche via override `forza_completata`
 
-* available_now_qty
-* incoming_production_qty
-* incoming_within_horizon_qty
+## 7. Regola generale sulla giacenza negativa
 
----
+### Principio
 
-### Effetto
+La giacenza negativa e un'anomalia inventariale, non un fabbisogno produttivo.
 
-Le produzioni attive:
+### Regola operativa
 
-* riducono la scopertura reale
-* influenzano stato e priorità
-
----
-
-## 9. Quantità (multi-livello)
-
-Il candidate espone più livelli:
-
-* required_qty_customer
-* required_qty_stock
-* required_qty_minimum
-* stock_gap_qty
-
----
-
-### Definizioni
-
-* **required_qty_customer** → scopertura da domanda cliente
-* **required_qty_stock** → gap rispetto a target stock
-* **required_qty_minimum** → fabbisogno minimo certo
-* **stock_gap_qty** → differenza da target
-
----
-
-### Esclusioni
-
-NON viene calcolata:
-
-* quantità produttiva finale
-
----
-
-## 10. Regole stock vs customer
-
-### Caso 1 — presenza domanda cliente
-
-→ un solo candidate
-
-* origine primaria: customer
-* stock diventa causa secondaria
-
----
-
-### Caso 2 — nessuna domanda cliente
-
-→ candidate stock-driven autonomo
-
----
-
-## 11. Sistema di scoring
-
-### Formula
+Per tutto il modulo `Planning Candidates` vale:
 
 ```text
-priority_score =
-  origin_weight
-+ urgency_score
-+ shortage_score
+stock_effective = max(stock_calculated, 0)
 ```
 
----
+Uso:
 
-### Componenti
+- `stock_calculated` resta disponibile come dato tecnico
+- `stock_effective` e l'unico valore da usare nella logica planning
 
-#### Origin Weight
+### Conseguenza
 
-* customer → alto
-* stock → medio/basso
+La sola presenza di stock negativo:
 
----
+- non genera automaticamente un candidate
+- non compare come reason del candidate
 
-#### Urgency Score
+La gestione dell'anomalia verra trattata in futuro nel modulo separato `Warnings`.
 
-* basato su date consegna
+## 8. Quantita
 
----
+Il candidate puo esporre livelli quantitativi diversi secondo il planning mode.
 
-#### Shortage Score
+### Ramo by_article
 
-* basato su scopertura reale (post produzione)
+Campi principali:
 
----
+- `availability_qty`
+- `incoming_supply_qty`
+- `future_availability_qty`
+- `required_qty_minimum`
 
-### Trasparenza
+Formula:
 
-Ogni candidate include:
+```text
+future_availability_qty = availability_qty + incoming_supply_qty
+```
 
-* priority_score
-* score_breakdown
+Il candidate esiste quando la copertura futura resta negativa.
 
----
+### Ramo by_customer_order_line
 
-## 12. Entity Model
+Campi principali:
+
+- `line_open_demand_qty`
+- `linked_incoming_supply_qty`
+- `line_future_coverage_qty`
+- `required_qty_minimum`
+
+La supply e cercata solo sulle produzioni collegate alla stessa riga ordine cliente.
+
+## 9. Regole di generazione
+
+### 9.1 By Article
+
+- aggregazione per articolo
+- usa stock operativo e supply aggregata
+- il candidate segnala una scopertura residua a livello codice
+
+### 9.2 By Customer Order Line
+
+- un candidate per riga ordine cliente
+- non usa aggregazione per codice
+- la riga viene valutata contro la supply specificamente collegata
+
+## 10. Regole di presentazione
+
+### 10.1 By Article
+
+La descrizione mostrata puo essere quella anagrafica articolo.
+
+### 10.2 By Customer Order Line
+
+La descrizione mostrata deve essere quella presente nell'ordine cliente.
+
+Non va privilegiata la descrizione anagrafica articolo se diversa da quella commerciale/operativa della riga.
+
+### 10.3 Misura
+
+La vista deve esporre anche la misura, per migliorare la leggibilita operativa del candidate.
+
+### 10.4 Reason
+
+La vista deve mostrare sempre la ragione per cui la riga e presente.
+
+## 11. Entity Model
+
+Shape logica minima:
 
 ```text
 PlanningCandidate
 
 candidate_id
-
+planning_mode
 planning_key
-scope_type (article / order_line)
-
-primary_origin_type
-
-aggregation_policy
 
 article_code
+article_description
+family_code
+family_label
 
-order_id (optional)
-order_line_id (optional)
-
-candidate_status
-
-active_reason_codes
-
+reason_code
 reason_text
 
-demand_due_date_min
-demand_due_date_max
-
-total_committed_qty
-horizon_committed_qty
-
-available_now_qty
-
-incoming_production_qty
-incoming_within_horizon_qty
-
-net_available_qty
-
-required_qty_customer
-required_qty_stock
 required_qty_minimum
-
-stock_gap_qty
-
-priority_score
-score_breakdown
+computed_at
 ```
 
----
-
-## 13. Regole di generazione
-
----
-
-### Customer + Aggregable
-
-* aggregazione per articolo
-* calcolo copertura netta (inclusa produzione)
-
----
-
-### Customer + Non Aggregable
-
-* un candidate per riga ordine
-
----
-
-### Stock-driven
-
-* solo se nessuna domanda cliente rilevante
-* policy esplicita richiesta
-
----
-
-## 14. Esempi concreti
-
----
-
-### Caso 1 — Produzione già attiva
-
-Input:
-
-* stock: 500
-* domanda entro horizon: 1200
-* produzione attiva: 900 (entro horizon)
-
-Output:
+Campi ramo `by_article`:
 
 ```text
-required_qty_customer: 0
-
-candidate_status: monitor
-reason: covered_by_incoming_production
+availability_qty
+incoming_supply_qty
+future_availability_qty
 ```
 
----
-
-### Caso 2 — Shortage reale
-
-Input:
-
-* stock: 500
-* domanda: 1200
-* produzione: 400
-
-Output:
+Campi ramo `by_customer_order_line`:
 
 ```text
-required_qty_customer: 300
-
-candidate_status: immediate
-reason: shortage_within_horizon
+order_reference
+line_reference
+order_line_description
+measure
+line_open_demand_qty
+linked_incoming_supply_qty
+line_future_coverage_qty
 ```
 
----
+## 12. Relazione con sistema attuale
 
-### Caso 3 — Codice S
+`Planning Candidates`:
 
-Input:
+- evolve la logica di criticita
+- introduce un livello decisionale superiore rispetto ai soli fact quantitativi
+- resta compatibile con i fact canonici esistenti
+- deve chiudersi bene prima dell'apertura del modulo `Production Proposals`
 
-* riga 1: 50pz
-* riga 2: 80pz
+## 13. Relazione con moduli futuri
 
-Output:
+Output -> input per:
 
-```text
-2 candidate separati (non aggregable)
-```
+- `Production Proposals`
+- futuri moduli di scheduling
 
----
+Nota di confine:
 
-### Caso 4 — Mix customer + stock
+- `Planning Candidates` rileva il bisogno
+- `Production Proposal` trasforma il bisogno in decisione operativa persistente
+- la specifica del modulo proposal vive separatamente in `docs/specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md`
 
-Input:
+## 14. Principio guida finale
 
-* stock: 300
-* domanda: 500
-* target stock: 800
-
-Output:
-
-```text
-required_qty_customer: 200
-stock_gap_qty: 500
-
-reason_codes:
-  - customer_shortage
-  - stock_below_target
-```
-
----
-
-### Caso 5 — Solo stock
-
-Input:
-
-* stock: 100
-* target: 500
-* nessun ordine
-
-Output:
-
-```text
-candidate stock-driven
-
-required_qty_stock: 400
-candidate_status: monitor
-```
-
----
-
-## 15. Output del modulo
-
-Lista ordinata di Planning Candidates:
-
-* non duplicata
-* multi-causale
-* spiegabile
-
----
-
-## 16. Relazione con sistema attuale
-
-* evolve la logica di criticità
-* introduce un livello decisionale superiore
-* mantiene compatibilità con fact esistenti
-
----
-
-## 17. Relazione con moduli futuri
-
-Output → input per:
-
-* Production Proposal
-* Scheduler
-
----
-
-## 18. Principio guida finale
-
-> Planning Candidates rappresenta la pressione produttiva reale, considerando domanda cliente, politiche di stock e copertura già in essere, evitando duplicazioni e senza anticipare decisioni produttive.
-
----
+> `Planning Candidates` rappresenta la pressione produttiva reale, considerando domanda cliente, stock operativo clampato a zero e copertura gia in essere, senza confondere le anomalie inventariali con il bisogno produttivo.

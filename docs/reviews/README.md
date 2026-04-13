@@ -10,4 +10,11 @@ Uso consigliato:
 
 Documenti attivi:
 
+- `KNOWN_BUGS.md`
 - `PROJECT_REVIEW_2026-04-08.md`
+- `PROJECT_REVIEW_2026-04-10_ARCHITECTURAL.md`
+- `PROJECT_REVIEW_2026-04-10_SYSTEMS_ENGINEERING.md`
+
+Bug reports:
+
+- `BUG-MAG-REALE-DELETE-HANDLING-2026-04-10.md` — movimenti eliminati in Easy restano nel mirror ODE -> giacenze errate (fix operativo `TASK-V2-073` gia eseguito; follow-up architetturale ancora aperto)

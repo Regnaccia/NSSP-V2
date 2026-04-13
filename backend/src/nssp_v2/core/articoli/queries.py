@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
+from nssp_v2.core.planning_mode import resolve_planning_mode
 from sqlalchemy import func
 
 from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem, FamigliaRow
@@ -231,6 +232,9 @@ def get_articolo_detail(
         famiglia_label=famiglia.label if famiglia else None,
         effective_considera_in_produzione=resolve_planning_policy(override_considera, family_considera),
         effective_aggrega_codice_in_produzione=resolve_planning_policy(override_aggrega, family_aggrega),
+        planning_mode=resolve_planning_mode(resolve_planning_policy(override_aggrega, family_aggrega)),
+        override_considera_in_produzione=override_considera,
+        override_aggrega_codice_in_produzione=override_aggrega,
         on_hand_qty=inv.on_hand_qty if inv is not None else None,
         giacenza_computed_at=inv.computed_at if inv is not None else None,
         customer_set_aside_qty=customer_set_aside_qty,
@@ -272,6 +276,7 @@ def list_famiglie_catalog(session: Session) -> list[FamigliaRow]:
             sort_order=r.sort_order,
             is_active=r.is_active,
             considera_in_produzione=r.considera_in_produzione,
+            aggrega_codice_in_produzione=r.aggrega_codice_in_produzione,
             n_articoli=counts.get(r.code, 0),
         )
         for r in rows
@@ -311,6 +316,7 @@ def create_famiglia(
         sort_order=famiglia.sort_order,
         is_active=famiglia.is_active,
         considera_in_produzione=famiglia.considera_in_produzione,
+        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
         n_articoli=0,
     )
 
@@ -336,6 +342,7 @@ def toggle_famiglia_active(
         sort_order=famiglia.sort_order,
         is_active=famiglia.is_active,
         considera_in_produzione=famiglia.considera_in_produzione,
+        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
         n_articoli=n,
     )
 
@@ -361,6 +368,33 @@ def toggle_famiglia_considera_produzione(
         sort_order=famiglia.sort_order,
         is_active=famiglia.is_active,
         considera_in_produzione=famiglia.considera_in_produzione,
+        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
+        n_articoli=n,
+    )
+
+
+def toggle_famiglia_aggrega_codice_produzione(
+    session: Session,
+    code: str,
+) -> FamigliaRow:
+    """Inverte aggrega_codice_in_produzione della famiglia.
+
+    Raises:
+        ValueError: se la famiglia non esiste.
+    """
+    famiglia = session.query(ArticoloFamiglia).filter(ArticoloFamiglia.code == code).first()
+    if famiglia is None:
+        raise ValueError(f"Famiglia '{code}' non trovata")
+    famiglia.aggrega_codice_in_produzione = not famiglia.aggrega_codice_in_produzione
+    session.flush()
+    n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
+    return FamigliaRow(
+        code=famiglia.code,
+        label=famiglia.label,
+        sort_order=famiglia.sort_order,
+        is_active=famiglia.is_active,
+        considera_in_produzione=famiglia.considera_in_produzione,
+        aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
         n_articoli=n,
     )
 
@@ -403,4 +437,41 @@ def set_famiglia_articolo(
         config.famiglia_code = famiglia_code
         config.updated_at = now
 
+    session.flush()
+
+
+# ─── Write: override planning policy articolo ─────────────────────────────────
+
+_SENTINEL = object()
+
+
+def set_articolo_policy_override(
+    session: Session,
+    codice_articolo: str,
+    override_considera: object = _SENTINEL,
+    override_aggrega: object = _SENTINEL,
+) -> None:
+    """Imposta o rimuove gli override di planning policy per un articolo.
+
+    Parametri opzionali (sentinel): se non passato, il campo non viene modificato.
+    Valore None = eredita il default di famiglia (rimuove l'override).
+    Valore True/False = sovrascrive il default di famiglia.
+
+    Non modifica mai sync_articoli.
+    """
+    config = session.get(CoreArticoloConfig, codice_articolo)
+    now = datetime.now(timezone.utc)
+
+    if config is None:
+        config = CoreArticoloConfig(
+            codice_articolo=codice_articolo,
+            updated_at=now,
+        )
+        session.add(config)
+
+    if override_considera is not _SENTINEL:
+        config.override_considera_in_produzione = override_considera  # type: ignore[assignment]
+    if override_aggrega is not _SENTINEL:
+        config.override_aggrega_codice_in_produzione = override_aggrega  # type: ignore[assignment]
+    config.updated_at = now
     session.flush()

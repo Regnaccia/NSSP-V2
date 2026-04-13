@@ -13,6 +13,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from nssp_v2.core.planning_mode import PlanningMode
+
 
 class ArticoloItem(BaseModel):
     """Riga di lista articoli — popola la colonna sinistra della UI.
@@ -43,8 +45,8 @@ class ArticoloItem(BaseModel):
     # Planning policy effettive (DL-ARCH-V2-026 §Effective policy, TASK-V2-064):
     #   override articolo se valorizzato, altrimenti default famiglia.
     #   None se l'articolo non ha famiglia e non ha override (valore indefinito).
-    effective_considera_in_produzione: bool | None
-    effective_aggrega_codice_in_produzione: bool | None
+    effective_considera_in_produzione: bool | None = None
+    effective_aggrega_codice_in_produzione: bool | None = None
 
 
 class ArticoloDetail(BaseModel):
@@ -96,6 +98,15 @@ class ArticoloDetail(BaseModel):
     effective_considera_in_produzione: bool | None = None
     effective_aggrega_codice_in_produzione: bool | None = None
 
+    # Override articolo per planning policy (DL-ARCH-V2-026, TASK-V2-067):
+    #   None = eredita il default di famiglia; True/False = sovrascrive.
+    override_considera_in_produzione: bool | None = None
+    override_aggrega_codice_in_produzione: bool | None = None
+
+    # Vocabolario planning_mode (DL-ARCH-V2-027, TASK-V2-069):
+    #   derivato da effective_aggrega_codice_in_produzione via resolve_planning_mode.
+    planning_mode: PlanningMode | None = None
+
     # Giacenza canonica (DL-ARCH-V2-016, TASK-V2-038) — None se nessun movimento registrato
     on_hand_qty: Decimal | None = None
     giacenza_computed_at: datetime | None = None
@@ -139,4 +150,5 @@ class FamigliaRow(BaseModel):
     sort_order: int | None
     is_active: bool
     considera_in_produzione: bool
+    aggrega_codice_in_produzione: bool
     n_articoli: int

@@ -1,7 +1,7 @@
-# UIX_SPEC_PLANNING_CANDIDATES - Vista operativa V1
+# UIX_SPEC_PLANNING_CANDIDATES - Vista operativa Planning Candidates
 
 ## Status
-Draft
+In Use
 
 Valori ammessi:
 
@@ -14,14 +14,17 @@ Valori ammessi:
 
 ## Purpose
 
-Documentare la prima surface UI di `Planning Candidates` nella V1 ridotta, coerente con:
+Documentare la surface UI di `Planning Candidates`, nata nella V1 ridotta e poi evoluta alla V2 con branching reale, coerente con:
 
 - `DL-ARCH-V2-025`
 - `DL-ARCH-V2-026`
-- il completamento previsto di `TASK-V2-062`
-- il completamento previsto di `TASK-V2-064`
+- `DL-ARCH-V2-027`
+- il completamento di `TASK-V2-062`
+- il completamento di `TASK-V2-064`
+- il completamento di `TASK-V2-071`
+- il completamento di `TASK-V2-072`
 
-La spec descrive la prima vista operativa di planning, non l'intero modulo futuro.
+La spec descrive la surface operativa di planning nello stato attuale, non l'intero modulo futuro.
 
 ## Related Documents
 
@@ -30,10 +33,14 @@ La spec descrive la prima vista operativa di planning, non l'intero modulo futur
 - `docs/decisions/ARCH/DL-ARCH-V2-023.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-025.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-026.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-027.md`
 - `docs/specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md`
+- `docs/specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md`
 - `docs/task/TASK-V2-062-core-planning-candidates-v1.md`
 - `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
 - `docs/task/TASK-V2-064-core-effective-planning-policy-articoli.md`
+- `docs/task/TASK-V2-071-core-planning-candidates-v2-branching.md`
+- `docs/task/TASK-V2-072-ui-planning-candidates-v2-branching.md`
 
 ## Variant
 
@@ -41,9 +48,9 @@ La spec descrive la prima vista operativa di planning, non l'intero modulo futur
 
 Motivazione:
 
-- nella V1 non esiste ancora un dettaglio naturale a destra paragonabile ad `articoli`
-- la prima esigenza operativa e scanning rapido di una lista planning-oriented
-- la granularita e aggregata per articolo
+- non esiste ancora un dettaglio naturale a destra paragonabile ad `articoli`
+- la prima esigenza operativa resta scanning rapido di una lista planning-oriented
+- la vista deve ora poter ospitare sia candidate aggregati per articolo sia candidate per riga ordine
 
 ## Surface Goal
 
@@ -59,18 +66,27 @@ La surface non deve ancora spiegare:
 
 ## Data Semantics
 
-La vista consuma il read model Core `Planning Candidates` V1.
+La vista consuma il read model Core `Planning Candidates` nello stato attuale V2.
 
 Campi quantitativi minimi attesi:
 
-- `article_code`
-- `article_description`
-- `family_name`
-- `customer_open_demand_qty`
-- `availability_qty`
-- `incoming_supply_qty`
-- `future_availability_qty`
-- `required_qty_minimum`
+- campi comuni:
+  - `article_code`
+  - `display_label`
+  - `famiglia_label`
+  - `planning_mode`
+  - `required_qty_minimum`
+- ramo `by_article`:
+  - `customer_open_demand_qty`
+  - `availability_qty`
+  - `incoming_supply_qty`
+  - `future_availability_qty`
+- ramo `by_customer_order_line`:
+  - `order_reference`
+  - `line_reference`
+  - `line_open_demand_qty`
+  - `linked_incoming_supply_qty`
+  - `line_future_coverage_qty`
 
 Campi di policy effettiva attesi dopo `TASK-V2-064`:
 
@@ -130,16 +146,18 @@ Motivazione:
 
 ## Table Columns
 
-Ordine consigliato delle colonne:
+Ordine consigliato delle colonne nello stato attuale:
 
 1. `Codice`
 2. `Descrizione`
 3. `Famiglia`
-4. `Domanda aperta`
-5. `Disponibilita attuale`
-6. `Supply in corso`
-7. `Disponibilita futura`
-8. `Fabbisogno minimo`
+4. `Mode`
+5. `Ordine / Riga`
+6. `Domanda`
+7. `Dispon. attuale`
+8. `Supply`
+9. `Copertura`
+10. `Fabbisogno minimo`
 
 ## Sorting
 
@@ -204,10 +222,10 @@ La V1 UI non include ancora:
 
 ## Notes
 
-- Questa spec assume completato `TASK-V2-064` per poter filtrare usando i valori effettivi di policy.
-- La surface V1 resta intenzionalmente piu vicina a `criticita` che a un planner completo.
+- La surface resta intenzionalmente piu vicina a `criticita` che a un planner completo.
+- Lo stato attuale include gia il branching reale `by_article` / `by_customer_order_line`.
 - Le future evoluzioni potranno introdurre:
-  - policy di aggregazione
+  - policy di aggregazione piu ricche
   - slice temporali
   - scoring
   - detail panel
@@ -220,3 +238,4 @@ La V1 UI non include ancora:
 - `docs/decisions/ARCH/DL-ARCH-V2-023.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-025.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-026.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-027.md`

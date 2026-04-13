@@ -1,7 +1,7 @@
 # TASK-V2-065 - UI Planning Candidates V1
 
 ## Status
-Todo
+Done
 
 ## Date
 2026-04-10
@@ -191,11 +191,30 @@ Il riallineamento di roadmap, overview, indici e guide trasversali viene fatto s
 
 ## Completion Notes
 
-Da compilare a cura di Claude Code quando il task viene chiuso.
+### Deliverables
+
+- `V2/frontend/src/pages/surfaces/PlanningCandidatesPage.tsx` — surface completa
+- `V2/frontend/src/App.tsx` — route `/produzione/planning-candidates` aggiunta
+- `V2/frontend/src/components/AppShell.tsx` — voce "Planning" nel menu contestuale produzione
+
+### Implementazione
+
+La pagina implementa:
+- tabella con 8 colonne (Codice, Descrizione, Famiglia, Domanda aperta, Disponibilità attuale, Supply in corso, Disponibilità futura, Fabbisogno min.)
+- ordinamento cliccabile su tutte le colonne numeriche e famiglia, default `required_qty_minimum` desc
+- toolbar: ricerca codice (normalizzazione DL-UIX-V2-004), ricerca descrizione, filtro famiglia, toggle "Solo perimetro produzione"
+- toggle `soloInProduzione` usa `effective_considera_in_produzione` (DL-ARCH-V2-026)
+- pulsante "Aggiorna" → POST `/sync/surface/produzione` (DL-ARCH-V2-022), poi ricarica lista
+- colorazione in rosso di `future_availability_qty` negativa
+- stato di caricamento/sync distinti in header
+
+### Verifica
+
+`npm run build` → OK (312 kB JS, 0 errori TypeScript)
 
 ## Completed At
 
-YYYY-MM-DD
+2026-04-10
 
 ## Completed By
 

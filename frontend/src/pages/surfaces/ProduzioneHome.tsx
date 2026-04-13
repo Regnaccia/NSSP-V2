@@ -236,6 +236,25 @@ function RigaInfo({ label, value }: { label: string; value: string | null | unde
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+type TriState = 'null' | 'true' | 'false'
+
+function triStateFromBool(v: boolean | null | undefined): TriState {
+  if (v === true) return 'true'
+  if (v === false) return 'false'
+  return 'null'
+}
+
+function boolFromTriState(v: TriState): boolean | null {
+  if (v === 'true') return true
+  if (v === 'false') return false
+  return null
+}
+
+function effectiveLabel(v: boolean | null | undefined): string {
+  if (v === true) return 'Sì'
+  if (v === false) return 'No'
+  return 'Non definito'
+}
 
 function ColonnaDettaglio({
   articoloSelezionato,
@@ -243,18 +262,22 @@ function ColonnaDettaglio({
   loading,
   famiglie,
   onFamigliaChange,
+  onPolicyOverrideChange,
 }: {
   articoloSelezionato: string | null
   detail: ArticoloDetail | null
   loading: boolean
   famiglie: FamigliaItem[]
   onFamigliaChange: (codice: string, familgiaCode: string | null) => Promise<void>
+  onPolicyOverrideChange: (codice: string, considera: boolean | null, aggrega: boolean | null) => Promise<ArticoloDetail>
 }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const [policySaveStatus, setPolicySaveStatus] = useState<SaveStatus>('idle')
 
   // Resetta il feedback quando cambia articolo
   useEffect(() => {
     setSaveStatus('idle')
+    setPolicySaveStatus('idle')
   }, [detail?.codice_articolo])
 
   const handleFamigliaSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -268,6 +291,26 @@ function ColonnaDettaglio({
     } catch {
       setSaveStatus('error')
       setTimeout(() => setSaveStatus('idle'), 3500)
+    }
+  }
+
+  const handlePolicyChange = async (
+    considera: TriState,
+    aggrega: TriState,
+  ) => {
+    if (!detail) return
+    setPolicySaveStatus('saving')
+    try {
+      await onPolicyOverrideChange(
+        detail.codice_articolo,
+        boolFromTriState(considera),
+        boolFromTriState(aggrega),
+      )
+      setPolicySaveStatus('saved')
+      setTimeout(() => setPolicySaveStatus('idle'), 2500)
+    } catch {
+      setPolicySaveStatus('error')
+      setTimeout(() => setPolicySaveStatus('idle'), 3500)
     }
   }
 
@@ -335,6 +378,87 @@ function ColonnaDettaglio({
               <p className="text-xs text-green-600">Salvato</p>
             )}
             {saveStatus === 'error' && (
+              <p className="text-xs text-red-600">Errore durante il salvataggio</p>
+            )}
+          </div>
+        </section>
+
+        {/* Planning policy — override articolo + valori effettivi (DL-ARCH-V2-026, TASK-V2-067) */}
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+            Planning policy
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Override puntuale per l'articolo. "Eredita" usa il default della famiglia assegnata.
+          </p>
+          <div className="space-y-3">
+            {/* Considera in produzione */}
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Nel perimetro produzione</label>
+              <select
+                value={triStateFromBool(detail.override_considera_in_produzione)}
+                onChange={(e) =>
+                  handlePolicyChange(
+                    e.target.value as TriState,
+                    triStateFromBool(detail.override_aggrega_codice_in_produzione),
+                  )
+                }
+                disabled={policySaveStatus === 'saving'}
+                className={`${inputCls} text-sm`}
+              >
+                <option value="null">Eredita dalla famiglia</option>
+                <option value="true">Sì — includi nel perimetro</option>
+                <option value="false">No — escludi dal perimetro</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Effettivo:{' '}
+                <span className={`font-medium ${
+                  detail.effective_considera_in_produzione === true ? 'text-green-700' :
+                  detail.effective_considera_in_produzione === false ? 'text-muted-foreground' :
+                  'text-amber-600'
+                }`}>
+                  {effectiveLabel(detail.effective_considera_in_produzione)}
+                </span>
+              </p>
+            </div>
+
+            {/* Modalità planning (aggrega_codice_in_produzione → planning_mode) */}
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Modalità planning</label>
+              <select
+                value={triStateFromBool(detail.override_aggrega_codice_in_produzione)}
+                onChange={(e) =>
+                  handlePolicyChange(
+                    triStateFromBool(detail.override_considera_in_produzione),
+                    e.target.value as TriState,
+                  )
+                }
+                disabled={policySaveStatus === 'saving'}
+                className={`${inputCls} text-sm`}
+              >
+                <option value="null">Eredita dalla famiglia</option>
+                <option value="true">by_article — aggrega per codice</option>
+                <option value="false">by_customer_order_line — per riga ordine</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Effettivo:{' '}
+                <span className={`font-medium ${
+                  detail.planning_mode === 'by_article' ? 'text-green-700' :
+                  detail.planning_mode === 'by_customer_order_line' ? 'text-muted-foreground' :
+                  'text-amber-600'
+                }`}>
+                  {detail.planning_mode ?? 'Non definito'}
+                </span>
+              </p>
+            </div>
+
+            {policySaveStatus === 'saving' && (
+              <p className="text-xs text-muted-foreground">Salvataggio…</p>
+            )}
+            {policySaveStatus === 'saved' && (
+              <p className="text-xs text-green-600">Policy salvata</p>
+            )}
+            {policySaveStatus === 'error' && (
               <p className="text-xs text-red-600">Errore durante il salvataggio</p>
             )}
           </div>
@@ -574,6 +698,22 @@ export default function ProduzioneHome() {
     )
   }
 
+  const handlePolicyOverrideChange = async (
+    codice: string,
+    considera: boolean | null,
+    aggrega: boolean | null,
+  ): Promise<ArticoloDetail> => {
+    const { data } = await apiClient.patch<ArticoloDetail>(
+      `/produzione/articoli/${encodeURIComponent(codice)}/policy-override`,
+      {
+        override_considera_in_produzione: considera,
+        override_aggrega_codice_in_produzione: aggrega,
+      },
+    )
+    setDetail(data)
+    return data
+  }
+
   const handleRefresh = async () => {
     setSyncStatus('syncing')
     try {
@@ -657,6 +797,7 @@ export default function ProduzioneHome() {
           loading={detailLoading}
           famiglie={famiglie}
           onFamigliaChange={handleFamigliaChange}
+          onPolicyOverrideChange={handlePolicyOverrideChange}
         />
       </div>
     </div>

@@ -84,4 +84,12 @@ Task registrati:
 - `TASK-V2-062-core-planning-candidates-v1.md` - completato
 - `TASK-V2-063-model-planning-policy-defaults-e-overrides.md` - completato
 - `TASK-V2-064-core-effective-planning-policy-articoli.md` - completato
-- `TASK-V2-065-ui-planning-candidates-v1.md` - todo
+- `TASK-V2-065-ui-planning-candidates-v1.md` - completato
+- `TASK-V2-066-ui-planning-policy-famiglie.md` - completato
+- `TASK-V2-067-ui-override-e-effective-policy-articoli.md` - completato
+- `TASK-V2-068-hardening-planning-candidates-escludi-completate.md` - completato
+- `TASK-V2-069-allineamento-nomenclatura-planning-mode.md` - completato
+- `TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md` - completato
+- `TASK-V2-071-core-planning-candidates-v2-branching.md` - completato
+- `TASK-V2-072-ui-planning-candidates-v2-branching.md` - completato
+- `TASK-V2-073-fix-mag-reale-rebootstrap.md` - completato

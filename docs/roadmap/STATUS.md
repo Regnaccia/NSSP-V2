@@ -51,10 +51,12 @@ Sono oggi disponibili:
 - planning policy defaults a livello famiglia:
   - `considera_in_produzione`
   - `aggrega_codice_in_produzione`
+- UI `famiglie articolo` estesa ai default di planning policy
 - override articolo nullable per planning policy
 - valori effettivi nel Core `articoli`:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
+- dettaglio `articoli` esteso a override tri-state e valori effettivi di planning policy
 - ricerca `articoli` separata in:
   - `codice` con normalizzazione dimensionale
   - `descrizione` testuale libera
@@ -62,6 +64,22 @@ Sono oggi disponibili:
   - aggregato per articolo
   - customer-driven
   - basato su `future_availability_qty`
+- prima surface UI `Planning Candidates` V1:
+  - tabella aggregata per articolo
+  - ricerca `codice` e `descrizione`
+  - filtro famiglia
+  - toggle `solo_in_produzione`
+  - refresh on demand via surface `produzione`
+- hardening `Planning Candidates`:
+  - `incoming_supply_qty` esclude produzioni completate
+  - include anche i casi `forza_completata`
+- nomenclatura planning riallineata nei contratti:
+  - `planning_mode = by_article`
+  - `planning_mode = by_customer_order_line`
+  - mappatura centrale da `effective_aggrega_codice_in_produzione`
+- UI planning riallineata allo stesso vocabolario:
+  - `famiglie articolo`
+  - dettaglio `articoli`
 - prima surface operativa `criticita articoli`
 - toggle del perimetro `considera_in_produzione` nella vista `criticita`
 - refresh della vista `criticita` agganciato al refresh semantico completo della surface `articoli`
@@ -72,7 +90,7 @@ Sono oggi disponibili:
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-026`
+- `ARCH/` fino a `DL-ARCH-V2-028`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -91,7 +109,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-064`
+- `TASK-V2-001` -> `TASK-V2-073`
 
 In particolare il primo caso applicativo oggi copre:
 
@@ -150,10 +168,19 @@ In particolare il primo caso applicativo oggi copre:
 - `TASK-V2-062` Core `Planning Candidates` V1 aggregato per articolo con `future_availability_qty`
 - `TASK-V2-063` modello `famiglia + articolo` esteso a planning policy defaults + override
 - `TASK-V2-064` Core `articoli` esteso con `effective_considera_in_produzione` e `effective_aggrega_codice_in_produzione`
+- `TASK-V2-065` prima surface UI `Planning Candidates` V1
+- `TASK-V2-066` UI `famiglie articolo` estesa ai default di planning policy
+- `TASK-V2-067` dettaglio `articoli` esteso a override ed effective planning policy
+- `TASK-V2-068` hardening `Planning Candidates` per escludere supply da produzioni completate, anche via override
+- `TASK-V2-069` allineamento della nomenclatura planning al vocabolario esplicito `planning_mode`
+- `TASK-V2-070` allineamento UI planning al vocabolario esplicito `planning_mode`
+- `TASK-V2-071` evoluzione del Core `Planning Candidates` al branching reale `by_article` / `by_customer_order_line`
+- `TASK-V2-072` evoluzione della UI `Planning Candidates` per rappresentare il branching reale `by_article` / `by_customer_order_line`
+- `TASK-V2-073` re-bootstrap completo di `sync_mag_reale` con riallineamento exact-match vs Easy e rebuild della chain quantitativa
 
 ## Task aperti
 
-- `TASK-V2-065` introdurre la prima surface UI `Planning Candidates` V1
+Nessuno nello snapshot corrente.
 
 ## Gap noti
 
@@ -161,6 +188,7 @@ In particolare il primo caso applicativo oggi copre:
 - il catalogo `famiglie articolo` e ormai un vero riferimento interno; i prossimi stream dovranno decidere se riusare lo stesso pattern anche per altri cataloghi di dominio
 - i report `docs/test/` coprono formalmente solo i primi test storici; per i task piu recenti la verifica vive nelle `Completion Notes`
 - manca uno script `rebuild_commitments.py` on-demand (analogo a `rebuild_inventory_positions.py` e `rebuild_availability.py`)
+- il mirror `sync_mag_reale` mantiene ancora la strategia `append_only + no_delete_handling`; il re-bootstrap di `TASK-V2-073` ha riallineato il dataset corrente, ma rettifiche o cancellazioni future in Easy possono riprodurre il problema finche non verra introdotto un fix architetturale della strategia di sync
 
 ## Prossima sequenza consigliata
 
@@ -172,10 +200,45 @@ Il perimetro V1 del modello quantitativo e ora completamente chiuso e operativo:
 - normalizzazione `article_code` canonica cross-source
 - router thin: la chain non e piu replicata negli endpoint
 - prima vista operativa `criticita articoli` gia coerente con la surface `articoli`
+- prima surface operativa `Planning Candidates` V1 gia disponibile
+- configurazione planning policy ora visibile e modificabile nelle schermate:
+  - `famiglie articolo`
+  - dettaglio `articoli`
+- regola architetturale gia fissata per l'evoluzione V2 di `Planning Candidates`:
+  - `by_article`
+  - `by_customer_order_line`
+  - selezione guidata da `effective_aggrega_codice_in_produzione`
+- refinement finale gia fissato per `Planning Candidates` prima di `Production Proposals`:
+  - stock planning clampato a zero
+  - descrizione ordine nel ramo `by_customer_order_line`
+  - misura esposta
+  - `reason` esplicita
+- nomenclatura planning gia riallineata nei contratti e nella UI:
+  - `planning_mode`
+  - `by_article`
+  - `by_customer_order_line`
+- `Planning Candidates` V2 ora disponibile con:
+  - branching reale Core
+  - candidate aggregati per articolo
+  - candidate per riga ordine cliente
+  - UI capace di rappresentare entrambe le shape
 
 I prossimi stream naturali riguardano:
 
-- prima vista UI `Planning Candidates` solo dopo il consolidamento del Core V1 e dei valori effettivi di policy
+- hardening architetturale della sync `MAG_REALE`:
+  - superare `append_only + no_delete_handling`
+  - valutare `full_replace`, `reconcile` o strategia equivalente
+  - formalizzare il tutto in un `DL-ARCH` dedicato
+- evoluzione della surface `Planning Candidates` oltre la V1 ridotta:
+  - policy di aggregazione
+  - scoring
+  - slice temporali
+- raffinamento successivo di `Planning Candidates`:
+  - grouping e presentazione dedicata per il ramo `by_customer_order_line`
+  - uso piu ricco delle planning policy
+- evoluzione del modello planning policy:
+  - uso operativo di `aggrega_codice_in_produzione`
+  - future stock policy
 - evoluzione futura della surface `criticita articoli` verso logiche piu ricche: famiglie, scorte, policy di aggregazione e slice temporali
 - scheduler automatico dei refresh
 - `rebuild_commitments.py` script on-demand mancante

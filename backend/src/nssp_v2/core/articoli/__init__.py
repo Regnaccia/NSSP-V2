@@ -21,8 +21,10 @@ from nssp_v2.core.articoli.queries import (
     list_articoli,
     list_famiglie,
     list_famiglie_catalog,
+    set_articolo_policy_override,
     set_famiglia_articolo,
     toggle_famiglia_active,
+    toggle_famiglia_aggrega_codice_produzione,
     toggle_famiglia_considera_produzione,
 )
 
@@ -38,5 +40,7 @@ __all__ = [
     "create_famiglia",
     "toggle_famiglia_active",
     "toggle_famiglia_considera_produzione",
+    "toggle_famiglia_aggrega_codice_produzione",
     "set_famiglia_articolo",
+    "set_articolo_policy_override",
 ]

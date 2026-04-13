@@ -99,6 +99,7 @@ export interface FamigliaRow {
   sort_order: number | null
   is_active: boolean
   considera_in_produzione: boolean
+  aggrega_codice_in_produzione: boolean
   n_articoli: number
 }
 
@@ -147,6 +148,14 @@ export interface ArticoloDetail {
   availability_qty: string | null
   /** Timestamp del calcolo availability */
   availability_computed_at: string | null
+  /** Planning policy effettive (DL-ARCH-V2-026, TASK-V2-064) — null se senza famiglia e senza override */
+  effective_considera_in_produzione: boolean | null
+  effective_aggrega_codice_in_produzione: boolean | null
+  /** Override articolo (DL-ARCH-V2-026, TASK-V2-067) — null = eredita default famiglia */
+  override_considera_in_produzione: boolean | null
+  override_aggrega_codice_in_produzione: boolean | null
+  /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
+  planning_mode: PlanningMode | null
 }
 
 // ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────
@@ -191,9 +200,12 @@ export interface CriticitaItem {
   computed_at: string
 }
 
-// ─── Core slice planning candidates (DL-ARCH-V2-025, TASK-V2-062, TASK-V2-065) ─
+// ─── Core slice planning candidates (DL-ARCH-V2-025, TASK-V2-062, TASK-V2-065, TASK-V2-069, TASK-V2-071) ─
 
-/** Articolo planning candidate V1: future_availability_qty < 0 */
+/** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
+export type PlanningMode = 'by_article' | 'by_customer_order_line'
+
+/** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071) */
 export interface PlanningCandidateItem {
   article_code: string
   /** Campo sintetico di presentazione */
@@ -203,17 +215,33 @@ export interface PlanningCandidateItem {
   /** Planning policy effettive (DL-ARCH-V2-026) — null se articolo senza famiglia e senza override */
   effective_considera_in_produzione: boolean | null
   effective_aggrega_codice_in_produzione: boolean | null
-  /** Quota libera attuale (core_availability) */
-  availability_qty: string
-  /** Domanda cliente aperta aggregata per articolo */
-  customer_open_demand_qty: string
-  /** Supply aggregata da produzioni attive */
-  incoming_supply_qty: string
-  /** future = availability + incoming_supply (negativa se candidate) */
-  future_availability_qty: string
-  /** abs(future_availability_qty) — fabbisogno minimo */
+  /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
+  planning_mode: PlanningMode | null
+  /** abs del deficit — fabbisogno minimo in entrambe le modalità */
   required_qty_minimum: string
   computed_at: string
+
+  // ─── by_article (null per by_customer_order_line) ────────────────────────
+  /** Quota libera attuale (core_availability) — null per by_customer_order_line */
+  availability_qty: string | null
+  /** Domanda cliente aggregata per articolo — null per by_customer_order_line */
+  customer_open_demand_qty: string | null
+  /** Supply aggregata da produzioni attive — null per by_customer_order_line */
+  incoming_supply_qty: string | null
+  /** availability + incoming_supply — null per by_customer_order_line */
+  future_availability_qty: string | null
+
+  // ─── by_customer_order_line (null per by_article) ────────────────────────
+  /** Numero ordine cliente — null per by_article */
+  order_reference: string | null
+  /** Numero riga ordine cliente — null per by_article */
+  line_reference: number | null
+  /** max(ordered - set_aside - fulfilled, 0) per la riga — null per by_article */
+  line_open_demand_qty: string | null
+  /** Supply da produzioni collegate a questa riga — null per by_article */
+  linked_incoming_supply_qty: string | null
+  /** linked_supply - line_demand (negativa se candidate) — null per by_article */
+  line_future_coverage_qty: string | null
 }
 
 /** Dettaglio completo della destinazione selezionata */

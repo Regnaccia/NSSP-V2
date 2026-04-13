@@ -63,9 +63,17 @@ Disponibile:
 - planning policy di default a livello famiglia:
   - `considera_in_produzione`
   - `aggrega_codice_in_produzione`
+- UI catalogo famiglie estesa ai due default di planning policy
 - planning policy effettive esposte dal Core `articoli`:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
+- `planning_mode` esposto dai contratti Core come vocabolario esplicito derivato da `effective_aggrega_codice_in_produzione`
+- sezione UI nel dettaglio articolo per:
+  - override tri-state di planning policy
+  - valori effettivi read-only
+  - nomenclatura allineata a:
+    - `by_article`
+    - `by_customer_order_line`
 - giacenza read-only dal Core nel pannello dettaglio
 - computed fact `customer_set_aside` esposto nel pannello dettaglio
 - `committed_qty` e `availability_qty` esposti nel pannello dettaglio
@@ -109,6 +117,7 @@ Disponibile:
 - computed fact `inventory_positions`
 - formula canonica `on_hand_qty = sum(load) - sum(unload)`
 - integrazione read-only della giacenza nella surface `articoli`
+- re-bootstrap completo del mirror gia eseguito per eliminare i movimenti fantasma accumulati e riallineare il dataset a Easy
 
 ### Ordini cliente
 
@@ -159,20 +168,35 @@ Disponibile:
 Esposto nel dettaglio `articoli` come campo read-only ODE.
 Ricalcolato nel refresh semantico `articoli` come step 8, dopo `inventory`, `customer_set_aside` e `commitments`.
 
-### Planning Candidates V1
+### Planning Candidates
 
 Disponibile:
 
 - primo slice Core `planning_candidates`
-- modulo customer-driven aggregato per articolo
-- `incoming_supply_qty` aggregata da produzioni attive
-- `future_availability_qty = availability_qty + incoming_supply_qty`
-- candidate presente solo se `future_availability_qty < 0`
-- `required_qty_minimum` come scopertura minima residua
+- prima surface UI dedicata nella area produzione
+- modulo customer-driven con due modalita:
+  - `by_article`
+  - `by_customer_order_line`
+- nel ramo `by_article`:
+  - `incoming_supply_qty` aggregata da produzioni attive
+  - `future_availability_qty = availability_qty + incoming_supply_qty`
+- nel ramo `by_customer_order_line`:
+  - identity per ordine/riga cliente
+  - `line_open_demand_qty`
+  - `linked_incoming_supply_qty`
+  - `line_future_coverage_qty`
+- le produzioni completate sono escluse, anche via override `forza_completata`
+- `required_qty_minimum` come scopertura minima residua in entrambi i rami
+- toolbar con:
+  - ricerca `codice`
+  - ricerca `descrizione`
+  - filtro famiglia
+  - toggle `solo_in_produzione`
+  - `Aggiorna`
+- contratti/read model gia riallineati al vocabolario `planning_mode`
 
 Non ancora disponibile:
 
-- surface UI dedicata
 - scoring
 - planning horizon
 - policy di aggregazione avanzata
@@ -215,6 +239,8 @@ Pattern gia validati:
 - distinzione esplicita tra chiave articolo raw e chiave articolo canonica (DL-ARCH-V2-024)
 - primo DL del modulo `Planning Candidates` nella V1 ridotta customer-driven aggregata per articolo (DL-ARCH-V2-025)
 - planning policy con default a livello famiglia e override puntuale a livello articolo (DL-ARCH-V2-026)
+- evoluzione pianificata di `Planning Candidates` verso due modalita esplicite, `by_article` e `by_customer_order_line`, guidate da `effective_aggrega_codice_in_produzione` (DL-ARCH-V2-027)
+- refinement finale di `Planning Candidates` prima di `Production Proposals`: stock clampato a zero, reason esplicita, misura esposta e descrizione ordine nel ramo `by_customer_order_line` (DL-ARCH-V2-028)
 
 ### Refresh semantici (DL-ARCH-V2-022)
 
@@ -245,10 +271,12 @@ Il perimetro V1 del modello quantitativo e completo e operativo:
 - refresh semantico completo: tutti i fact ricalcolati in un solo trigger
 - normalizzazione `article_code` canonica cross-source (`normalize_article_code`)
 - prima vista operativa `criticita articoli` gia attiva e coerente con la surface `articoli`
+- nomenclatura planning gia riallineata nei contratti e nelle UI principali coinvolte
+- `Planning Candidates` V2 gia attivo con branching reale tra candidate aggregati per articolo e candidate per riga ordine
 
 Task aperti correnti:
 
-- `TASK-V2-065` UI `Planning Candidates` V1
+Nessuno nello snapshot corrente.
 
 ## References
 
@@ -265,3 +293,5 @@ Task aperti correnti:
 - `docs/decisions/ARCH/DL-ARCH-V2-024.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-025.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-026.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-027.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-028.md`

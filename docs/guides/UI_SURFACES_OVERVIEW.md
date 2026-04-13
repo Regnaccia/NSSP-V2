@@ -185,6 +185,8 @@ Task:
 - `docs/task/TASK-V2-054-refresh-semantici-backend.md`
 - `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
 - `docs/task/TASK-V2-064-core-effective-planning-policy-articoli.md`
+- `docs/task/TASK-V2-067-ui-override-e-effective-policy-articoli.md`
+- `docs/task/TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md`
 
 ### Pattern UI
 
@@ -198,6 +200,7 @@ Task:
 - `customer_set_aside`
 - `commitments`
 - `availability`
+- planning policy override articolo
 - planning policy effettive articolo
 
 ### Cosa espone
@@ -205,16 +208,21 @@ Task:
 Colonna 1:
 
 - lista articoli
-- ricerca articolo
+- ricerca `codice`
+- ricerca `descrizione`
 - filtro famiglia
 
 Colonna 2:
 
 - dati anagrafici read-only Easy
 - `famiglia articolo`
-- policy effettive di planning disponibili nel Core:
+- override tri-state:
+  - `considera_in_produzione`
+  - `aggrega_codice_in_produzione`
+- valori effettivi:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
+  - `planning_mode`
 - `giacenza`
 - `customer_set_aside`
 - `committed_qty`
@@ -246,6 +254,8 @@ La schermata articoli si appoggia a:
 - e oggi la schermata piu trasversale tra anagrafica, stock e domanda
 - viene usata anche come punto di validazione visiva dei fact canonici
 - il refresh e oggi un refresh semantico backend (`refresh_articoli`) con chain interna completa
+- il dettaglio articolo consente ora di configurare gli override di planning policy e di ispezionare i valori effettivi
+- la nomenclatura UI e gia riallineata a `planning_mode` come vocabolario esplicito
 
 ## 4. Produzione - Catalogo Famiglie Articolo
 
@@ -269,6 +279,8 @@ Task:
 - `docs/task/TASK-V2-026-gestione-famiglie-articoli.md`
 - `docs/task/TASK-V2-027-flag-considera-in-produzione-famiglie.md`
 - `docs/task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md`
+- `docs/task/TASK-V2-066-ui-planning-policy-famiglie.md`
+- `docs/task/TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md`
 
 ### Entita logiche usate
 
@@ -280,6 +292,9 @@ Task:
 - stato attivo/inattivo
 - flag `considera_in_produzione`
 - flag `aggrega_codice_in_produzione`
+- vocabolario UI coerente con:
+  - `by_article`
+  - `by_customer_order_line`
 
 ### Azioni principali
 
@@ -292,8 +307,92 @@ Task:
 
 - e una schermata di supporto al dominio articoli
 - non dipende da Easy
+- la schermata governa oggi entrambi i default di planning policy a livello famiglia
 
-## 5. Produzioni
+## 5. Produzione - Planning Candidates
+
+### Funzione
+
+Prima vista operativa planning customer-driven, ora capace di mostrare sia candidate aggregati per articolo sia candidate per riga ordine cliente.
+
+### Dipendenze documentali
+
+DL:
+
+- `docs/decisions/ARCH/DL-ARCH-V2-022.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-023.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-025.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-026.md`
+- `docs/decisions/UIX/specs/UIX_SPEC_PLANNING_CANDIDATES.md`
+
+Task:
+
+- `docs/task/TASK-V2-062-core-planning-candidates-v1.md`
+- `docs/task/TASK-V2-064-core-effective-planning-policy-articoli.md`
+- `docs/task/TASK-V2-065-ui-planning-candidates-v1.md`
+- `docs/task/TASK-V2-068-hardening-planning-candidates-escludi-completate.md`
+- `docs/task/TASK-V2-069-allineamento-nomenclatura-planning-mode.md`
+- `docs/task/TASK-V2-071-core-planning-candidates-v2-branching.md`
+- `docs/task/TASK-V2-072-ui-planning-candidates-v2-branching.md`
+
+### Pattern UI
+
+- vista tabellare full-width
+
+### Entita logiche usate
+
+- `planning_candidates`
+- `availability`
+- `produzioni`
+- `articoli`
+- `famiglie articolo`
+- planning policy effettive articolo
+- `planning_mode`
+
+### Cosa espone
+
+- codice articolo
+- descrizione
+- famiglia
+- per il ramo `by_article`:
+  - `customer_open_demand_qty`
+  - `availability_qty`
+  - `incoming_supply_qty`
+  - `future_availability_qty`
+- per il ramo `by_customer_order_line`:
+  - `order_reference`
+  - `line_reference`
+  - `line_open_demand_qty`
+  - `linked_incoming_supply_qty`
+  - `line_future_coverage_qty`
+- `required_qty_minimum`
+- badge / distinzione visiva di `planning_mode`
+- toggle `solo_in_produzione`
+- filtro famiglia
+
+### Azioni principali
+
+- refresh on demand planning, che riusa il refresh semantico completo `refresh_articoli`
+- filtro per famiglia
+- ricerca per `codice` e `descrizione`
+- toggle del perimetro `effective_considera_in_produzione`
+- ordinamento tabellare sui campi planning
+
+### Catena dati principale
+
+- `refresh_articoli()` come refresh semantico backend completo
+- Core `planning_candidates`
+- Core `articoli` per famiglia e planning policy effettive
+- Core `produzioni` per la supply in corso
+
+### Note
+
+- la vista puo mostrare sia candidate aggregati per articolo sia candidate per riga ordine
+- `incoming_supply_qty` esclude le produzioni completate, anche via override `forza_completata`
+- il branching reale segue `planning_mode`
+- le policy di aggregazione avanzata oltre le due modalita base non sono ancora attive
+
+## 6. Produzioni
 
 ### Funzione
 
@@ -358,7 +457,7 @@ Colonna 2:
 - `sync_produzioni_storiche`
 - Core `produzioni`
 
-## 6. Produzione - Criticita Articoli
+## 7. Produzione - Criticita Articoli
 
 ### Funzione
 
@@ -428,7 +527,7 @@ Task:
 - mostra solo articoli presenti e attivi in `articoli`
 - non ricalcola localmente la logica: consuma solo esiti del Core
 
-## 7. Relazione tra schermate e fact canonici
+## 8. Relazione tra schermate e fact canonici
 
 ### Inventory
 
@@ -455,12 +554,17 @@ Usato oggi in:
 - dettaglio `articoli`
 - vista `criticita articoli`
 
-## 8. Prossimi step UI naturali
+### Planning Candidates
+
+Usato oggi in:
+
+- vista `Planning Candidates`
+
+## 9. Prossimi step UI naturali
 
 - decidere in futuro se introdurre una schermata dedicata a:
   - stock / disponibilita
   - ordini cliente
-  - commitments
 
 ## References
 

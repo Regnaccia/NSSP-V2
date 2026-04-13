@@ -27,12 +27,16 @@ docs/
 |------|-----------|
 | [specs/PLANNING_CANDIDATES_SPEC_V1_1.md](specs/PLANNING_CANDIDATES_SPEC_V1_1.md) | Spec ampia del modulo `Planning Candidates`, utile come intent document e base di ragionamento |
 | [specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Planning Candidates`, allineata al modello canonico attuale della V2 |
+| [specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md) | Estensione ridotta della logica `Planning Candidates` con due modalita esplicite: `by_article` e `by_customer_order_line` |
+| [specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md](specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md) | Spec iniziale del modulo `Production Proposals`, separato da `Planning Candidates` e focalizzato su proposal persistenti, override, workflow, export e warnings |
+| [specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md](specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Production Proposals`, centrata su proposal persistenti, override, workflow minimo e riconciliazione con Easy |
 
 ## Reviews
 
 | File | Contenuto |
 |------|-----------|
 | [reviews/README.md](reviews/README.md) | Indice delle review critiche trasversali sullo stato del progetto |
+| [reviews/KNOWN_BUGS.md](reviews/KNOWN_BUGS.md) | Registro dei bug e limiti noti che richiedono memoria operativa o architetturale oltre il singolo task |
 | [reviews/PROJECT_REVIEW_2026-04-08.md](reviews/PROJECT_REVIEW_2026-04-08.md) | Review architetturale e operativa del progetto V2, con finding, rischi potenziali e linea di risoluzione |
 
 ## Charter
@@ -78,6 +82,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-024.md](decisions/ARCH/DL-ARCH-V2-024.md) | Distinzione esplicita tra chiave articolo raw e chiave articolo canonica, con divieto di join diretti misti nei read model e nei fact cross-source |
 | [decisions/ARCH/DL-ARCH-V2-025.md](decisions/ARCH/DL-ARCH-V2-025.md) | Prima definizione di `Planning Candidates` come projection customer-driven aggregata per articolo, basata su `future_availability_qty` e supply gia in corso |
 | [decisions/ARCH/DL-ARCH-V2-026.md](decisions/ARCH/DL-ARCH-V2-026.md) | Policy operative di planning con default a livello famiglia e override articolo, inclusi `considera_in_produzione` e `aggrega_codice_in_produzione` |
+| [decisions/ARCH/DL-ARCH-V2-027.md](decisions/ARCH/DL-ARCH-V2-027.md) | Evoluzione di `Planning Candidates` verso due modalita esplicite di aggregazione: `by_article` e `by_customer_order_line`, governate da `effective_aggrega_codice_in_produzione` |
+| [decisions/ARCH/DL-ARCH-V2-028.md](decisions/ARCH/DL-ARCH-V2-028.md) | Refinement finale di `Planning Candidates` prima di `Production Proposals`: stock clampato a zero, reason esplicita, misura esposta e descrizione ordine nel ramo per-riga |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -86,6 +92,7 @@ Sottocartelle per tipo:
 | [decisions/UIX/specs/README.md](decisions/UIX/specs/README.md) | Indice delle specifiche UIX dei casi concreti che applicano i pattern generali |
 | [decisions/UIX/specs/UIX_SPEC_ARTICOLI.md](decisions/UIX/specs/UIX_SPEC_ARTICOLI.md) | Specifica della variante a `2 colonne` per il caso `articoli`, con lista completa a sinistra e configurazione a destra |
 | [decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md](decisions/UIX/specs/UIX_SPEC_CLIENTI_DESTINAZIONI.md) | Specifica della variante a `3 colonne` per la surface logistica clienti/destinazioni |
+| [decisions/UIX/specs/UIX_SPEC_PLANNING_CANDIDATES.md](decisions/UIX/specs/UIX_SPEC_PLANNING_CANDIDATES.md) | Specifica della prima surface operativa `Planning Candidates`, aggregata per articolo e coerente con la V1 ridotta del modulo |
 | [decisions/UIX/specs/UIX_SPEC_PRODUZIONI.md](decisions/UIX/specs/UIX_SPEC_PRODUZIONI.md) | Specifica della variante a `2 colonne` per la surface `produzioni`, con lista a sinistra e dettaglio read-only a destra |
 
 ## Guides
@@ -196,6 +203,14 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md](task/TASK-V2-063-model-planning-policy-defaults-e-overrides.md) | Evolvere il modello `famiglia + articolo` per supportare planning policy con default di famiglia e override articolo |
 | [task/TASK-V2-064-core-effective-planning-policy-articoli.md](task/TASK-V2-064-core-effective-planning-policy-articoli.md) | Esporre nel Core `articoli` i valori effettivi delle planning policy, risolti con precedenza override articolo > default famiglia |
 | [task/TASK-V2-065-ui-planning-candidates-v1.md](task/TASK-V2-065-ui-planning-candidates-v1.md) | Prima surface UI di `Planning Candidates` V1, aggregata per articolo e coerente con i valori effettivi di planning policy |
+| [task/TASK-V2-066-ui-planning-policy-famiglie.md](task/TASK-V2-066-ui-planning-policy-famiglie.md) | Estendere la UI `famiglie articolo` ai default di planning policy, incluso `aggrega_codice_in_produzione` |
+| [task/TASK-V2-067-ui-override-e-effective-policy-articoli.md](task/TASK-V2-067-ui-override-e-effective-policy-articoli.md) | Introdurre nel dettaglio `articoli` la configurazione degli override e la lettura delle planning policy effettive |
+| [task/TASK-V2-068-hardening-planning-candidates-escludi-completate.md](task/TASK-V2-068-hardening-planning-candidates-escludi-completate.md) | Hardening del Core `Planning Candidates` per escludere dall`incoming_supply_qty` le produzioni gia completate, anche via override |
+| [task/TASK-V2-069-allineamento-nomenclatura-planning-mode.md](task/TASK-V2-069-allineamento-nomenclatura-planning-mode.md) | Allineare il vocabolario planning a `planning_mode`, preparando il branching V2 senza cambiare ancora il comportamento della V1 |
+| [task/TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md](task/TASK-V2-070-ui-allineamento-nomenclatura-planning-mode.md) | Riallineare le schermate gia coinvolte dal planning al vocabolario esplicito `planning_mode`, senza cambiare ancora il comportamento delle surface |
+| [task/TASK-V2-071-core-planning-candidates-v2-branching.md](task/TASK-V2-071-core-planning-candidates-v2-branching.md) | Evolvere il Core `Planning Candidates` dal modello V1 unico al branching reale tra modalita `by_article` e `by_customer_order_line` |
+| [task/TASK-V2-072-ui-planning-candidates-v2-branching.md](task/TASK-V2-072-ui-planning-candidates-v2-branching.md) | Evolvere la UI `Planning Candidates` per rappresentare correttamente il branching reale tra candidate `by_article` e `by_customer_order_line` |
+| [task/TASK-V2-073-fix-mag-reale-rebootstrap.md](task/TASK-V2-073-fix-mag-reale-rebootstrap.md) | Re-bootstrap completo di `sync_mag_reale` per eliminare movimenti fantasma e riallineare giacenza, availability e planning ai dati Easy corretti |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

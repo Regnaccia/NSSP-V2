@@ -11,6 +11,7 @@ import ProduzioneHome from '@/pages/surfaces/ProduzioneHome'
 import FamigliePage from '@/pages/surfaces/FamigliePage'
 import ProduzioniPage from '@/pages/surfaces/ProduzioniPage'
 import CriticitaPage from '@/pages/surfaces/CriticitaPage'
+import PlanningCandidatesPage from '@/pages/surfaces/PlanningCandidatesPage'
 
 /**
  * Redirect iniziale dopo login (DL-UIX-V2-001 §4).
@@ -126,6 +127,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['produzione']}>
                 <CriticitaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/produzione/planning-candidates"
+            element={
+              <ProtectedRoute roles={['produzione']}>
+                <PlanningCandidatesPage />
               </ProtectedRoute>
             }
           />

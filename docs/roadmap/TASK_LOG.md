@@ -80,4 +80,12 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-062` | Completed | Primo slice Core di Planning Candidates V1 customer-driven aggregato per articolo |
 | `TASK-V2-063` | Completed | Evoluzione del modello `famiglia + articolo` per planning policy di default e override |
 | `TASK-V2-064` | Completed | Esposizione nel Core `articoli` dei valori effettivi delle planning policy |
-| `TASK-V2-065` | Todo | Prima surface UI di Planning Candidates V1 aggregata per articolo |
+| `TASK-V2-065` | Completed | Prima surface UI di Planning Candidates V1 aggregata per articolo |
+| `TASK-V2-066` | Completed | Estensione della UI famiglie ai default di planning policy |
+| `TASK-V2-067` | Completed | Introduzione nel dettaglio articoli di override ed effective planning policy |
+| `TASK-V2-068` | Completed | Hardening di Planning Candidates per escludere le produzioni completate, anche via override |
+| `TASK-V2-069` | Completed | Allineamento della nomenclatura planning al vocabolario esplicito `planning_mode` |
+| `TASK-V2-070` | Completed | Allineamento della UI planning al vocabolario esplicito `planning_mode` |
+| `TASK-V2-071` | Completed | Evoluzione del Core Planning Candidates al branching reale `by_article` / `by_customer_order_line` |
+| `TASK-V2-072` | Completed | Evoluzione della UI Planning Candidates per rappresentare il branching reale `by_article` / `by_customer_order_line` |
+| `TASK-V2-073` | Completed | Re-bootstrap completo di `sync_mag_reale`, riallineamento exact-match con Easy e rebuild della chain inventory -> availability |

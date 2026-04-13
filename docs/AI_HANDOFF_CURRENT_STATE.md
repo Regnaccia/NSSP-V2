@@ -22,10 +22,11 @@ At the current stage it already supports:
 - user access and surface routing
 - customer/destination browsing
 - article browsing with internal family classification
+- family-level and article-level planning policy configuration
 - production browsing
 - canonical stock-related facts
 - a first operational criticality view for articles
-- the first Core slice of Planning Candidates
+- a real operational `Planning Candidates` surface with branching by planning mode
 
 It is not yet a scheduler, MRP engine, or production planner.
 
@@ -80,6 +81,14 @@ Current search behavior:
 
 This is currently the main validation surface for canonical facts.
 
+Planning policy UI already available:
+
+- article override tri-state controls
+- read-only effective planning policy values
+- explicit planning-mode wording in UI:
+  - `by_article`
+  - `by_customer_order_line`
+
 ### 4. Produzione - Catalogo Famiglie Articolo
 
 Purpose:
@@ -112,24 +121,54 @@ Current behavior:
 - refresh button wired to full semantic refresh of the article surface
 - only articles present and active in `articoli` can appear here
 
+### 7. Produzione - Planning Candidates
+
+Purpose:
+
+- show customer-driven planning candidates
+- answer whether a new production need still exists after considering current availability and incoming supply
+- support both:
+  - `by_article`
+  - `by_customer_order_line`
+
+Current behavior:
+
+- code search with normalization
+- description search without normalization
+- family filter
+- toggle `solo_in_produzione` based on `effective_considera_in_produzione`
+- refresh button wired to full semantic refresh of the article surface
+- incoming supply excludes productions already completed, including `forza_completata`
+- contracts expose `planning_mode`
+- UI distinguishes:
+  - article-level candidates
+  - customer-order-line candidates
+
 ## Core Projections Already Available
 
-### Planning Candidates V1
+### Planning Candidates
 
 Status:
 
 - Core slice implemented
-- UI surface not yet implemented
+- UI surface implemented
 
-Current V1 shape:
+Current shape:
 
 - customer-driven only
-- aggregated by article
-- uses:
+- two modes:
+  - `by_article`
+  - `by_customer_order_line`
+- `by_article` uses:
   - `availability_qty`
   - `incoming_supply_qty`
   - `future_availability_qty`
-- candidate exists only when `future_availability_qty < 0`
+- `by_customer_order_line` uses:
+  - `line_open_demand_qty`
+  - `linked_incoming_supply_qty`
+  - `line_future_coverage_qty`
+- candidates exist only when the relevant coverage metric is negative
+- incoming supply excludes productions effectively completed
 
 ## Canonical Facts Already Available
 
@@ -218,6 +257,7 @@ The Core `articoli` now exposes:
 
 - `effective_considera_in_produzione`
 - `effective_aggrega_codice_in_produzione`
+- `planning_mode`
 
 These effective values are the intended contract for future consumers such as:
 
@@ -310,8 +350,12 @@ Current system is therefore:
 
 Currently open in the active roadmap:
 
-- `TASK-V2-065`
-  first UI surface of `Planning Candidates` V1
+- none in the current snapshot
+
+Operational note:
+
+- `TASK-V2-073` has already completed a full `sync_mag_reale` re-bootstrap and downstream rebuild, restoring exact alignment with Easy for the current dataset
+- the long-term architectural issue remains open in `docs/reviews/KNOWN_BUGS.md`: `sync_mag_reale` still uses `append_only + no_delete_handling`
 
 ## What Is The Next Logical Reasoning Area
 
@@ -319,8 +363,9 @@ The next meaningful step is no longer infrastructure.
 
 The next reasoning area is domain logic and the first real planning-oriented operational view:
 
-- `Planning Candidates` V1
-  - complete the first UI surface on top of the Core slice already available
+- `Planning Candidates`
+  - evolve beyond the current two-mode V2
+  - add richer aggregation policy, filters, and later scoring/temporal logic
 
 - richer criticality logic
 - stock policy logic
@@ -356,5 +401,6 @@ If another AI agent must start reasoning today, the correct mental model is:
 - ODE V2 already has solid canonical operational facts
 - article detail is the main fact inspection surface
 - article criticality is the first real domain logic surface
+- Planning Candidates is now the first planning-oriented operational surface
 - semantic refresh and canonical article-key discipline are already established
-- the next major evolution is planning logic, not more raw sync scaffolding
+- the next major evolution is richer planning logic, not more raw sync scaffolding

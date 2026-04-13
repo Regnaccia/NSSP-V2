@@ -31,8 +31,10 @@ from nssp_v2.core.articoli import (
     list_articoli,
     list_famiglie,
     list_famiglie_catalog,
+    set_articolo_policy_override,
     set_famiglia_articolo,
     toggle_famiglia_active,
+    toggle_famiglia_aggrega_codice_produzione,
     toggle_famiglia_considera_produzione,
 )
 from nssp_v2.shared.db import get_session
@@ -47,6 +49,18 @@ class SetForzaCompletataRequest(BaseModel):
 
 class SetFamigliaRequest(BaseModel):
     famiglia_code: str | None = None
+
+
+class SetPolicyOverrideRequest(BaseModel):
+    """Corpo PATCH policy-override articolo (DL-ARCH-V2-026, TASK-V2-067).
+
+    Entrambi i campi sono applicati al momento della chiamata.
+    - None  = eredita il default di famiglia (rimuove l'override)
+    - True  = sovrascrive con True
+    - False = sovrascrive con False
+    """
+    override_considera_in_produzione: bool | None
+    override_aggrega_codice_in_produzione: bool | None
 
 
 class CreateFamigliaRequest(BaseModel):
@@ -64,7 +78,7 @@ def get_articoli(
     return list_articoli(session)
 
 
-@router.get("/articoli/{codice_articolo}", response_model=ArticoloDetail)
+@router.get("/articoli/{codice_articolo:path}", response_model=ArticoloDetail)
 def get_articolo(
     codice_articolo: str,
     _: dict = Depends(get_current_user),
@@ -113,6 +127,21 @@ def patch_famiglia_active(
     """Inverte is_active della famiglia. 404 se non trovata."""
     try:
         row = toggle_famiglia_active(session, code)
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.patch("/famiglie/{code}/aggrega-codice-produzione", response_model=FamigliaRow)
+def patch_famiglia_aggrega_codice_produzione(
+    code: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Inverte aggrega_codice_in_produzione della famiglia. 404 se non trovata."""
+    try:
+        row = toggle_famiglia_aggrega_codice_produzione(session, code)
         session.commit()
         return row
     except ValueError as e:
@@ -223,7 +252,7 @@ def get_planning_candidates(
 
 
 @router.patch(
-    "/articoli/{codice_articolo}/famiglia",
+    "/articoli/{codice_articolo:path}/famiglia",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def patch_famiglia(
@@ -242,3 +271,34 @@ def patch_famiglia(
         session.commit()
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.patch(
+    "/articoli/{codice_articolo:path}/policy-override",
+    response_model=ArticoloDetail,
+)
+def patch_policy_override(
+    codice_articolo: str,
+    body: SetPolicyOverrideRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Imposta gli override di planning policy per un articolo.
+
+    body.override_considera_in_produzione: null = eredita famiglia, true/false = sovrascrive.
+    body.override_aggrega_codice_in_produzione: null = eredita famiglia, true/false = sovrascrive.
+
+    Restituisce il dettaglio aggiornato dell'articolo.
+    404 se l'articolo non esiste in sync_articoli.
+    """
+    set_articolo_policy_override(
+        session,
+        codice_articolo,
+        override_considera=body.override_considera_in_produzione,
+        override_aggrega=body.override_aggrega_codice_in_produzione,
+    )
+    session.commit()
+    detail = get_articolo_detail(session, codice_articolo)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Articolo '{codice_articolo}' non trovato")
+    return detail
