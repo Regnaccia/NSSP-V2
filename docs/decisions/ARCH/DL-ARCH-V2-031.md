@@ -99,6 +99,25 @@ Regola:
 Quindi, nel caso `stock-only`, il fabbisogno minimo non resta vuoto e coincide con la scopertura
 minima di scorta rispetto a `target_stock_qty`.
 
+### 2.3 La data richiesta in UI segue il driver cliente reale
+
+La tabella `Planning Candidates` puo esporre una colonna data per aumentare la leggibilita, ma la
+semantica non e identica nei due rami.
+
+Regola:
+
+- `by_customer_order_line`
+  - mostra la `requested_delivery_date` della riga ordine
+- `by_article`
+  - mostra la `earliest_customer_delivery_date`
+  - il campo e valorizzato solo se il candidate ha una componente customer
+  - nei casi `stock-only` il campo resta `null`
+
+Conseguenza:
+
+- la UI non deve inventare una data per candidate puramente stock-driven
+- la futura semantica `earliest_uncovered_due_date` resta un'evoluzione successiva, fuori scope V1
+
 ### 3. Il customer-driven introduce un primo `customer horizon`
 
 La componente customer-driven puo essere valutata anche rispetto a un primo orizzonte temporale

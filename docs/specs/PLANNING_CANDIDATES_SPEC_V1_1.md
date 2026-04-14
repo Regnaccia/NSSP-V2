@@ -290,6 +290,25 @@ La vista deve anche poter filtrare i candidate cliente per orizzonte temporale:
 
 - `solo entro customer horizon`
 
+### 10.7 Data richiesta in tabella
+
+Per aumentare la leggibilita operativa, la vista `Planning Candidates` deve esporre anche una
+data richiesta, ma con semantica diversa secondo il planning mode.
+
+Regola:
+
+- nel ramo `by_customer_order_line`
+  - mostrare la `data_consegna_richiesta` della riga ordine cliente
+- nel ramo `by_article`
+  - mostrare solo la `prima data richiesta cliente`
+  - il campo e valorizzato solo se esiste componente customer
+  - nei casi `stock-only` il campo resta vuoto / `null`
+
+Vincolo:
+
+- non deve essere mostrata una data inventata per candidate puramente stock-driven
+- la futura semantica `prima data scoperta` resta fuori scope per questa V1
+
 ## 11. Entity Model
 
 Shape logica minima:
@@ -337,6 +356,7 @@ stock_replenishment_qty
 required_qty_total
 primary_driver
 is_within_customer_horizon
+earliest_customer_delivery_date
 ```
 
 Campi ramo `by_customer_order_line`:
@@ -346,6 +366,7 @@ order_reference
 line_reference
 order_line_description
 measure
+requested_delivery_date
 line_open_demand_qty
 linked_incoming_supply_qty
 line_future_coverage_qty

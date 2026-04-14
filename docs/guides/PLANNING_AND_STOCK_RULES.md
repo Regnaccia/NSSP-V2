@@ -114,6 +114,21 @@ Regola nel ramo `by_article`:
 
 Quindi, nel caso `stock-only`, il fabbisogno minimo coincide con il replenishment scorta.
 
+## 4.3 Data richiesta in tabella
+
+La UI `Planning Candidates` puo esporre una data richiesta, ma senza mescolare semantiche diverse.
+
+Regola:
+
+- `by_customer_order_line`
+  - mostra `requested_delivery_date`
+- `by_article`
+  - mostra `earliest_customer_delivery_date` solo se esiste componente customer
+- `stock-only`
+  - non mostra una data inventata
+
+La futura semantica `prima data scoperta` resta fuori scope per questa V1.
+
 ## 5. Stock Policy V1
 
 La stock policy V1 vale solo se entrambe le condizioni sono vere:
