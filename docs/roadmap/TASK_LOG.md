@@ -98,6 +98,27 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-080` | Completed | Deprecazione formale della surface `criticita articoli` senza rimozione tecnica |
 | `TASK-V2-081` | Completed | Riallineamento warning visibility da surface a aree/reparti operativi |
 | `TASK-V2-082` | Completed | Correzione della surface `Warnings` per filtrare i warning per area/reparto corrente con bypass admin |
-| `TASK-V2-083` | Todo | Modello configurativo stock policy V1 con default famiglia e override articolo |
-| `TASK-V2-084` | Todo | Core stock policy metrics V1 con target/trigger e logica base mensile sostituibile |
-| `TASK-V2-085` | Todo | Integrazione stock-driven nel ramo `Planning Candidates by_article` con candidate unico e breakdown cliente/scorta |
+| `TASK-V2-083` | Completed | Modello configurativo stock policy V1 con default famiglia e override articolo |
+| `TASK-V2-084` | Completed | Core stock policy metrics V1 con strategy attiva configurata per `monthly_stock_base_qty` e capacity setup fissa |
+| `TASK-V2-085` | Completed | Integrazione stock-driven nel ramo `Planning Candidates by_article` con candidate unico e breakdown cliente/scorta |
+| `TASK-V2-086` | Completed | Configurazione interna delle logiche stock con `strategy_key`, `params_json` e capacity setup non switchabile |
+| `TASK-V2-087` | Completed | Hardening dell'algoritmo `monthly_stock_base_from_sales_v1` con finestre multiple, percentile e outlier filtering |
+| `TASK-V2-088` | Completed | Allineamento finale stock policy V1: fallback `None`, `min_movements`, `rounding_scale`, perimetro `by_article` e driver movimenti esplicito |
+| `TASK-V2-089` | Completed | Esposizione nella surface `articoli` di metriche stock, capacity e configurazioni effettive della stock policy |
+| `TASK-V2-090` | Completed | Configurazione admin delle logiche stock V1: strategy, parametri e capacity logic fissa |
+| `TASK-V2-091` | Completed | Nuovo warning `INVALID_STOCK_CAPACITY` per articoli stock-driven con `capacity` invalida o assente |
+| `TASK-V2-092` | Completed | Riallineamento di `capacity_from_containers_v1` alla formula legacy con contenitori, peso articolo e fallback corretti |
+| `TASK-V2-093` | Completed | Estensione UI `famiglie articolo` ai default quantitativi `stock_months` e `stock_trigger_months` |
+| `TASK-V2-094` | Completed | Refinement admin stock logic con sezione dedicata e configurazione dei `capacity_logic_params` |
+| `TASK-V2-095` | Completed | Separazione della governance stock in una pagina admin dedicata distinta dalla pagina utenti |
+| `TASK-V2-096` | Completed | Introduzione del flag esplicito `gestione_scorte_attiva` con default famiglia, override articolo e valore effettivo |
+| `TASK-V2-097` | Completed | Estensione UI `famiglie articolo` al default `gestione_scorte_attiva` |
+| `TASK-V2-098` | Completed | Estensione UI `articoli` all'override `gestione_scorte_attiva` e al valore effettivo |
+| `TASK-V2-099` | Completed | Riallineamento Core stock policy e Planning Candidates al prerequisito `effective_gestione_scorte_attiva` |
+| `TASK-V2-100` | Completed | Primo `customer horizon` Core per i candidate cliente, basato su `data_consegna` e senza scartare i fuori orizzonte |
+| `TASK-V2-101` | Completed | Introduzione di `stock horizon` nel ramo `by_article` con cap temporale sugli impegni per la sola componente scorta |
+| `TASK-V2-102` | Completed | Filtri UI `Planning Candidates` per `Tutti / Solo fabbisogno cliente / Solo scorta` e filtro `customer horizon` |
+| `TASK-V2-103` | Todo | Riallineamento Core tra `customer horizon` e `stock horizon`, oggi accoppiati in modo improprio |
+| `TASK-V2-104` | Todo | Riallineamento UI/API del filtro `customer horizon` per eliminare side effects sulla componente scorta |
+| `TASK-V2-105` | Todo | Classificazione primaria `customer|stock` per evitare che i casi misti compaiano in entrambe le schede planning |
+| `TASK-V2-106` | Todo | Valorizzazione di `required_qty_minimum` anche nei candidate `stock-only`, allineandolo al driver primario |

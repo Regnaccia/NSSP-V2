@@ -1,3 +1,15 @@
+/**
+ * Surface Admin — gestione utenti (TASK-V2-095).
+ *
+ * Consuma:
+ *   GET   /api/admin/users                   — lista utenti
+ *   POST  /api/admin/users                   — crea utente
+ *   PATCH /api/admin/users/{id}/active       — attiva/disattiva
+ *   PUT   /api/admin/users/{id}/roles        — aggiorna ruoli
+ *
+ * La configurazione logiche stock è in /admin/stock-logic (AdminStockLogicPage).
+ */
+
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
@@ -188,7 +200,7 @@ function EditRolesModal({ user, onClose, onUpdated }: {
   )
 }
 
-// ─── Surface Admin principale ─────────────────────────────────────────────────
+// ─── Surface Admin: Utenti ────────────────────────────────────────────────────
 
 export default function AdminHome() {
   const [users, setUsers] = useState<UserItem[]>([])
@@ -220,17 +232,23 @@ export default function AdminHome() {
   }
 
   return (
-    <div>
-      <main className="p-6 max-w-5xl mx-auto space-y-4">
-        {/* Titolo sezione + azione */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Utenti</h1>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-6 py-4 border-b shrink-0">
+        <h1 className="text-base font-semibold">Utenti</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Gestione utenti, ruoli e accessi alle superfici applicative.
+        </p>
+      </div>
+
+      {/* Contenuto */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex justify-end">
           <button onClick={() => setShowCreate(true)} className={btnPrimary}>
             + Nuovo utente
           </button>
         </div>
 
-        {/* Tabella utenti */}
         {loading ? (
           <p className="text-sm text-muted-foreground">Caricamento...</p>
         ) : (
@@ -303,7 +321,7 @@ export default function AdminHome() {
             </table>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Modali */}
       {showCreate && (

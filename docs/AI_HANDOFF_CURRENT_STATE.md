@@ -25,6 +25,7 @@ At the current stage it already supports:
 - canonical stock-related facts
 - a real operational `Planning Candidates` surface with branching by planning mode
 - a transversal `Warnings` module with first dedicated surface
+- first stock-policy governance with dedicated `admin` page and explicit stock-enabled flag
 
 It is not yet a scheduler, MRP engine, or production planner.
 
@@ -48,11 +49,12 @@ Easy is always read-only.
 Purpose:
 
 - manage users, roles, active/inactive state
-- host internal warning-visibility configuration
+- host transversal internal configuration
 
 Current note:
 
 - warning visibility is configured by `visible_to_areas`
+- stock logic configuration has its own dedicated page
 - `admin` has transversal visibility for governance
 
 ### 2. Logistica - Clienti / Destinazioni
@@ -77,11 +79,27 @@ Read-only ODE metrics already shown in article detail:
 - `customer_set_aside`
 - `committed_qty`
 - `availability_qty`
+- stock policy metrics:
+  - `monthly_stock_base_qty`
+  - `capacity_calculated_qty`
+  - `capacity_effective_qty`
+  - `target_stock_qty`
+  - `trigger_stock_qty`
+  - `stock_strategy_key`
+  - `stock_computed_at`
 
 Planning policy UI already available:
 
 - article override tri-state controls
+- stock-enabled override:
+  - `override_gestione_scorte_attiva`
+- stock policy overrides:
+  - `override_stock_months`
+  - `override_stock_trigger_months`
+  - `capacity_override_qty`
 - read-only effective planning policy values
+- read-only effective stock-enabled value:
+  - `effective_gestione_scorte_attiva`
 - explicit planning-mode wording in UI:
   - `by_article`
   - `by_customer_order_line`
@@ -92,6 +110,13 @@ Purpose:
 
 - manage internal family catalog
 - configure planning-policy defaults
+
+Current note:
+
+- family UI now also exposes stock-policy defaults:
+  - `gestione_scorte_attiva`
+  - `stock_months`
+  - `stock_trigger_months`
 
 ### 5. Produzioni
 
@@ -122,6 +147,13 @@ Current behavior:
 - planning logic clamps stock with `stock_effective = max(stock_calculated, 0)`
 - candidates expose explicit `reason_code` / `reason_text`
 - by-customer-order-line rows expose `misura` and primary order-line description
+- by-article rows already expose stock-driven breakdown:
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+  - `required_qty_total`
+- planning now also exposes first temporal semantics:
+  - `is_within_customer_horizon`
+  - stock-driven cap on commitments within stock horizon
 
 ### 7. Produzione - Warnings
 
@@ -133,7 +165,9 @@ Purpose:
 Current behavior:
 
 - dedicated `Warnings` surface exists
-- first warning type is `NEGATIVE_STOCK`
+- first warning types are:
+  - `NEGATIVE_STOCK`
+  - `INVALID_STOCK_CAPACITY`
 - config uses `visible_to_areas`
 - operational users only see warnings matching their current area
 - `admin` sees the transversal full list
@@ -257,6 +291,7 @@ The Core `articoli` exposes:
 
 - `effective_considera_in_produzione`
 - `effective_aggrega_codice_in_produzione`
+- `effective_gestione_scorte_attiva`
 - `planning_mode`
 
 These are the intended contracts for downstream consumers.
@@ -306,16 +341,14 @@ Not implemented yet:
 - production scheduling
 - lot sizing / multiples
 - machine/resource allocation
-- safety stock logic
-- stock policy logic
-- temporal planning slices
+- safety stock logic beyond the first stock policy V1 slice
 - advanced prioritization logic
 
 ## Current Open Tasks
 
 Currently open in the active roadmap:
 
-- none in the current snapshot
+- no active task at the moment
 
 Deferred in the active roadmap:
 
@@ -328,9 +361,12 @@ Operational note:
 
 ## What Is The Next Logical Reasoning Area
 
-The immediate next reasoning area is no longer fixing warnings infrastructure.
+The immediate next reasoning area is deciding whether to open `Production Proposals` on top of the now-complete planning + stock slice, or to refine planning further before that module.
 
-The next meaningful design area is deciding whether to introduce stock policy / scorte before opening `Production Proposals`, or to open `Production Proposals` directly on top of the current planning model.
+The next meaningful design area is:
+
+- opening `Production Proposals`
+- or explicitly deciding a further refinement step on planning before proposals
 
 Explicitly deferred for now:
 
@@ -353,6 +389,8 @@ Recommended reading order for another AI agent:
    - `DL-ARCH-V2-027`
    - `DL-ARCH-V2-028`
    - `DL-ARCH-V2-029`
+   - `DL-ARCH-V2-030`
+   - `DL-ARCH-V2-031`
 6. relevant specs in `docs/specs/`
 
 ## Practical Summary
@@ -364,4 +402,6 @@ If another AI agent must start reasoning today, the correct mental model is:
 - Planning Candidates is the first real planning-oriented operational surface
 - Warnings is the first transversal anomaly module
 - semantic refresh and canonical article-key discipline are already established
-- the next major evolution is finishing warning visibility semantics and warning consumption, then opening `Production Proposals`
+- stock policy governance, enabled flag and invalid-capacity warning are already active
+- first temporal horizons in planning are already active
+- the next major evolution is deciding the opening of `Production Proposals`

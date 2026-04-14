@@ -28,6 +28,7 @@ interface SurfaceFunction {
 const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
   admin: [
     { path: '/admin/utenti', label: 'Utenti' },
+    { path: '/admin/stock-logic', label: 'Logiche stock' },
     { path: '/admin/warnings', label: 'Warning Config' },
   ],
   logistica: [

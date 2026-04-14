@@ -28,6 +28,7 @@ Gestione accessi e configurazioni interne trasversali.
 - `roles`
 - `user_roles`
 - configurazione warning visibility
+- configurazione logiche stock
 
 ### Cosa espone
 
@@ -35,6 +36,7 @@ Gestione accessi e configurazioni interne trasversali.
 - stato attivo/inattivo
 - ruoli assegnati
 - pagina admin per configurare la visibilita warning
+- pagina admin dedicata alle logiche stock
 
 ### Azioni principali
 
@@ -42,6 +44,7 @@ Gestione accessi e configurazioni interne trasversali.
 - attivare/disattivare utenti
 - assegnare o rimuovere ruoli
 - configurare la visibilita warning
+- configurare strategy e parametri stock
 
 ### Note
 
@@ -103,15 +106,30 @@ Consultazione anagrafica articoli, configurazione minima di dominio e validazion
 - override tri-state:
   - `considera_in_produzione`
   - `aggrega_codice_in_produzione`
+  - `gestione_scorte_attiva`
 - valori effettivi:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
+  - `effective_gestione_scorte_attiva`
   - `planning_mode`
 - metriche quantitative:
   - `giacenza`
   - `customer_set_aside`
   - `committed_qty`
   - `availability_qty`
+- metriche stock:
+  - `monthly_stock_base_qty`
+  - `capacity_calculated_qty`
+  - `capacity_effective_qty`
+  - `target_stock_qty`
+  - `trigger_stock_qty`
+  - `stock_strategy_key`
+  - `stock_computed_at`
+- override stock:
+  - `override_gestione_scorte_attiva`
+  - `override_stock_months`
+  - `override_stock_trigger_months`
+  - `capacity_override_qty`
 
 ### Azioni principali
 
@@ -142,6 +160,9 @@ Gestione del catalogo interno `famiglie articolo` e dei default di planning poli
 - default planning policy:
   - `considera_in_produzione`
   - `aggrega_codice_in_produzione`
+  - `gestione_scorte_attiva`
+  - `stock_months`
+  - `stock_trigger_months`
 - vocabolario planning allineato a:
   - `by_article`
   - `by_customer_order_line`
@@ -208,6 +229,9 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
   - `availability_qty`
   - `incoming_supply_qty`
   - `future_availability_qty`
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+  - `required_qty_total`
 - per il ramo `by_customer_order_line`:
   - `order_reference`
   - `line_reference`
@@ -225,11 +249,18 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
 - ricerca per `codice` e `descrizione`
 - toggle del perimetro `effective_considera_in_produzione`
 - ordinamento tabellare
+- filtro per driver:
+  - `Tutti`
+  - `Solo fabbisogno cliente`
+  - `Solo scorta`
+- filtro `customer horizon`
 
 ### Note
 
 - `incoming_supply_qty` esclude le produzioni completate, anche via override
 - la logica planning usa stock clampato a zero
+- la componente stock-driven vale solo con `effective_gestione_scorte_attiva = true`
+- la vista puo separare operativamente i driver senza duplicare il candidate Core
 
 ## 7. Produzione - Warnings
 
@@ -258,7 +289,9 @@ Consultazione esplicita del modulo trasversale `Warnings`.
 
 ### Note
 
-- oggi il primo tipo warning e `NEGATIVE_STOCK`
+- warning iniziali:
+  - `NEGATIVE_STOCK`
+  - `INVALID_STOCK_CAPACITY`
 - la surface esiste gia ed e dedicata
 - gli utenti operativi vedono solo warning coerenti con la propria area
 - `admin` vede la lista trasversale completa
@@ -298,7 +331,7 @@ Vista legacy degli articoli critici, basata su `availability_qty < 0`.
 ### Note
 
 - resta disponibile ma non e piu la surface primaria
-- la deprecazione formale e aperta in `TASK-V2-080`
+- la deprecazione formale e gia stata completata con `TASK-V2-080`
 
 ## 9. Relazione tra schermate e fact canonici
 
@@ -342,10 +375,9 @@ Usato oggi in:
 
 ## 10. Prossimi step UI naturali
 
-- integrare badge warning in:
+- valutare piu avanti badge warning in:
   - `articoli`
   - `Planning Candidates`
-- deprecare formalmente `criticita articoli` senza rimozione tecnica
 
 ## References
 

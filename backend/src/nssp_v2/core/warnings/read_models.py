@@ -1,5 +1,5 @@
 """
-Read model Core slice `warnings` V1 (TASK-V2-076, DL-ARCH-V2-029).
+Read model Core slice `warnings` V1 (TASK-V2-076, DL-ARCH-V2-029, TASK-V2-091).
 
 Regole:
 - il warning e l'oggetto canonico del modulo Warnings
@@ -22,6 +22,12 @@ Campi specifici NEGATIVE_STOCK (WARNINGS_SPEC_V1 §8):
 - article_code: codice articolo canonico
 - stock_calculated: valore raw inventory_qty (negativo)
 - anomaly_qty: abs(stock_calculated) — entita dell'anomalia
+
+Campi specifici INVALID_STOCK_CAPACITY (TASK-V2-091):
+- article_code: codice articolo canonico
+- capacity_calculated_qty: capacity calcolata da contenitori (None se dati mancanti)
+- capacity_override_qty: override articolo-specifico (None se non impostato)
+- capacity_effective_qty: valore effettivo (None o <= 0 = warning attivo)
 """
 
 from datetime import datetime
@@ -31,11 +37,10 @@ from pydantic import BaseModel, ConfigDict
 
 
 class WarningItem(BaseModel):
-    """Warning canonico V1 — primo tipo: NEGATIVE_STOCK.
+    """Warning canonico V1 — tipi: NEGATIVE_STOCK, INVALID_STOCK_CAPACITY.
 
     warning_id e derivato come '{type}:{entity_key}' — unico per articolo.
-    visible_to_areas V1: ['magazzino', 'produzione'] — configurabile via admin.
-    anomaly_qty = abs(stock_calculated): quanto la giacenza scende sotto zero.
+    I campi specifici per tipo sono opzionali (None per i tipi che non li usano).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -51,7 +56,14 @@ class WarningItem(BaseModel):
     visible_to_areas: list[str]
     created_at: datetime
 
-    # ─── Campi specifici NEGATIVE_STOCK ──────────────────────────────────────
+    # ─── Campo comune a tutti i tipi articolo ────────────────────────────────
     article_code: str
-    stock_calculated: Decimal
-    anomaly_qty: Decimal
+
+    # ─── Campi specifici NEGATIVE_STOCK ──────────────────────────────────────
+    stock_calculated: Decimal | None = None
+    anomaly_qty: Decimal | None = None
+
+    # ─── Campi specifici INVALID_STOCK_CAPACITY (TASK-V2-091) ────────────────
+    capacity_calculated_qty: Decimal | None = None
+    capacity_override_qty: Decimal | None = None
+    capacity_effective_qty: Decimal | None = None

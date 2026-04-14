@@ -24,6 +24,8 @@ from nssp_v2.core.planning_candidates.logic import (
     line_future_coverage_v2,
     required_qty_minimum_v1,
     required_qty_minimum_by_order_line,
+    resolve_primary_driver_v1,
+    required_qty_minimum_by_primary_driver_v1,
 )
 from nssp_v2.core.planning_mode import PlanningMode, resolve_planning_mode
 from nssp_v2.core.planning_candidates.read_models import PlanningCandidateItem
@@ -39,6 +41,8 @@ __all__ = [
     "line_future_coverage_v2",
     "required_qty_minimum_v1",
     "required_qty_minimum_by_order_line",
+    "resolve_primary_driver_v1",
+    "required_qty_minimum_by_primary_driver_v1",
     "PlanningMode",
     "resolve_planning_mode",
     "PlanningCandidateItem",

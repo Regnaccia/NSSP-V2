@@ -25,6 +25,8 @@ from nssp_v2.core.customer_set_aside.models import CoreCustomerSetAside
 from nssp_v2.core.inventory_positions.models import CoreInventoryPosition
 from nssp_v2.shared.article_codes import normalize_article_code
 from nssp_v2.sync.articoli.models import SyncArticolo
+# NOTE: nssp_v2.core.stock_policy importato in modo lazy in get_articolo_detail
+#       per evitare circular import (stock_policy.queries -> articoli.models -> articoli.__init__ -> articoli.queries)
 
 
 # ─── Helper: risoluzione planning policy effettiva ───────────────────────────
@@ -239,6 +241,19 @@ def get_articolo_detail(
     override_stock_trigger_months = config.override_stock_trigger_months if config is not None else None
     capacity_override = config.capacity_override_qty if config is not None else None
 
+    # Gestione scorte attiva: override articolo > default famiglia (TASK-V2-096)
+    family_gestione_scorte = famiglia.gestione_scorte_attiva if famiglia else None
+    override_gestione_scorte = config.override_gestione_scorte_attiva if config is not None else None
+    effective_gestione_scorte = resolve_planning_policy(override_gestione_scorte, family_gestione_scorte)
+
+    # Metriche stock calcolate (TASK-V2-089) — solo per planning_mode = by_article
+    # Import lazy per evitare circular import (stock_policy.queries -> articoli.models)
+    stock_metrics = None
+    if normalized_article_code is not None:
+        from nssp_v2.core.stock_policy import list_stock_metrics_v1  # noqa: PLC0415
+        all_metrics = list_stock_metrics_v1(session)
+        stock_metrics = next((m for m in all_metrics if m.article_code == normalized_article_code), None)
+
     return ArticoloDetail(
         codice_articolo=art.codice_articolo,
         descrizione_1=art.descrizione_1,
@@ -273,7 +288,18 @@ def get_articolo_detail(
         availability_computed_at=avail.computed_at if avail is not None else None,
         effective_stock_months=resolve_stock_policy(override_stock_months, family_stock_months),
         effective_stock_trigger_months=resolve_stock_policy(override_stock_trigger_months, family_stock_trigger_months),
+        override_stock_months=override_stock_months,
+        override_stock_trigger_months=override_stock_trigger_months,
         capacity_override_qty=capacity_override,
+        effective_gestione_scorte_attiva=effective_gestione_scorte,
+        override_gestione_scorte_attiva=override_gestione_scorte,
+        monthly_stock_base_qty=stock_metrics.monthly_stock_base_qty if stock_metrics else None,
+        capacity_calculated_qty=stock_metrics.capacity_calculated_qty if stock_metrics else None,
+        capacity_effective_qty=stock_metrics.capacity_effective_qty if stock_metrics else None,
+        target_stock_qty=stock_metrics.target_stock_qty if stock_metrics else None,
+        trigger_stock_qty=stock_metrics.trigger_stock_qty if stock_metrics else None,
+        stock_computed_at=stock_metrics.computed_at if stock_metrics else None,
+        stock_strategy_key=stock_metrics.strategy_key if stock_metrics else None,
     )
 
 
@@ -290,6 +316,7 @@ def _famiglia_to_row(famiglia: ArticoloFamiglia, n_articoli: int) -> FamigliaRow
         aggrega_codice_in_produzione=famiglia.aggrega_codice_in_produzione,
         stock_months=famiglia.stock_months,
         stock_trigger_months=famiglia.stock_trigger_months,
+        gestione_scorte_attiva=famiglia.gestione_scorte_attiva,
         n_articoli=n_articoli,
     )
 
@@ -404,6 +431,52 @@ def toggle_famiglia_aggrega_codice_produzione(
     return _famiglia_to_row(famiglia, n)
 
 
+# ─── Write: stock policy defaults famiglia ───────────────────────────────────
+
+def set_famiglia_stock_policy(
+    session: Session,
+    code: str,
+    stock_months: Decimal | None,
+    stock_trigger_months: Decimal | None,
+) -> FamigliaRow:
+    """Imposta i default stock policy della famiglia V1 (TASK-V2-093).
+
+    stock_months e stock_trigger_months sono nullable: None rimuove il default.
+    Validi solo per articoli con planning_mode = by_article.
+
+    Raises:
+        ValueError: se la famiglia non esiste.
+    """
+    famiglia = session.query(ArticoloFamiglia).filter(ArticoloFamiglia.code == code).first()
+    if famiglia is None:
+        raise ValueError(f"Famiglia '{code}' non trovata")
+    famiglia.stock_months = stock_months
+    famiglia.stock_trigger_months = stock_trigger_months
+    session.flush()
+    n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
+    return _famiglia_to_row(famiglia, n)
+
+
+# ─── Write: gestione scorte attiva famiglia ──────────────────────────────────
+
+def toggle_famiglia_gestione_scorte(
+    session: Session,
+    code: str,
+) -> FamigliaRow:
+    """Inverte gestione_scorte_attiva della famiglia (TASK-V2-096).
+
+    Raises:
+        ValueError: se la famiglia non esiste.
+    """
+    famiglia = session.query(ArticoloFamiglia).filter(ArticoloFamiglia.code == code).first()
+    if famiglia is None:
+        raise ValueError(f"Famiglia '{code}' non trovata")
+    famiglia.gestione_scorte_attiva = not famiglia.gestione_scorte_attiva
+    session.flush()
+    n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
+    return _famiglia_to_row(famiglia, n)
+
+
 # ─── Write: imposta famiglia articolo ────────────────────────────────────────
 
 def set_famiglia_articolo(
@@ -478,5 +551,72 @@ def set_articolo_policy_override(
         config.override_considera_in_produzione = override_considera  # type: ignore[assignment]
     if override_aggrega is not _SENTINEL:
         config.override_aggrega_codice_in_produzione = override_aggrega  # type: ignore[assignment]
+    config.updated_at = now
+    session.flush()
+
+
+# ─── Write: override gestione scorte articolo ────────────────────────────────
+
+def set_articolo_gestione_scorte_override(
+    session: Session,
+    codice_articolo: str,
+    override_gestione_scorte_attiva: bool | None,
+) -> None:
+    """Imposta o rimuove l'override gestione_scorte_attiva per un articolo (TASK-V2-098).
+
+    Valore None = eredita il default di famiglia (rimuove l'override).
+    Valore True/False = sovrascrive il default di famiglia.
+
+    Non modifica mai sync_articoli.
+    """
+    config = session.get(CoreArticoloConfig, codice_articolo)
+    now = datetime.now(timezone.utc)
+
+    if config is None:
+        config = CoreArticoloConfig(
+            codice_articolo=codice_articolo,
+            updated_at=now,
+        )
+        session.add(config)
+
+    config.override_gestione_scorte_attiva = override_gestione_scorte_attiva
+    config.updated_at = now
+    session.flush()
+
+
+# ─── Write: override stock policy articolo ────────────────────────────────────
+
+def set_articolo_stock_policy_override(
+    session: Session,
+    codice_articolo: str,
+    override_stock_months: object = _SENTINEL,
+    override_stock_trigger_months: object = _SENTINEL,
+    capacity_override_qty: object = _SENTINEL,
+) -> None:
+    """Imposta o rimuove gli override di stock policy per un articolo (TASK-V2-089).
+
+    Parametri opzionali (sentinel): se non passato, il campo non viene modificato.
+    Valore None = eredita il default di famiglia (rimuove l'override).
+    Valore Decimal = sovrascrive il default di famiglia.
+    capacity_override_qty non ha default famiglia: None rimuove l'override articolo.
+
+    Non modifica mai sync_articoli.
+    """
+    config = session.get(CoreArticoloConfig, codice_articolo)
+    now = datetime.now(timezone.utc)
+
+    if config is None:
+        config = CoreArticoloConfig(
+            codice_articolo=codice_articolo,
+            updated_at=now,
+        )
+        session.add(config)
+
+    if override_stock_months is not _SENTINEL:
+        config.override_stock_months = override_stock_months  # type: ignore[assignment]
+    if override_stock_trigger_months is not _SENTINEL:
+        config.override_stock_trigger_months = override_stock_trigger_months  # type: ignore[assignment]
+    if capacity_override_qty is not _SENTINEL:
+        config.capacity_override_qty = capacity_override_qty  # type: ignore[assignment]
     config.updated_at = now
     session.flush()

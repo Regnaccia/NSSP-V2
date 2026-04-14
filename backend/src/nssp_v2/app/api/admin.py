@@ -8,9 +8,12 @@ Endpoint:
   PUT  /api/admin/users/{id}/roles               — sostituisce i ruoli dell'utente
   GET  /api/admin/warnings/config                — lista config visibilita warning (TASK-V2-077)
   PUT  /api/admin/warnings/config/{warning_type} — aggiorna visibilita per un tipo warning
+  GET  /api/admin/stock-logic/config             — configurazione logiche stock V1 (TASK-V2-090)
+  PUT  /api/admin/stock-logic/config             — aggiorna configurazione logiche stock V1
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -25,6 +28,13 @@ from nssp_v2.app.schemas.admin import (
 )
 from nssp_v2.app.schemas.auth import Surface
 from nssp_v2.app.services.admin_policy import assert_not_last_active_admin
+from nssp_v2.core.stock_policy import (
+    KNOWN_MONTHLY_BASE_STRATEGIES,
+    CAPACITY_LOGIC_KEY,
+    StockLogicConfig,
+    get_stock_logic_config,
+    set_stock_logic_config,
+)
 from nssp_v2.core.warnings import (
     KNOWN_WARNING_TYPES,
     WarningTypeConfigItem,
@@ -209,3 +219,66 @@ def update_warning_config(
             detail=f"Aree non ammesse: {unknown}. Ammesse: {KNOWN_AREAS}",
         )
     return set_warning_config(session, warning_type, body.visible_to_areas)
+
+
+# ─── Stock logic config (TASK-V2-090) ─────────────────────────────────────────
+
+class StockLogicConfigResponse(StockLogicConfig):
+    """Risposta estesa della configurazione logiche stock V1.
+
+    Aggiunge `known_strategies` alla risposta per consentire alla UI
+    di costruire il selettore senza hardcoding lato frontend.
+    """
+    known_strategies: list[str]
+
+
+class SetStockLogicConfigRequest(BaseModel):
+    """Body PUT /admin/stock-logic/config (TASK-V2-090).
+
+    monthly_base_strategy_key: deve essere in KNOWN_MONTHLY_BASE_STRATEGIES.
+    monthly_base_params: parametri specifici della strategy (dict JSON).
+    capacity_logic_params: parametri della logica capacity fissa (dict JSON, solitamente {}).
+    """
+    monthly_base_strategy_key: str
+    monthly_base_params: dict
+    capacity_logic_params: dict
+
+
+@router.get("/stock-logic/config", response_model=StockLogicConfigResponse)
+def get_stock_logic_config_endpoint(
+    _: dict = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """Restituisce la configurazione attiva delle logiche stock V1 con registry delle strategy ammesse."""
+    config = get_stock_logic_config(session)
+    return StockLogicConfigResponse(
+        **config.model_dump(),
+        known_strategies=KNOWN_MONTHLY_BASE_STRATEGIES,
+    )
+
+
+@router.put("/stock-logic/config", response_model=StockLogicConfigResponse)
+def put_stock_logic_config(
+    body: SetStockLogicConfigRequest,
+    _: dict = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """Aggiorna la configurazione delle logiche stock V1.
+
+    monthly_base_strategy_key deve essere in KNOWN_MONTHLY_BASE_STRATEGIES.
+    capacity_logic_key e sempre '{}' e non e modificabile.
+    422 se la strategy non e nel registry.
+    """.format(CAPACITY_LOGIC_KEY)
+    try:
+        config = set_stock_logic_config(
+            session,
+            monthly_base_strategy_key=body.monthly_base_strategy_key,
+            monthly_base_params=body.monthly_base_params,
+            capacity_logic_params=body.capacity_logic_params,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    return StockLogicConfigResponse(
+        **config.model_dump(),
+        known_strategies=KNOWN_MONTHLY_BASE_STRATEGIES,
+    )

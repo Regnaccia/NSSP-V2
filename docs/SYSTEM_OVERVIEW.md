@@ -33,7 +33,8 @@ Disponibile:
 - ruoli multipli
 - surface `admin`
 - gestione utenti e ruoli
-- prima pagina admin per la configurazione warning visibility
+- pagina admin per warning visibility
+- pagina admin dedicata alle logiche stock
 
 Nota:
 
@@ -69,16 +70,31 @@ Disponibile:
 - planning policy di default a livello famiglia:
   - `considera_in_produzione`
   - `aggrega_codice_in_produzione`
+  - `gestione_scorte_attiva`
 - override articolo tri-state per le stesse policy
 - planning policy effettive esposte dal Core `articoli`:
   - `effective_considera_in_produzione`
   - `effective_aggrega_codice_in_produzione`
+  - `effective_gestione_scorte_attiva`
   - `planning_mode`
 - metriche quantitative read-only nel dettaglio:
   - `giacenza`
   - `customer_set_aside`
   - `committed_qty`
   - `availability_qty`
+- metriche stock policy nel dettaglio:
+  - `monthly_stock_base_qty`
+  - `capacity_calculated_qty`
+  - `capacity_effective_qty`
+  - `target_stock_qty`
+  - `trigger_stock_qty`
+  - `stock_strategy_key`
+  - `stock_computed_at`
+- override stock articolo:
+  - `override_gestione_scorte_attiva`
+  - `override_stock_months`
+  - `override_stock_trigger_months`
+  - `capacity_override_qty`
 - refresh semantico backend-controlled `refresh_articoli()` con chain interna completa
 
 ### Produzioni
@@ -166,17 +182,31 @@ Disponibile:
   - `reason_code` / `reason_text`
   - `misura`
   - descrizione ordine primaria nel ramo per-riga
+- stock-driven by-article gia integrato con:
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+  - `required_qty_total`
+- la componente stock-driven si applica solo con:
+  - `planning_mode = by_article`
+  - `effective_gestione_scorte_attiva = true`
+- primi horizon planning gia attivi:
+  - `customer horizon`
+  - `stock horizon`
 - surface UI dedicata con:
   - ricerca `codice`
   - ricerca `descrizione`
   - filtro famiglia
   - toggle `solo_in_produzione`
   - `Aggiorna`
+  - filtri per driver:
+    - `Tutti`
+    - `Solo fabbisogno cliente`
+    - `Solo scorta`
+  - filtro `customer horizon`
 
 Non ancora disponibile:
 
 - scoring
-- planning horizon
 - policy di aggregazione avanzata
 
 ### Warnings
@@ -184,7 +214,9 @@ Non ancora disponibile:
 Disponibile:
 
 - modulo trasversale `warnings`
-- primo warning canonico `NEGATIVE_STOCK`
+- warning canonici iniziali:
+  - `NEGATIVE_STOCK`
+  - `INVALID_STOCK_CAPACITY`
 - surface dedicata `Warnings`
 - configurazione admin iniziale della visibilita
 
@@ -208,7 +240,7 @@ Disponibile:
 Nota:
 
 - resta disponibile ma non e piu lo stream operativo primario
-- la deprecazione formale e aperta in `TASK-V2-080`
+- la deprecazione formale e stata gia completata con `TASK-V2-080`
 
 ## Mirror sync attivi
 
@@ -243,7 +275,9 @@ Nota:
 - distinzione tra chiave articolo raw e chiave canonica
 - `Planning Candidates` come modulo planning customer-driven
 - `Warnings` come modulo trasversale separato dal planning
-- stock policy V1 come estensione del ramo `by_article`, senza flag separato e con riuso di `future_availability_qty`
+- stock policy V1 come estensione del ramo `by_article`, con riuso di `future_availability_qty` e flag esplicito `gestione_scorte_attiva`
+- configurazione logiche stock V1 con `strategy_key` selezionabile per `monthly_stock_base_qty` e `capacity_from_containers_v1` fissa
+- algoritmo stock V1 riallineato con finestre multiple, percentile, filtro outlier e parametri configurabili
 
 ## Stato attuale
 
@@ -252,10 +286,15 @@ Il perimetro quantitativo e planning V1/V2 di base e operativo:
 - `inventory`, `commitments`, `customer_set_aside`, `availability`
 - `Planning Candidates` V2 con branching reale
 - primo slice `Warnings` V1
+- primo slice `stock_policy` Core con metriche dedicate
+- consumo UI delle metriche stock nella surface `articoli`
+- stock-driven planning gia integrato nel ramo `by_article`
+- governance stock separata in `admin`
+- primi horizon planning gia introdotti
 
 Task aperti correnti:
 
-Nessuno nello snapshot corrente.
+- nessuno
 
 Task deferred:
 
@@ -274,3 +313,4 @@ Task deferred:
 - `docs/decisions/ARCH/DL-ARCH-V2-028.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-029.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-030.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-031.md`

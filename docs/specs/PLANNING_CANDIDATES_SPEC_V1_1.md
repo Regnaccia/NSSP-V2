@@ -179,6 +179,41 @@ La supply e cercata solo sulle produzioni collegate alla stessa riga ordine clie
 - aggregazione per articolo
 - usa stock operativo e supply aggregata
 - il candidate segnala una scopertura residua a livello codice
+- il candidate puo avere due componenti logiche nello stesso record:
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+
+### 9.3 Customer Horizon
+
+La componente customer-driven puo essere valutata anche rispetto a un primo orizzonte temporale
+operativo semplice.
+
+Configurazione iniziale prevista:
+
+- `customer_horizon_days`
+
+Semantica V1:
+
+- basata solo su `data_consegna`
+- senza usare ancora lead time, tempi ciclo o capacità
+
+Il Core non deve perdere i candidate fuori orizzonte.
+
+Deve invece poter esporre almeno:
+
+- `is_within_customer_horizon`
+- opzionalmente `customer_horizon_days_snapshot`
+
+Regola concettuale:
+
+```text
+is_within_customer_horizon = delivery_date <= today + customer_horizon_days
+```
+
+Questo flag serve a:
+
+- distinguere i fabbisogni cliente prossimi da quelli lontani
+- abilitare filtri UI semplici senza rompere il modello base
 
 ### 9.2 By Customer Order Line
 
@@ -206,6 +241,55 @@ La vista deve esporre anche la misura, per migliorare la leggibilita operativa d
 
 La vista deve mostrare sempre la ragione per cui la riga e presente.
 
+### 10.5 Separazione operativa in UI
+
+La separazione tra fabbisogno cliente e scorta deve avvenire in UI, non nel Core.
+
+`Planning Candidates` resta un modulo unico.
+
+La vista deve poter offrire almeno:
+
+- `Tutti`
+- `Solo fabbisogno cliente`
+- `Solo scorta`
+
+Regole minime dei filtri:
+
+- `Solo fabbisogno cliente`:
+  - `primary_driver = customer`
+- `Solo scorta`:
+  - `primary_driver = stock`
+
+### 10.6 Precedenza di visualizzazione nei casi misti
+
+Un candidate `by_article` puo avere entrambe le componenti attive:
+
+- `customer_shortage_qty > 0`
+- `stock_replenishment_qty > 0`
+
+In questo caso:
+
+- la riga deve restare unica
+- la UI deve mostrare entrambe le ragioni / componenti quantitative
+- la classificazione primaria della riga deve essere:
+  - `customer`
+
+Regola di precedenza:
+
+1. se `customer_shortage_qty > 0`
+   - `primary_driver = customer`
+2. altrimenti, se `stock_replenishment_qty > 0`
+   - `primary_driver = stock`
+
+Conseguenza:
+
+- un articolo misto compare nella scheda `customer`
+- non deve comparire anche nella scheda `stock`
+
+La vista deve anche poter filtrare i candidate cliente per orizzonte temporale:
+
+- `solo entro customer horizon`
+
 ## 11. Entity Model
 
 Shape logica minima:
@@ -229,12 +313,30 @@ required_qty_minimum
 computed_at
 ```
 
+Semantica di `required_qty_minimum` nel ramo `by_article`:
+
+- se `primary_driver = customer`
+  - `required_qty_minimum = customer_shortage_qty`
+- se `primary_driver = stock`
+  - `required_qty_minimum = stock_replenishment_qty`
+
+Quindi, nel caso `stock-only`, il fabbisogno minimo coincide con:
+
+```text
+max(target_stock_qty - max(stock_horizon_availability_qty, 0), 0)
+```
+
 Campi ramo `by_article`:
 
 ```text
 availability_qty
 incoming_supply_qty
 future_availability_qty
+customer_shortage_qty
+stock_replenishment_qty
+required_qty_total
+primary_driver
+is_within_customer_horizon
 ```
 
 Campi ramo `by_customer_order_line`:

@@ -263,6 +263,8 @@ function ColonnaDettaglio({
   famiglie,
   onFamigliaChange,
   onPolicyOverrideChange,
+  onStockPolicyOverrideChange,
+  onGestioneScorteOverrideChange,
 }: {
   articoloSelezionato: string | null
   detail: ArticoloDetail | null
@@ -270,15 +272,29 @@ function ColonnaDettaglio({
   famiglie: FamigliaItem[]
   onFamigliaChange: (codice: string, familgiaCode: string | null) => Promise<void>
   onPolicyOverrideChange: (codice: string, considera: boolean | null, aggrega: boolean | null) => Promise<ArticoloDetail>
+  onStockPolicyOverrideChange: (codice: string, stockMonths: number | null, stockTriggerMonths: number | null, capacityOverride: number | null) => Promise<ArticoloDetail>
+  onGestioneScorteOverrideChange: (codice: string, value: boolean | null) => Promise<ArticoloDetail>
 }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [policySaveStatus, setPolicySaveStatus] = useState<SaveStatus>('idle')
+  const [stockSaveStatus, setStockSaveStatus] = useState<SaveStatus>('idle')
+  const [gestiSaveStatus, setGestiSaveStatus] = useState<SaveStatus>('idle')
+
+  // Stato locale per gli override stock (stringa per i number input)
+  const [stockMonthsInput, setStockMonthsInput] = useState<string>('')
+  const [stockTriggerInput, setStockTriggerInput] = useState<string>('')
+  const [capacityOverrideInput, setCapacityOverrideInput] = useState<string>('')
 
   // Resetta il feedback quando cambia articolo
   useEffect(() => {
     setSaveStatus('idle')
     setPolicySaveStatus('idle')
-  }, [detail?.codice_articolo])
+    setStockSaveStatus('idle')
+    setGestiSaveStatus('idle')
+    setStockMonthsInput(detail?.override_stock_months ?? '')
+    setStockTriggerInput(detail?.override_stock_trigger_months ?? '')
+    setCapacityOverrideInput(detail?.capacity_override_qty ?? '')
+  }, [detail?.codice_articolo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFamigliaSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (!detail) return
@@ -311,6 +327,42 @@ function ColonnaDettaglio({
     } catch {
       setPolicySaveStatus('error')
       setTimeout(() => setPolicySaveStatus('idle'), 3500)
+    }
+  }
+
+  const handleGestioneScorteChange = async (value: TriState) => {
+    if (!detail) return
+    setGestiSaveStatus('saving')
+    try {
+      await onGestioneScorteOverrideChange(detail.codice_articolo, boolFromTriState(value))
+      setGestiSaveStatus('saved')
+      setTimeout(() => setGestiSaveStatus('idle'), 2500)
+    } catch {
+      setGestiSaveStatus('error')
+      setTimeout(() => setGestiSaveStatus('idle'), 3500)
+    }
+  }
+
+  const handleStockPolicySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!detail) return
+    const parseOptional = (v: string): number | null => {
+      const n = parseFloat(v.replace(',', '.'))
+      return isNaN(n) ? null : n
+    }
+    setStockSaveStatus('saving')
+    try {
+      await onStockPolicyOverrideChange(
+        detail.codice_articolo,
+        parseOptional(stockMonthsInput),
+        parseOptional(stockTriggerInput),
+        parseOptional(capacityOverrideInput),
+      )
+      setStockSaveStatus('saved')
+      setTimeout(() => setStockSaveStatus('idle'), 2500)
+    } catch {
+      setStockSaveStatus('error')
+      setTimeout(() => setStockSaveStatus('idle'), 3500)
     }
   }
 
@@ -461,6 +513,35 @@ function ColonnaDettaglio({
             {policySaveStatus === 'error' && (
               <p className="text-xs text-red-600">Errore durante il salvataggio</p>
             )}
+
+            {/* Gestione scorte attiva — prerequisito stock policy (TASK-V2-098) */}
+            <div className="space-y-1 pt-2 border-t">
+              <label className="text-xs text-muted-foreground">Gestione scorte attiva</label>
+              <select
+                value={triStateFromBool(detail.override_gestione_scorte_attiva)}
+                onChange={(e) => handleGestioneScorteChange(e.target.value as TriState)}
+                disabled={gestiSaveStatus === 'saving'}
+                className={`${inputCls} text-sm`}
+              >
+                <option value="null">Eredita dalla famiglia</option>
+                <option value="true">Sì — stock policy abilitata</option>
+                <option value="false">No — stock policy disabilitata</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Effettivo:{' '}
+                <span className={`font-medium ${
+                  detail.effective_gestione_scorte_attiva === true ? 'text-green-700' :
+                  detail.effective_gestione_scorte_attiva === false ? 'text-muted-foreground' :
+                  'text-amber-600'
+                }`}>
+                  {effectiveLabel(detail.effective_gestione_scorte_attiva)}
+                </span>
+                {' '}· prerequisito stock policy (richiede planning_mode = by_article)
+              </p>
+              {gestiSaveStatus === 'saving' && <p className="text-xs text-muted-foreground">Salvataggio…</p>}
+              {gestiSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+              {gestiSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+            </div>
           </div>
         </section>
 
@@ -613,6 +694,141 @@ function ColonnaDettaglio({
           </div>
         </section>
 
+        {/* Stock policy — solo per planning_mode = by_article (TASK-V2-089) */}
+        {detail.planning_mode === 'by_article' && (
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+              Stock policy V1 — by_article
+            </h3>
+
+            {/* Metriche calcolate read-only */}
+            <div className="rounded-md border p-4 space-y-3 bg-muted/20">
+              <p className="text-xs font-medium text-muted-foreground">Metriche calcolate — sola lettura</p>
+              {detail.monthly_stock_base_qty !== null ? (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Base mensile</dt>
+                    <dd className="font-medium tabular-nums">{Number(detail.monthly_stock_base_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Capacity calcolata</dt>
+                    <dd className="font-medium tabular-nums">
+                      {detail.capacity_calculated_qty !== null
+                        ? Number(detail.capacity_calculated_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Capacity effettiva</dt>
+                    <dd className="font-medium tabular-nums">
+                      {detail.capacity_effective_qty !== null
+                        ? Number(detail.capacity_effective_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Target scorta</dt>
+                    <dd className={`font-medium tabular-nums ${detail.target_stock_qty !== null ? 'text-blue-700' : ''}`}>
+                      {detail.target_stock_qty !== null
+                        ? Number(detail.target_stock_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Trigger scorta</dt>
+                    <dd className={`font-medium tabular-nums ${detail.trigger_stock_qty !== null ? 'text-amber-700' : ''}`}>
+                      {detail.trigger_stock_qty !== null
+                        ? Number(detail.trigger_stock_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
+                        : '—'}
+                    </dd>
+                  </div>
+                  {detail.effective_stock_months !== null && (
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Mesi scorta effettivi</dt>
+                      <dd className="font-medium tabular-nums">{detail.effective_stock_months}</dd>
+                    </div>
+                  )}
+                  {detail.effective_stock_trigger_months !== null && (
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Mesi trigger effettivi</dt>
+                      <dd className="font-medium tabular-nums">{detail.effective_stock_trigger_months}</dd>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Metriche non disponibili — dati di vendita insufficienti o policy non configurata.
+                </p>
+              )}
+              {detail.stock_computed_at && (
+                <p className="text-xs text-muted-foreground">
+                  Calcolato il {formatDate(detail.stock_computed_at)}
+                  {detail.stock_strategy_key && ` · strategia: ${detail.stock_strategy_key}`}
+                </p>
+              )}
+            </div>
+
+            {/* Override articolo modificabili */}
+            <form onSubmit={handleStockPolicySubmit} className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Override articolo. Lascia vuoto per ereditare il default della famiglia.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Mesi scorta (override)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder={detail.effective_stock_months ?? 'eredita famiglia'}
+                    value={stockMonthsInput}
+                    onChange={(e) => setStockMonthsInput(e.target.value)}
+                    disabled={stockSaveStatus === 'saving'}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Mesi trigger (override)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder={detail.effective_stock_trigger_months ?? 'eredita famiglia'}
+                    value={stockTriggerInput}
+                    onChange={(e) => setStockTriggerInput(e.target.value)}
+                    disabled={stockSaveStatus === 'saving'}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <label className="text-xs text-muted-foreground">Capacity override (qtà)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder={detail.capacity_calculated_qty ? `calcolata: ${Number(detail.capacity_calculated_qty).toLocaleString('it-IT')}` : 'nessuna calcolata'}
+                    value={capacityOverrideInput}
+                    onChange={(e) => setCapacityOverrideInput(e.target.value)}
+                    disabled={stockSaveStatus === 'saving'}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={stockSaveStatus === 'saving'}
+                  className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {stockSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva override stock'}
+                </button>
+                {stockSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+                {stockSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+              </div>
+            </form>
+          </section>
+        )}
+
         {/* Dati Easy read-only */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
@@ -714,6 +930,36 @@ export default function ProduzioneHome() {
     return data
   }
 
+  const handleStockPolicyOverrideChange = async (
+    codice: string,
+    stockMonths: number | null,
+    stockTriggerMonths: number | null,
+    capacityOverride: number | null,
+  ): Promise<ArticoloDetail> => {
+    const { data } = await apiClient.patch<ArticoloDetail>(
+      `/produzione/articoli/${encodeURIComponent(codice)}/stock-policy-override`,
+      {
+        override_stock_months: stockMonths,
+        override_stock_trigger_months: stockTriggerMonths,
+        capacity_override_qty: capacityOverride,
+      },
+    )
+    setDetail(data)
+    return data
+  }
+
+  const handleGestioneScorteOverrideChange = async (
+    codice: string,
+    value: boolean | null,
+  ): Promise<ArticoloDetail> => {
+    const { data } = await apiClient.patch<ArticoloDetail>(
+      `/produzione/articoli/${encodeURIComponent(codice)}/gestione-scorte-override`,
+      { override_gestione_scorte_attiva: value },
+    )
+    setDetail(data)
+    return data
+  }
+
   const handleRefresh = async () => {
     setSyncStatus('syncing')
     try {
@@ -798,6 +1044,8 @@ export default function ProduzioneHome() {
           famiglie={famiglie}
           onFamigliaChange={handleFamigliaChange}
           onPolicyOverrideChange={handlePolicyOverrideChange}
+          onStockPolicyOverrideChange={handleStockPolicyOverrideChange}
+          onGestioneScorteOverrideChange={handleGestioneScorteOverrideChange}
         />
       </div>
     </div>

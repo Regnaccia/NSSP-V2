@@ -52,6 +52,11 @@ class ArticoloFamiglia(Base):
     stock_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     stock_trigger_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
 
+    # Gestione scorte attiva — flag esplicito di applicabilita stock policy (TASK-V2-096, DL-ARCH-V2-030).
+    # False = stock policy non attiva per gli articoli della famiglia (default conservativo).
+    # True  = stock policy attiva (prerequisito: planning_mode = by_article).
+    gestione_scorte_attiva: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
 
 class CoreArticoloConfig(Base):
     """Configurazione interna per articolo.
@@ -90,3 +95,7 @@ class CoreArticoloConfig(Base):
     override_stock_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     override_stock_trigger_months: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     capacity_override_qty: Mapped[Decimal | None] = mapped_column(Numeric(14, 4), nullable=True)
+
+    # Override gestione scorte attiva articolo-specifico (TASK-V2-096, DL-ARCH-V2-030).
+    # Tri-state nullable: None = eredita dalla famiglia; True/False = sovrascrive.
+    override_gestione_scorte_attiva: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

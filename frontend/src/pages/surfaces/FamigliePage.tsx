@@ -1,5 +1,5 @@
 /**
- * Surface Produzione — tabella gestione famiglie articolo (TASK-V2-025, TASK-V2-026, TASK-V2-066).
+ * Surface Produzione — tabella gestione famiglie articolo (TASK-V2-025, TASK-V2-026, TASK-V2-066, TASK-V2-093).
  *
  * Consuma:
  *   GET   /api/produzione/famiglie/catalog                              — tutte le famiglie + is_active + n_articoli
@@ -7,6 +7,8 @@
  *   PATCH /api/produzione/famiglie/{code}/active                        — toggle is_active
  *   PATCH /api/produzione/famiglie/{code}/considera-produzione          — toggle considera_in_produzione (default planning)
  *   PATCH /api/produzione/famiglie/{code}/aggrega-codice-produzione     — toggle planning_mode default (by_article / by_customer_order_line)
+ *   PATCH /api/produzione/famiglie/{code}/stock-policy                  — imposta stock_months e stock_trigger_months (TASK-V2-093)
+ *   PATCH /api/produzione/famiglie/{code}/gestione-scorte               — toggle gestione_scorte_attiva (TASK-V2-097)
  */
 
 import { useEffect, useState } from 'react'
@@ -16,6 +18,9 @@ import type { FamigliaRow } from '@/types/api'
 
 const inputCls =
   'px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50'
+
+const inputSmCls =
+  'w-20 px-2 py-1 border rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50'
 
 // ─── Form creazione famiglia ──────────────────────────────────────────────────
 
@@ -104,6 +109,17 @@ function RigaFamiglia({
   const [togglingActive, setTogglingActive] = useState(false)
   const [togglingProd, setTogglingProd] = useState(false)
   const [togglingAggrega, setTogglingAggrega] = useState(false)
+  const [togglingGestione, setTogglingGestione] = useState(false)
+
+  // Stock policy state — inizializza dai valori attuali della famiglia
+  const [stockMonths, setStockMonths] = useState(famiglia.stock_months ?? '')
+  const [stockTrigger, setStockTrigger] = useState(famiglia.stock_trigger_months ?? '')
+  const [savingStock, setSavingStock] = useState(false)
+
+  // Traccia se i valori sono stati modificati rispetto al server
+  const originalStockMonths = famiglia.stock_months ?? ''
+  const originalStockTrigger = famiglia.stock_trigger_months ?? ''
+  const stockDirty = stockMonths !== originalStockMonths || stockTrigger !== originalStockTrigger
 
   const handleToggleActive = async () => {
     setTogglingActive(true)
@@ -147,19 +163,53 @@ function RigaFamiglia({
     }
   }
 
+  const handleToggleGestione = async () => {
+    setTogglingGestione(true)
+    try {
+      const { data } = await apiClient.patch<FamigliaRow>(
+        `/produzione/famiglie/${encodeURIComponent(famiglia.code)}/gestione-scorte`
+      )
+      onToggled(data)
+    } catch {
+      toast.error('Impossibile aggiornare il flag gestione scorte')
+    } finally {
+      setTogglingGestione(false)
+    }
+  }
+
+  const handleSaveStock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingStock(true)
+    try {
+      const { data } = await apiClient.patch<FamigliaRow>(
+        `/produzione/famiglie/${encodeURIComponent(famiglia.code)}/stock-policy`,
+        {
+          stock_months: stockMonths !== '' ? parseFloat(stockMonths) : null,
+          stock_trigger_months: stockTrigger !== '' ? parseFloat(stockTrigger) : null,
+        }
+      )
+      onToggled(data)
+      toast.success(`Stock policy "${famiglia.label}" aggiornata`)
+    } catch {
+      toast.error('Impossibile salvare la stock policy')
+    } finally {
+      setSavingStock(false)
+    }
+  }
+
   return (
     <tr className={`border-b last:border-b-0 ${!famiglia.is_active ? 'opacity-50' : ''}`}>
-      <td className="py-2.5 pr-6 text-muted-foreground tabular-nums text-sm">
+      <td className="py-2.5 pr-4 text-muted-foreground tabular-nums text-sm">
         {famiglia.sort_order ?? '—'}
       </td>
-      <td className="py-2.5 pr-6 font-mono text-xs">{famiglia.code}</td>
-      <td className="py-2.5 pr-6 font-medium text-sm">{famiglia.label}</td>
-      <td className="py-2.5 pr-6 text-right tabular-nums text-sm">
+      <td className="py-2.5 pr-4 font-mono text-xs">{famiglia.code}</td>
+      <td className="py-2.5 pr-4 font-medium text-sm">{famiglia.label}</td>
+      <td className="py-2.5 pr-4 text-right tabular-nums text-sm">
         {famiglia.n_articoli > 0 ? famiglia.n_articoli : (
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="py-2.5 pr-6">
+      <td className="py-2.5 pr-4">
         {famiglia.is_active ? (
           <span className="px-2 py-0.5 rounded text-xs bg-green-100 text-green-700 font-medium">
             Attiva
@@ -170,7 +220,7 @@ function RigaFamiglia({
           </span>
         )}
       </td>
-      <td className="py-2.5 pr-6 text-center">
+      <td className="py-2.5 pr-4 text-center">
         <input
           type="checkbox"
           checked={famiglia.considera_in_produzione}
@@ -180,7 +230,7 @@ function RigaFamiglia({
           title={famiglia.considera_in_produzione ? 'Nel perimetro produzione' : 'Fuori perimetro produzione'}
         />
       </td>
-      <td className="py-2.5 pr-6 text-center">
+      <td className="py-2.5 pr-4 text-center">
         <input
           type="checkbox"
           checked={famiglia.aggrega_codice_in_produzione}
@@ -189,6 +239,50 @@ function RigaFamiglia({
           className="h-4 w-4 cursor-pointer accent-primary disabled:cursor-wait"
           title={famiglia.aggrega_codice_in_produzione ? 'by_article — aggrega per codice articolo' : 'by_customer_order_line — per riga ordine cliente'}
         />
+      </td>
+      <td className="py-2.5 pr-4 text-center">
+        <input
+          type="checkbox"
+          checked={famiglia.gestione_scorte_attiva}
+          onChange={handleToggleGestione}
+          disabled={togglingGestione}
+          className="h-4 w-4 cursor-pointer accent-primary disabled:cursor-wait"
+          title={famiglia.gestione_scorte_attiva ? 'Gestione scorte attiva' : 'Gestione scorte non attiva'}
+        />
+      </td>
+      {/* Stock policy defaults — solo rilevanti per by_article con gestione scorte attiva */}
+      <td className="py-2.5 pr-2">
+        <form onSubmit={handleSaveStock} className="flex items-center gap-1.5">
+          <input
+            type="number"
+            step="0.5"
+            min="0"
+            value={stockMonths}
+            onChange={(e) => setStockMonths(e.target.value)}
+            placeholder="—"
+            disabled={savingStock}
+            className={inputSmCls}
+            title="Mesi di stock target (by_article)"
+          />
+          <input
+            type="number"
+            step="0.5"
+            min="0"
+            value={stockTrigger}
+            onChange={(e) => setStockTrigger(e.target.value)}
+            placeholder="—"
+            disabled={savingStock}
+            className={inputSmCls}
+            title="Mesi di trigger riordine (by_article)"
+          />
+          <button
+            type="submit"
+            disabled={savingStock || !stockDirty}
+            className="text-xs px-2 py-1 border rounded text-primary border-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-default transition-colors"
+          >
+            {savingStock ? '…' : 'Salva'}
+          </button>
+        </form>
       </td>
       <td className="py-2.5">
         <button
@@ -256,30 +350,39 @@ export default function FamigliePage() {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Catalogo
           </h2>
+          <p className="text-xs text-muted-foreground">
+            I campi <em>Stock mesi</em> e <em>Trigger mesi</em> valgono solo per articoli con planning mode <strong>by_article</strong> e <em>Gestione scorte</em> attiva.
+          </p>
 
           {loading && <p className="text-sm text-muted-foreground">Caricamento…</p>}
           {error && <p className="text-sm text-red-600">Impossibile caricare il catalogo famiglie.</p>}
 
           {!loading && !error && (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b text-xs text-muted-foreground uppercase tracking-wide">
-                  <th className="text-left py-2 pr-6 font-medium w-12">Ord.</th>
-                  <th className="text-left py-2 pr-6 font-medium">Codice</th>
-                  <th className="text-left py-2 pr-6 font-medium">Label</th>
-                  <th className="text-right py-2 pr-6 font-medium">Articoli</th>
-                  <th className="text-left py-2 pr-6 font-medium">Stato</th>
-                  <th className="text-center py-2 pr-6 font-medium" title="Default planning: articoli nel perimetro produzione">In produzione</th>
-                  <th className="text-center py-2 pr-6 font-medium" title="Planning mode default della famiglia: by_article = aggrega per codice articolo, by_customer_order_line = per riga ordine cliente">Planning mode</th>
-                  <th className="text-left py-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {famiglie.map((f) => (
-                  <RigaFamiglia key={f.code} famiglia={f} onToggled={handleToggled} />
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b text-xs text-muted-foreground uppercase tracking-wide">
+                    <th className="text-left py-2 pr-4 font-medium w-12">Ord.</th>
+                    <th className="text-left py-2 pr-4 font-medium">Codice</th>
+                    <th className="text-left py-2 pr-4 font-medium">Label</th>
+                    <th className="text-right py-2 pr-4 font-medium">Articoli</th>
+                    <th className="text-left py-2 pr-4 font-medium">Stato</th>
+                    <th className="text-center py-2 pr-4 font-medium" title="Default planning: articoli nel perimetro produzione">In produzione</th>
+                    <th className="text-center py-2 pr-4 font-medium" title="Planning mode default della famiglia: by_article = aggrega per codice articolo, by_customer_order_line = per riga ordine cliente">Planning mode</th>
+                    <th className="text-center py-2 pr-4 font-medium" title="Prerequisito stock policy: attiva solo per articoli by_article con gestione scorte abilitata">Gestione scorte</th>
+                    <th className="text-left py-2 pr-2 font-medium" title="Stock policy defaults V1 — Stock mesi / Trigger mesi (solo by_article con gestione scorte attiva)">
+                      Stock mesi&nbsp;/&nbsp;Trigger mesi
+                    </th>
+                    <th className="text-left py-2 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {famiglie.map((f) => (
+                    <RigaFamiglia key={f.code} famiglia={f} onToggled={handleToggled} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>

@@ -22,7 +22,7 @@
  * - Descrizione by_customer_order_line → order_line_description come primaria (via display_label backend)
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import type { PlanningCandidateItem, PlanningMode, SyncSurfaceResponse } from '@/types/api'
@@ -31,6 +31,8 @@ import type { PlanningCandidateItem, PlanningMode, SyncSurfaceResponse } from '@
 
 type LoadStatus = 'loading' | 'idle' | 'error'
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error'
+/** Filtro driver: Tutti / Solo fabbisogno cliente / Solo scorta (TASK-V2-102) */
+type DriverFilter = 'tutti' | 'fabbisogno' | 'scorta'
 
 /** Chiavi di ordinamento semantiche — indipendenti dallo shape del ramo */
 type SortKey =
@@ -293,6 +295,82 @@ function FiltriBar({
   )
 }
 
+// ─── Driver filter bar (TASK-V2-102) ─────────────────────────────────────────
+
+const driverOptions: { value: DriverFilter; label: string }[] = [
+  { value: 'tutti', label: 'Tutti' },
+  { value: 'fabbisogno', label: 'Solo fabbisogno cliente' },
+  { value: 'scorta', label: 'Solo scorta' },
+]
+
+function DriverFilterBar({
+  driverFilter,
+  onDriverFilterChange,
+  soloEntroHorizon,
+  onSoloEntroHorizonChange,
+  horizonDays,
+  onHorizonDaysChange,
+}: {
+  driverFilter: DriverFilter
+  onDriverFilterChange: (v: DriverFilter) => void
+  soloEntroHorizon: boolean
+  onSoloEntroHorizonChange: (v: boolean) => void
+  horizonDays: number
+  onHorizonDaysChange: (v: number) => void
+}) {
+  const horizonControlDisabled = driverFilter === 'scorta'
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-1.5 border-b bg-muted/20 shrink-0 flex-wrap">
+      <div className="flex items-center rounded-md border overflow-hidden text-xs font-medium">
+        {driverOptions.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onDriverFilterChange(opt.value)}
+            className={`px-3 py-1 transition-colors ${
+              driverFilter === opt.value
+                ? 'bg-foreground text-background'
+                : 'hover:bg-muted'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="h-4 border-l" />
+
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={soloEntroHorizon}
+          onChange={(e) => onSoloEntroHorizonChange(e.target.checked)}
+          disabled={horizonControlDisabled}
+          className="rounded"
+        />
+        <span className={`text-xs ${horizonControlDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+          Entro
+        </span>
+      </label>
+      <input
+        type="number"
+        min={1}
+        max={3650}
+        value={horizonDays}
+        onChange={(e) => {
+          const v = parseInt(e.target.value, 10)
+          if (!isNaN(v) && v >= 1) onHorizonDaysChange(v)
+        }}
+        disabled={!soloEntroHorizon || horizonControlDisabled}
+        className="border rounded-md px-2 py-1 text-xs w-16 text-center focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-40"
+      />
+      <span className={`text-xs ${horizonControlDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+        giorni
+      </span>
+    </div>
+  )
+}
+
 // ─── Tabella ──────────────────────────────────────────────────────────────────
 
 const thBase =
@@ -518,15 +596,24 @@ export default function PlanningCandidatesPage() {
   const [filterCodice, setFilterCodice] = useState('')
   const [filterDesc, setFilterDesc] = useState('')
   const [famigliaFilter, setFamigliaFilter] = useState('')
+  // Filtri driver + horizon (TASK-V2-102)
+  const [driverFilter, setDriverFilter] = useState<DriverFilter>('tutti')
+  const [soloEntroHorizon, setSoloEntroHorizon] = useState(false)
+  const [horizonDays, setHorizonDays] = useState(30)
 
   // Ordinamento — default: required_qty_minimum desc (UIX_SPEC_PLANNING_CANDIDATES)
   const [sortKey, setSortKey] = useState<SortKey>('required_qty_minimum')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
+  const horizonDaysRef = useRef(horizonDays)
+  horizonDaysRef.current = horizonDays
+
   const loadCandidates = () => {
     setLoadStatus('loading')
     return apiClient
-      .get<PlanningCandidateItem[]>('/produzione/planning-candidates')
+      .get<PlanningCandidateItem[]>('/produzione/planning-candidates', {
+        params: { horizon_days: horizonDaysRef.current },
+      })
       .then((r) => {
         setItems(r.data)
         setLoadStatus('idle')
@@ -538,6 +625,13 @@ export default function PlanningCandidatesPage() {
     loadCandidates()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Ri-fetcha quando horizonDays cambia (debounced 600ms)
+  useEffect(() => {
+    const t = setTimeout(() => loadCandidates(), 600)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [horizonDays])
 
   /**
    * Refresh semantico backend (DL-ARCH-V2-022).
@@ -592,7 +686,23 @@ export default function PlanningCandidatesPage() {
       .filter((i) => matchesCodice(i, filterCodice))
       .filter((i) => matchesDesc(i, filterDesc))
       .filter((i) => !famigliaFilter || i.famiglia_label === famigliaFilter)
-  }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter])
+      .filter((i) => {
+        // Filtro driver (TASK-V2-105): usa primary_driver univoco del candidate
+        if (driverFilter === 'fabbisogno') {
+          return i.primary_driver === 'customer'
+        }
+        if (driverFilter === 'scorta') {
+          return i.primary_driver === 'stock'
+        }
+        return true
+      })
+      .filter((i) => {
+        // Filtro customer horizon: usa is_within_customer_horizon calcolato dal server con horizon_days
+        if (driverFilter === 'scorta') return true
+        if (!soloEntroHorizon) return true
+        return i.is_within_customer_horizon === true
+      })
+  }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter, driverFilter, soloEntroHorizon])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => cmpItems(a, b, sortKey, sortDir))
@@ -627,6 +737,22 @@ export default function PlanningCandidatesPage() {
         onFamigliaChange={setFamigliaFilter}
         soloInProduzione={soloInProduzione}
         onSoloInProduzioneChange={setSoloInProduzione}
+      />
+
+      <DriverFilterBar
+        driverFilter={driverFilter}
+        onDriverFilterChange={(v) => {
+          setDriverFilter(v)
+          if (v === 'scorta') {
+            setSoloEntroHorizon(false)
+          } else if (v === 'fabbisogno') {
+            setSoloEntroHorizon(true)
+          }
+        }}
+        soloEntroHorizon={soloEntroHorizon}
+        onSoloEntroHorizonChange={setSoloEntroHorizon}
+        horizonDays={horizonDays}
+        onHorizonDaysChange={setHorizonDays}
       />
 
       {(loadStatus === 'loading' || syncStatus === 'syncing') && (

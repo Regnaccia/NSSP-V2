@@ -28,7 +28,7 @@ docs/
 | [specs/PLANNING_CANDIDATES_SPEC_V1_1.md](specs/PLANNING_CANDIDATES_SPEC_V1_1.md) | Spec ampia del modulo `Planning Candidates`, utile come intent document e base di ragionamento |
 | [specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Planning Candidates`, allineata al modello canonico attuale della V2 |
 | [specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md) | Estensione ridotta della logica `Planning Candidates` con due modalita esplicite: `by_article` e `by_customer_order_line` |
-| [specs/STOCK_POLICY_V1_REDUCED_SPEC.md](specs/STOCK_POLICY_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della prima stock policy V1, limitata al ramo `by_article` e basata su `future_availability_qty`, target stock e trigger stock |
+| [specs/STOCK_POLICY_V1_REDUCED_SPEC.md](specs/STOCK_POLICY_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della prima stock policy V1, limitata al ramo `by_article`, con `strategy selection` per `monthly_stock_base_qty`, capacity setup fissa e riuso di `future_availability_qty` |
 | [specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md](specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md) | Spec iniziale del modulo `Production Proposals`, separato da `Planning Candidates` e focalizzato su proposal persistenti, override, workflow, export e warnings |
 | [specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md](specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Production Proposals`, centrata su proposal persistenti, override, workflow minimo e riconciliazione con Easy |
 | [specs/WARNINGS_SPEC_V1.md](specs/WARNINGS_SPEC_V1.md) | Spec iniziale del modulo trasversale `Warnings`, con warning canonici unici e visibilita differenziata per surface o ruolo |
@@ -87,7 +87,8 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-027.md](decisions/ARCH/DL-ARCH-V2-027.md) | Evoluzione di `Planning Candidates` verso due modalita esplicite di aggregazione: `by_article` e `by_customer_order_line`, governate da `effective_aggrega_codice_in_produzione` |
 | [decisions/ARCH/DL-ARCH-V2-028.md](decisions/ARCH/DL-ARCH-V2-028.md) | Refinement finale di `Planning Candidates` prima di `Production Proposals`: stock clampato a zero, reason esplicita, misura esposta e descrizione ordine nel ramo per-riga |
 | [decisions/ARCH/DL-ARCH-V2-029.md](decisions/ARCH/DL-ARCH-V2-029.md) | `Warnings` come modulo trasversale canonico: un warning esiste una sola volta e la visibilita per reparti o surface si modella via audience, non con duplicazione |
-| [decisions/ARCH/DL-ARCH-V2-030.md](decisions/ARCH/DL-ARCH-V2-030.md) | Prima definizione della stock policy V1 come estensione minima del planning `by_article`, basata su `future_availability_qty`, target stock e trigger stock |
+| [decisions/ARCH/DL-ARCH-V2-030.md](decisions/ARCH/DL-ARCH-V2-030.md) | Prima definizione della stock policy V1 come estensione minima del planning `by_article`, con strategy selection configurabile per `monthly_stock_base_qty` e capacity setup fissa |
+| [decisions/ARCH/DL-ARCH-V2-031.md](decisions/ARCH/DL-ARCH-V2-031.md) | Introduzione di `customer horizon`, `stock horizon` e separazione UI tra driver `fabbisogno cliente` e `scorta` senza duplicare il Core planning |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -105,6 +106,7 @@ Sottocartelle per tipo:
 |------|-----------|
 | [guides/BACKEND_BOOTSTRAP_AND_VERIFY.md](guides/BACKEND_BOOTSTRAP_AND_VERIFY.md) | Bootstrap locale backend/frontend, auth browser, admin, logistica, produzione/articoli, sync Easy read-only, catalogo famiglie e sync on demand backend-controlled |
 | [guides/IMPLEMENTATION_PATTERNS.md](guides/IMPLEMENTATION_PATTERNS.md) | Pattern replicabili emersi dai primi slice reali V2, utili per accelerare nuovi stream di sviluppo |
+| [guides/PLANNING_AND_STOCK_RULES.md](guides/PLANNING_AND_STOCK_RULES.md) | Guida breve e normativa per le regole oggi stabili di `Planning Candidates`, stock policy V1, horizon iniziali e warning collegati |
 | [guides/UI_SURFACES_OVERVIEW.md](guides/UI_SURFACES_OVERVIEW.md) | Riepilogo delle schermate UI V2 per funzione, entita logiche usate, dati esposti e azioni principali |
 
 ## Integrations

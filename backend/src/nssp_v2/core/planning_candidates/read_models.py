@@ -1,6 +1,7 @@
 """
 Read model Core slice `planning_candidates` V2 (TASK-V2-062, TASK-V2-065, TASK-V2-069,
-TASK-V2-071, TASK-V2-074, DL-ARCH-V2-025, DL-ARCH-V2-027, DL-ARCH-V2-028).
+TASK-V2-071, TASK-V2-074, TASK-V2-085, TASK-V2-100, DL-ARCH-V2-025, DL-ARCH-V2-027,
+DL-ARCH-V2-028, DL-ARCH-V2-030, DL-ARCH-V2-031).
 
 Regole:
 - i read model sono frozen (immutabili)
@@ -15,8 +16,10 @@ Regole:
   del calcolo planning — availability_qty riflette il valore clamped usato nella logica
 
 Branching:
-  by_article (V1 retrocompatibile):
+  by_article (V1 retrocompatibile + stock policy V1 — TASK-V2-085):
     - popola: availability_qty, customer_open_demand_qty, incoming_supply_qty, future_availability_qty
+    - popola (solo se stock policy configurata):
+        customer_shortage_qty, stock_replenishment_qty, required_qty_total
     - lascia None: order_reference, line_reference, line_open_demand_qty,
                    linked_incoming_supply_qty, line_future_coverage_qty,
                    order_line_description
@@ -26,11 +29,18 @@ Branching:
               linked_incoming_supply_qty, line_future_coverage_qty,
               order_line_description (descrizione dalla riga ordine — DL-ARCH-V2-028 §2)
     - lascia None: availability_qty, customer_open_demand_qty, incoming_supply_qty,
-                   future_availability_qty (non usabile in modo non ambiguo in questa modalita)
+                   future_availability_qty, customer_shortage_qty, stock_replenishment_qty,
+                   required_qty_total
+
+Reason codes:
+  future_availability_negative  — fav < 0 (shortage cliente — con o senza stock policy)
+  stock_below_trigger           — fav >= 0 ma fav < trigger_stock_qty (solo scorta)
+  line_demand_uncovered         — by_customer_order_line
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -44,7 +54,7 @@ class PlanningCandidateItem(BaseModel):
     - article_code, display_label, famiglia_*, effective_*, planning_mode
     - reason_code, reason_text: spiegazione esplicita del candidate (DL-ARCH-V2-028 §4)
     - misura: unita di misura / misura articolo (DL-ARCH-V2-028 §3)
-    - required_qty_minimum: scopertura minima (abs del deficit, in entrambe le modalita)
+    - required_qty_minimum: minima quantita coerente col driver primario
     - computed_at: availability.computed_at per by_article, synced_at riga per by_customer_order_line
 
     Campi by_article (None per by_customer_order_line):
@@ -79,6 +89,10 @@ class PlanningCandidateItem(BaseModel):
     # Misura (DL-ARCH-V2-028 §3)
     misura: str | None = None
     required_qty_minimum: Decimal
+    # Driver primario unico per filtri UI:
+    # - customer: shortage cliente > 0 (precedenza anche nei casi misti)
+    # - stock: solo componente scorta attiva
+    primary_driver: Literal["customer", "stock"] | None = None
     computed_at: datetime
 
     # ─── by_article (None per by_customer_order_line) ─────────────────────────
@@ -86,6 +100,25 @@ class PlanningCandidateItem(BaseModel):
     customer_open_demand_qty: Decimal | None = None
     incoming_supply_qty: Decimal | None = None
     future_availability_qty: Decimal | None = None
+
+    # ─── by_article con stock policy V1 (TASK-V2-085, DL-ARCH-V2-030 §9) ─────
+    # None se l'articolo non ha stock policy configurata (target/trigger assenti).
+    # customer_shortage_qty = max(-future_availability_qty, 0)
+    # stock_replenishment_qty = max(target_stock_qty - max(stock_horizon_availability_qty, 0), 0)
+    # required_qty_total = customer_shortage_qty + stock_replenishment_qty
+    customer_shortage_qty: Decimal | None = None
+    stock_replenishment_qty: Decimal | None = None
+    required_qty_total: Decimal | None = None
+
+    # ─── by_article customer horizon (TASK-V2-100, DL-ARCH-V2-031 §3) ──────
+    # True  se la data_consegna piu vicina delle righe ordine <= today + customer_horizon_days.
+    # False se la data_consegna piu vicina e oltre l'orizzonte.
+    # None  se nessuna riga ordine per questo articolo ha expected_delivery_date valorizzata.
+    # Sempre None per by_customer_order_line (il flag appartiene al ramo by_article).
+    is_within_customer_horizon: bool | None = None
+    # Data_consegna piu vicina tra le righe ordine — None se nessuna data o by_customer_order_line.
+    # Esposta per consentire alla UI di applicare un orizzonte configurabile (TASK-V2-102).
+    nearest_delivery_date: date | None = None
 
     # ─── by_customer_order_line (None per by_article) ─────────────────────────
     order_reference: str | None = None

@@ -285,6 +285,94 @@ Regola:
 
 > Il router non orchestra step tecnici; chiama un refresh semantico nominale. La chain reale con le sue dipendenze vive nel service, non nell'endpoint.
 
+## Pattern 14 - Configurazione articolo: governance nel modello, visibilita in `articoli`
+
+Quando viene introdotta una nuova configurazione che influenza il comportamento di un articolo, il lavoro non e completo finche il suo stato non e visibile nella surface `articoli`.
+
+Percorso corretto:
+
+1. modellare il default nel dominio corretto
+2. modellare l'override articolo, se previsto
+3. calcolare ed esporre il valore `effective_*` nel `core`
+4. mostrare in `articoli`:
+   - il valore effettivo
+   - il valore calcolato read-only, se esiste
+   - l'override editabile, se previsto dal dominio
+
+Applicazioni gia emerse:
+
+- `override_gestione_scorte_attiva`
+- `override_stock_months`
+- `override_stock_trigger_months`
+- `capacity_override_qty`
+
+Regola:
+
+> Se una configurazione cambia il comportamento di un articolo, la surface `articoli` deve renderla osservabile; altrimenti la configurazione resta opaca e rallenta debug e operativita.
+
+## Pattern 15 - Governance in `admin`, consumo nelle surface operative
+
+Le configurazioni di sistema che impattano piu moduli non vanno gestite nelle surface operative che le consumano.
+
+Percorso corretto:
+
+1. la governance vive in `admin`
+2. il `core` espone valori effettivi e snapshot di calcolo
+3. le surface operative leggono e applicano
+4. nelle surface operative la configurazione puo essere al massimo trasparenza read-only, non punto di governo
+
+Applicazioni gia validate:
+
+- visibility dei `Warnings`
+- strategy e parametri della stock policy
+- separazione tra pagina `utenti` e pagina `stock logic config`
+
+Regola:
+
+> Se una logica e trasversale al sistema, la si governa in `admin`; le surface operative consumano il risultato, non la possiedono.
+
+## Pattern 16 - Core unico, segmentazione solo in UI
+
+Quando due driver insistono sulla stessa entita logica, la separazione iniziale non deve produrre due entita duplicate nel `core`.
+
+Percorso corretto:
+
+1. mantenere un record canonico unico nel `core`
+2. esporre breakdown interni e driver primario
+3. segmentare la visualizzazione in UI con filtri, tab o viste dedicate
+
+Applicazione gia emersa:
+
+- `Planning Candidates by_article`
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+  - `primary_driver`
+  - schede UI `customer` / `stock`
+
+Regola:
+
+> Se il bisogno insiste sulla stessa riga logica, il `core` resta unico; la separazione `customer` / `stock` avviene nella vista e non duplicando candidate.
+
+## Pattern 17 - Orizzonti diversi per driver diversi
+
+Quando uno stesso modulo combina driver con semantiche temporali diverse, ogni driver deve avere il proprio orizzonte esplicito.
+
+Percorso corretto:
+
+1. dichiarare l'orizzonte del driver cliente
+2. dichiarare l'orizzonte del driver scorta
+3. evitare di riusare un unico parametro UI/API per piu semantiche
+4. esporre nel `core` i flag o i valori derivati necessari alla UI
+
+Applicazione gia emersa:
+
+- `customer_horizon_days`
+- `stock horizon` basato su `effective_stock_months`
+
+Regola:
+
+> Se due driver rispondono a domande diverse, non devono condividere implicitamente lo stesso orizzonte temporale.
+
 ## Quando riusare questi pattern
 
 Questi pattern vanno riusati soprattutto per:

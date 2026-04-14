@@ -31,15 +31,19 @@ e senza rompere il significato gia stabilizzato di `Planning Candidates`.
 La stock policy V1 si applica esclusivamente agli articoli con:
 
 - `planning_mode = by_article`
+- `effective_gestione_scorte_attiva = true`
 
 Non si applica al ramo:
 
 - `planning_mode = by_customer_order_line`
+- neppure agli articoli `by_article` con gestione scorte disattivata
 
 Conseguenza:
 
 - non viene introdotto un flag separato `has_stock_policy`
-- l'applicabilita della stock policy discende dal `planning_mode` effettivo
+- viene introdotto un flag operativo esplicito:
+  - `gestione_scorte_attiva`
+- il `planning_mode` resta prerequisito necessario ma non sufficiente
 
 ### 2. Configurazione minima
 
@@ -47,11 +51,13 @@ La stock policy V1 introduce:
 
 Default famiglia:
 
+- `gestione_scorte_attiva`
 - `stock_months`
 - `stock_trigger_months`
 
 Override articolo:
 
+- `override_gestione_scorte_attiva`
 - `override_stock_months`
 - `override_stock_trigger_months`
 - `capacity_override_qty`
@@ -76,7 +82,7 @@ Riusa direttamente:
 
 gia stabilita in `Planning Candidates by_article`.
 
-### 4. Metrica base mensile calcolata con logica sostituibile
+### 4. Metrica base mensile con strategy selection e parametri configurabili
 
 La stock policy V1 introduce:
 
@@ -86,23 +92,48 @@ come quantita mensile di riferimento per il calcolo della scorta.
 
 Regola architetturale:
 
-- l'algoritmo di calcolo della base mensile deve essere sostituibile
-- non deve vivere come formula hardcoded sparsa nei moduli operativi
+- la logica di calcolo della base mensile deve essere selezionabile tramite `strategy_key`
+- la selection deve avvenire tramite configurazione interna V2
+- i parametri numerici della logica devono essere configurabili, non hardcoded
+- la `strategy_key` deve essere risolta contro un registry chiuso di strategie supportate
 
-### 5. Formule V1
+Strategia iniziale prevista:
+
+- `monthly_stock_base_from_sales_v1`
+
+### 5. Capacity con logica fissa di setup
+
+La V1 introduce:
+
+- `capacity_calculated_qty`
+
+come metrica derivata da Easy con logica tecnica fissa:
+
+- `capacity_from_containers_v1`
+
+Regola:
+
+- `capacity_from_containers_v1` non e strategy-switchable
+- i suoi parametri numerici restano configurabili da configurazione interna V2
+- l'operativita resta comunque governata da:
+  - `capacity_override_qty`
+  - `capacity_effective_qty`
+
+### 6. Formule V1
 
 La stock policy V1 introduce:
 
 - `target_stock_qty = min(capacity_effective_qty, effective_stock_months * monthly_stock_base_qty)`
 - `trigger_stock_qty = effective_stock_trigger_months * monthly_stock_base_qty`
 
-### 6. Trigger stock-driven
+### 7. Trigger stock-driven
 
 Si apre un bisogno stock-driven se:
 
+- `effective_gestione_scorte_attiva = true`
 - `future_availability_qty < trigger_stock_qty`
 
-### 7. Evitare il doppio conteggio con shortage cliente
+### 8. Evitare il doppio conteggio con shortage cliente
 
 Nel ramo `by_article` non devono nascere due candidate separati:
 
@@ -130,17 +161,20 @@ Formule:
 - la stock policy entra nel planning senza introdurre un modulo separato prematuro
 - il modello resta coerente con `planning_mode`
 - si evita il doppio candidate cliente/scorta
+- i parametri critici possono essere ritoccati senza editare codice
+- il sistema e gia pronto a testare strategie alternative per `monthly_stock_base_qty`
 - si prepara bene l'apertura futura di `Production Proposals`
 
 ### Tradeoffs
 
 - la stock policy resta inizialmente limitata al solo ramo `by_article`
-- l'algoritmo V1 per `monthly_stock_base_qty` dovra essere definito con attenzione nei task attuativi
+- la strategy V1 per `monthly_stock_base_qty` dovra essere definita con attenzione nei task attuativi
+- la governance della configurazione delle logiche stock introduce un building block in piu
 
 ## Out of Scope
 
 - stagionalita
-- algoritmi multipli selezionabili in UI
+- selezione libera di algoritmi dalla UI operativa
 - stock policy nel ramo `by_customer_order_line`
 - `Production Proposals`
 - scoring e prioritizzazione

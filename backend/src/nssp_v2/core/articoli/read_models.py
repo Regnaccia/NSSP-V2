@@ -130,9 +130,30 @@ class ArticoloDetail(BaseModel):
     effective_stock_months: Decimal | None = None
     effective_stock_trigger_months: Decimal | None = None
 
+    # Override stock policy articolo-specifici (DL-ARCH-V2-030, TASK-V2-089):
+    #   None = eredita il default di famiglia; valore = sovrascrive.
+    override_stock_months: Decimal | None = None
+    override_stock_trigger_months: Decimal | None = None
+
     # Capacity override articolo-specifica (DL-ARCH-V2-030, TASK-V2-083):
     #   nessun default famiglia — proprieta dell'articolo.
     capacity_override_qty: Decimal | None = None
+
+    # Gestione scorte attiva — effective value e override articolo (TASK-V2-096, TASK-V2-098):
+    #   effective: override articolo se valorizzato, altrimenti default famiglia.
+    #   None se l'articolo non ha famiglia e non ha override.
+    effective_gestione_scorte_attiva: bool | None = None
+    override_gestione_scorte_attiva: bool | None = None
+
+    # Metriche stock calcolate — sola lettura (TASK-V2-084, TASK-V2-089):
+    #   None se l'articolo non ha planning_mode = by_article o dati insufficienti.
+    monthly_stock_base_qty: Decimal | None = None
+    capacity_calculated_qty: Decimal | None = None
+    capacity_effective_qty: Decimal | None = None
+    target_stock_qty: Decimal | None = None
+    trigger_stock_qty: Decimal | None = None
+    stock_computed_at: datetime | None = None
+    stock_strategy_key: str | None = None
 
 
 class FamigliaItem(BaseModel):
@@ -167,3 +188,6 @@ class FamigliaRow(BaseModel):
     # Stock policy defaults V1 (DL-ARCH-V2-030, TASK-V2-083)
     stock_months: Decimal | None = None
     stock_trigger_months: Decimal | None = None
+
+    # Flag esplicito di applicabilita stock policy (TASK-V2-096)
+    gestione_scorte_attiva: bool = False

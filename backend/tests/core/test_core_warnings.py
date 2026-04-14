@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from nssp_v2.shared.db import Base
 from nssp_v2.core.availability.models import CoreAvailability
-from nssp_v2.core.warnings import is_negative_stock, list_warnings_v1
+from nssp_v2.core.warnings import is_invalid_stock_capacity, is_negative_stock, list_warnings_v1
 
 # Importati per registrare tutti i modelli in Base.metadata prima di create_all
 from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig  # noqa: F401
@@ -40,6 +40,7 @@ from nssp_v2.sync.mag_reale.models import SyncMagReale  # noqa: F401
 from nssp_v2.sync.righe_ordine_cliente.models import SyncRigaOrdineCliente  # noqa: F401
 from nssp_v2.sync.produzioni_attive.models import SyncProduzioneAttiva  # noqa: F401
 from nssp_v2.core.produzioni.models import CoreProduzioneOverride  # noqa: F401
+from nssp_v2.core.stock_policy.config_model import CoreStockLogicConfig  # noqa: F401
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -240,3 +241,235 @@ def test_mix_attivi_e_non_attivi(session):
 
     assert len(warnings) == 1
     assert warnings[0].article_code == "ATTIVO"
+
+
+# ─── Logica pura: is_invalid_stock_capacity (TASK-V2-091) ────────────────────
+
+def test_is_invalid_stock_capacity_none():
+    assert is_invalid_stock_capacity(None) is True
+
+
+def test_is_invalid_stock_capacity_zero():
+    assert is_invalid_stock_capacity(Decimal("0")) is True
+
+
+def test_is_invalid_stock_capacity_negativa():
+    """Capacity negativa (edge case override errato) e comunque invalida."""
+    assert is_invalid_stock_capacity(Decimal("-1")) is True
+
+
+def test_is_invalid_stock_capacity_valida():
+    assert is_invalid_stock_capacity(Decimal("50")) is False
+
+
+def test_is_invalid_stock_capacity_piccola_positiva():
+    """Anche un valore piccolo ma > 0 e valido."""
+    assert is_invalid_stock_capacity(Decimal("0.001")) is False
+
+
+# ─── Helpers per INVALID_STOCK_CAPACITY integration tests ────────────────────
+
+_CAPACITY_PARAMS_W = {"max_container_weight_kg": 25}
+_TEST_PARAMS_W = {
+    "windows_months": [3],
+    "percentile": 50,
+    "zscore_threshold": 0.0,
+    "min_nonzero_months": 1,
+    "min_movements": 0,
+}
+
+_w_id_seq = 0
+
+
+def _next_w_id():
+    global _w_id_seq
+    _w_id_seq += 1
+    return _w_id_seq
+
+
+@pytest.fixture(autouse=True)
+def reset_w_id_seq():
+    global _w_id_seq
+    _w_id_seq = 0
+
+
+def _config_stock(session, capacity_params=None):
+    from nssp_v2.core.stock_policy.config import set_stock_logic_config
+    set_stock_logic_config(
+        session,
+        monthly_base_strategy_key="monthly_stock_base_from_sales_v1",
+        monthly_base_params=_TEST_PARAMS_W,
+        capacity_logic_params=capacity_params if capacity_params is not None else _CAPACITY_PARAMS_W,
+    )
+    session.flush()
+
+
+def _famiglia_w(session, code="FAM1", aggrega=True, gestione_scorte_attiva=True):
+    session.add(ArticoloFamiglia(
+        code=code,
+        label=code,
+        is_active=True,
+        considera_in_produzione=True,
+        aggrega_codice_in_produzione=aggrega,
+        gestione_scorte_attiva=gestione_scorte_attiva,
+    ))
+    session.flush()
+
+
+def _art_w(session, codice="ART001", contenitori=None, peso_grammi=None):
+    session.add(SyncArticolo(
+        codice_articolo=codice,
+        attivo=True,
+        contenitori_magazzino=contenitori,
+        peso_grammi=peso_grammi,
+        synced_at=_NOW,
+    ))
+    session.flush()
+
+
+def _config_art_w(session, codice="ART001", famiglia_code="FAM1", capacity_override=None):
+    session.add(CoreArticoloConfig(
+        codice_articolo=codice,
+        famiglia_code=famiglia_code,
+        capacity_override_qty=capacity_override,
+        updated_at=_NOW,
+    ))
+    session.flush()
+
+
+def _movimento_w(session, codice="ART001", scaricata=10.0):
+    session.add(SyncMagReale(
+        id_movimento=_next_w_id(),
+        codice_articolo=codice,
+        quantita_scaricata=scaricata,
+        data_movimento=datetime(2026, 3, 15),
+        synced_at=_NOW,
+    ))
+    session.flush()
+
+
+# ─── Query: INVALID_STOCK_CAPACITY generato ──────────────────────────────────
+
+def test_invalid_capacity_genera_warning(session):
+    """Articolo by_article senza contenitori/peso → capacity None → warning."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    _art_w(session, contenitori=None)  # capacity_calculated = None
+    _config_art_w(session)
+    session.commit()
+
+    warnings = list_warnings_v1(session)
+
+    cap_warnings = [w for w in warnings if w.type == "INVALID_STOCK_CAPACITY"]
+    assert len(cap_warnings) == 1
+    w = cap_warnings[0]
+    assert w.article_code == "ART001"
+    assert w.warning_id == "INVALID_STOCK_CAPACITY:ART001"
+    assert w.entity_type == "article"
+    assert w.entity_key == "ART001"
+    assert w.source_module == "warnings"
+    assert w.severity == "warning"
+    assert w.capacity_calculated_qty is None
+    assert w.capacity_override_qty is None
+    assert w.capacity_effective_qty is None
+    assert "produzione" in w.visible_to_areas
+    assert "magazzino" in w.visible_to_areas
+    assert "admin" in w.visible_to_areas
+
+
+def test_invalid_capacity_senza_peso_genera_warning(session):
+    """Articolo con contenitori ma senza peso_grammi → capacity None → warning."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    _art_w(session, contenitori="2", peso_grammi=None)
+    _config_art_w(session)
+    session.commit()
+
+    cap_warnings = [w for w in list_warnings_v1(session) if w.type == "INVALID_STOCK_CAPACITY"]
+    assert len(cap_warnings) == 1
+    assert cap_warnings[0].capacity_calculated_qty is None
+
+
+def test_capacity_valida_nessun_warning(session):
+    """Articolo by_article con contenitori + peso + config → capacity valida → nessun warning."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    # capacity = 25 * 2 / (500/1000) = 100
+    _art_w(session, contenitori="2", peso_grammi=Decimal("500"))
+    _config_art_w(session)
+    session.commit()
+
+    cap_warnings = [w for w in list_warnings_v1(session) if w.type == "INVALID_STOCK_CAPACITY"]
+    assert cap_warnings == []
+
+
+def test_capacity_override_valido_nessun_warning(session):
+    """Articolo con capacity_override_qty > 0 → capacity effettiva valida → nessun warning."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    _art_w(session, contenitori=None)  # calculated = None
+    _config_art_w(session, capacity_override=Decimal("100"))  # override vince
+    session.commit()
+
+    cap_warnings = [w for w in list_warnings_v1(session) if w.type == "INVALID_STOCK_CAPACITY"]
+    assert cap_warnings == []
+
+
+def test_articolo_non_by_article_nessun_warning(session):
+    """Articolo con aggrega=False (by_customer_order_line) escluso dal perimetro stock."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=False)
+    _art_w(session, contenitori=None)
+    _config_art_w(session)
+    session.commit()
+
+    cap_warnings = [w for w in list_warnings_v1(session) if w.type == "INVALID_STOCK_CAPACITY"]
+    assert cap_warnings == []
+
+
+def test_invalid_capacity_warning_id_unico(session):
+    """Ogni articolo genera al massimo un INVALID_STOCK_CAPACITY warning."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    _art_w(session, codice="ART001", contenitori=None)
+    _art_w(session, codice="ART002", contenitori=None)
+    _config_art_w(session, codice="ART001")
+    _config_art_w(session, codice="ART002")
+    session.commit()
+
+    cap_warnings = [w for w in list_warnings_v1(session) if w.type == "INVALID_STOCK_CAPACITY"]
+    assert len(cap_warnings) == 2
+    ids = {w.warning_id for w in cap_warnings}
+    assert ids == {"INVALID_STOCK_CAPACITY:ART001", "INVALID_STOCK_CAPACITY:ART002"}
+
+
+def test_invalid_capacity_stock_fields_none(session):
+    """INVALID_STOCK_CAPACITY non popola stock_calculated/anomaly_qty (campi NEGATIVE_STOCK)."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    _art_w(session, contenitori=None)
+    _config_art_w(session)
+    session.commit()
+
+    cap_warnings = [w for w in list_warnings_v1(session) if w.type == "INVALID_STOCK_CAPACITY"]
+    assert len(cap_warnings) == 1
+    w = cap_warnings[0]
+    assert w.stock_calculated is None
+    assert w.anomaly_qty is None
+
+
+def test_entrambi_i_tipi_warning_coesistono(session):
+    """NEGATIVE_STOCK e INVALID_STOCK_CAPACITY coesistono nella stessa lista."""
+    _config_stock(session)
+    _famiglia_w(session, aggrega=True)
+    # Articolo by_article senza capacity → INVALID_STOCK_CAPACITY
+    _art_w(session, codice="ART001", contenitori=None)
+    _config_art_w(session, codice="ART001")
+    # Stesso articolo con stock negativo → NEGATIVE_STOCK
+    _avail(session, "ART001", Decimal("-5"))
+    session.commit()
+
+    all_warnings = list_warnings_v1(session)
+    types = {w.type for w in all_warnings}
+    assert "NEGATIVE_STOCK" in types
+    assert "INVALID_STOCK_CAPACITY" in types

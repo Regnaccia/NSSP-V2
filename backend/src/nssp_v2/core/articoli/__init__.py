@@ -12,6 +12,8 @@ API pubblica:
     - get_articolo_detail
     - list_famiglie
     - set_famiglia_articolo
+    - set_famiglia_stock_policy
+    - toggle_famiglia_gestione_scorte
 """
 
 from nssp_v2.core.articoli.read_models import ArticoloDetail, ArticoloItem, FamigliaItem, FamigliaRow
@@ -21,11 +23,15 @@ from nssp_v2.core.articoli.queries import (
     list_articoli,
     list_famiglie,
     list_famiglie_catalog,
+    set_articolo_gestione_scorte_override,
     set_articolo_policy_override,
+    set_articolo_stock_policy_override,
     set_famiglia_articolo,
+    set_famiglia_stock_policy,
     toggle_famiglia_active,
     toggle_famiglia_aggrega_codice_produzione,
     toggle_famiglia_considera_produzione,
+    toggle_famiglia_gestione_scorte,
 )
 
 __all__ = [
@@ -42,5 +48,9 @@ __all__ = [
     "toggle_famiglia_considera_produzione",
     "toggle_famiglia_aggrega_codice_produzione",
     "set_famiglia_articolo",
+    "set_famiglia_stock_policy",
+    "toggle_famiglia_gestione_scorte",
+    "set_articolo_gestione_scorte_override",
     "set_articolo_policy_override",
+    "set_articolo_stock_policy_override",
 ]

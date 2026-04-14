@@ -101,6 +101,11 @@ export interface FamigliaRow {
   considera_in_produzione: boolean
   aggrega_codice_in_produzione: boolean
   n_articoli: number
+  /** Stock policy defaults V1 — null se non configurati (TASK-V2-093) */
+  stock_months: string | null
+  stock_trigger_months: string | null
+  /** Flag esplicito di applicabilita stock policy (TASK-V2-096) */
+  gestione_scorte_attiva: boolean
 }
 
 /** Riga di lista articoli */
@@ -154,8 +159,27 @@ export interface ArticoloDetail {
   /** Override articolo (DL-ARCH-V2-026, TASK-V2-067) — null = eredita default famiglia */
   override_considera_in_produzione: boolean | null
   override_aggrega_codice_in_produzione: boolean | null
+  /** Gestione scorte attiva — effective e override articolo (TASK-V2-096, TASK-V2-098) */
+  effective_gestione_scorte_attiva: boolean | null
+  override_gestione_scorte_attiva: boolean | null
   /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
   planning_mode: PlanningMode | null
+  /** Stock policy effettiva V1 (DL-ARCH-V2-030, TASK-V2-083) — null se non configurata */
+  effective_stock_months: string | null
+  effective_stock_trigger_months: string | null
+  /** Override stock policy articolo-specifici (TASK-V2-089) — null = eredita famiglia */
+  override_stock_months: string | null
+  override_stock_trigger_months: string | null
+  /** Capacity override articolo-specifica — null se non impostata */
+  capacity_override_qty: string | null
+  /** Metriche stock calcolate — null se planning_mode != by_article o dati insufficienti */
+  monthly_stock_base_qty: string | null
+  capacity_calculated_qty: string | null
+  capacity_effective_qty: string | null
+  target_stock_qty: string | null
+  trigger_stock_qty: string | null
+  stock_computed_at: string | null
+  stock_strategy_key: string | null
 }
 
 // ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────
@@ -204,6 +228,7 @@ export interface CriticitaItem {
 
 /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
 export type PlanningMode = 'by_article' | 'by_customer_order_line'
+export type PlanningPrimaryDriver = 'customer' | 'stock'
 
 /** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071, TASK-V2-074) */
 export interface PlanningCandidateItem {
@@ -225,6 +250,7 @@ export interface PlanningCandidateItem {
   misura: string | null
   /** abs del deficit — fabbisogno minimo in entrambe le modalità */
   required_qty_minimum: string
+  primary_driver: PlanningPrimaryDriver | null
   computed_at: string
 
   // ─── by_article (null per by_customer_order_line) ────────────────────────
@@ -236,6 +262,16 @@ export interface PlanningCandidateItem {
   incoming_supply_qty: string | null
   /** availability + incoming_supply — null per by_customer_order_line */
   future_availability_qty: string | null
+  /** Componente shortage cliente = max(-fav, 0) — null se no stock policy o by_customer_order_line */
+  customer_shortage_qty: string | null
+  /** Componente replenishment scorta = max(target - max(fav,0), 0) — null se no stock policy o by_customer_order_line */
+  stock_replenishment_qty: string | null
+  /** Totale = customer_shortage + stock_replenishment — null se no stock policy o by_customer_order_line */
+  required_qty_total: string | null
+  /** True se data_consegna più vicina ≤ today + customer_horizon_days. Null se nessuna data o by_customer_order_line */
+  is_within_customer_horizon: boolean | null
+  /** Data_consegna più vicina (ISO date string) tra le righe ordine. Null se nessuna data o by_customer_order_line */
+  nearest_delivery_date: string | null
 
   // ─── by_customer_order_line (null per by_article) ────────────────────────
   /** Numero ordine cliente — null per by_article */

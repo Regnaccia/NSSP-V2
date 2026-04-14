@@ -2,7 +2,7 @@
 
 ## Status
 
-Todo
+Completed
 
 Valori ammessi:
 
@@ -35,6 +35,7 @@ tra shortage cliente e replenishment di scorta.
 Una volta disponibili:
 
 - configurazione stock policy
+- configurazione logiche stock
 - Core stock metrics
 
 il planning puo estendersi da customer-driven puro a candidate unificati cliente + scorta
@@ -88,7 +89,43 @@ N/A
 
 ## Verification Commands
 
-Da definire da Claude in base ai test backend/frontend introdotti.
+```
+python -m pytest tests/core/test_core_planning_candidates_stock.py tests/core/test_core_planning_candidates.py tests/core/test_core_stock_policy_logic.py tests/core/test_core_stock_policy_metrics.py -v
+# 177 passed
+```
+
+## Completed At
+
+2026-04-13
+
+## Completed By
+
+Claude Code
+
+## Completion Notes
+
+**Nuove funzioni pure in `core/planning_candidates/logic.py`:**
+- `is_planning_candidate_with_stock_v1(fav, trigger)`: estende la candidatura — True se `fav < 0` (shortage) OPPURE `fav < trigger` (scorta sotto soglia)
+- `customer_shortage_qty_v1(fav)`: `max(-fav, 0)` — zero se cliente coperto
+- `stock_replenishment_qty_v1(target, fav)`: `max(target - max(fav, 0), 0)` — il clamp `max(fav,0)` previene doppio conteggio; `None` se no stock policy
+- `required_qty_total_v1(shortage, replenishment)`: somma shortage + replenishment (0 se replenishment=None)
+
+**Nuovi campi in `PlanningCandidateItem` (`read_models.py`):**
+- `customer_shortage_qty: Decimal | None = None`
+- `stock_replenishment_qty: Decimal | None = None`
+- `required_qty_total: Decimal | None = None`
+- Nuovi reason codes documentati: `future_availability_negative`, `stock_below_trigger`, `line_demand_uncovered`
+
+**Aggiornamento `queries.py` (`_list_by_article_candidates`):**
+- Carica `list_stock_metrics_v1(session)` → dict `{article_code: StockMetricsItem}`
+- Per ogni articolo usa `is_planning_candidate_with_stock_v1(fav, trigger_qty)` invece di `is_planning_candidate_v1`
+- Popola il breakdown `customer_shortage_qty`, `stock_replenishment_qty`, `required_qty_total`
+- Articoli senza stock policy: breakdown = None, candidatura identica a V1 puro
+- `reason_code`: `"future_availability_negative"` se `fav < 0`, `"stock_below_trigger"` altrimenti
+
+**Nuovo test file `tests/core/test_core_planning_candidates_stock.py`** (28 test):
+- Classi pure: `TestIsCandidate`, `TestCustomerShortage`, `TestStockReplenishment`, `TestRequiredTotal`
+- Integrazione: shortage cliente con/senza stock policy, trigger candidate, no doppio conteggio, campi None senza policy, by_customer_order_line invariato
 
 ## Documentation Handoff
 
@@ -98,4 +135,3 @@ Claude aggiorna solo questo task:
 - `Completion Notes`
 - `Completed At`
 - `Completed By`
-

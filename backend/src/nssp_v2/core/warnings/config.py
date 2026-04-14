@@ -34,7 +34,7 @@ from nssp_v2.core.warnings.config_model import WarningTypeConfig
 # ─── Vocabolario e default ─────────────────────────────────────────────────────
 
 # Tipi warning noti in V1
-KNOWN_WARNING_TYPES: list[str] = ["NEGATIVE_STOCK"]
+KNOWN_WARNING_TYPES: list[str] = ["INVALID_STOCK_CAPACITY", "NEGATIVE_STOCK"]
 
 # Aree/reparti operativi validi per la configurazione di visibilita (V1)
 KNOWN_AREAS: list[str] = ["magazzino", "produzione", "logistica"]
@@ -42,6 +42,7 @@ KNOWN_AREAS: list[str] = ["magazzino", "produzione", "logistica"]
 # Default visible_to_areas per tipo — usato se non esiste config in DB
 _AREA_DEFAULTS: dict[str, list[str]] = {
     "NEGATIVE_STOCK": ["magazzino", "produzione"],
+    "INVALID_STOCK_CAPACITY": ["produzione", "magazzino", "admin"],
 }
 
 

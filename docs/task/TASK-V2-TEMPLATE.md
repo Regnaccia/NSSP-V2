@@ -46,6 +46,30 @@ Spiegare il problema e il perche del task.
 - vincoli tecnici
 - limiti operativi o di rollout
 
+## Pattern Checklist
+
+Compilare in modo sintetico per ogni nuovo task. Usare:
+
+- `Si`
+- `No`
+- `N/A`
+
+Checklist minima:
+
+- `Richiede mapping o chiarimento sorgente esterna?`
+- `Introduce o modifica mirror sync_*?`
+- `Introduce o modifica computed fact / read model / effective_* nel core?`
+- `Introduce configurazione interna governata da admin?`
+- `Introduce configurazione che deve essere visibile in articoli?`
+- `Introduce override articolo o default famiglia?`
+- `Richiede warnings dedicati o impatta warning esistenti?`
+- `Richiede refresh semantico backend o modifica una chain di refresh esistente?`
+- `Introduce impatti UI separabili dal core tramite filtro/tab invece che duplicazione entita?`
+- `Introduce orizzonti temporali o logiche driver-specifiche da tenere separate?`
+- `Richiede aggiornamenti a spec / DL / guide oltre al task?`
+
+Se uno o piu punti sono `Si`, aggiungere una nota breve con il perche nella sezione `Implementation Notes` o `Constraints`.
+
 ## Refresh / Sync Behavior
 
 Da compilare sempre quando il task introduce o modifica una vista UI che consuma:

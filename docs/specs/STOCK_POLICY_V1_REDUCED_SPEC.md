@@ -36,7 +36,8 @@ Introdurre una prima stock policy minimale che permetta di:
 - introduce configurazioni stock di default a livello famiglia
 - introduce override stock a livello articolo
 - introduce una metrica di `capacity` solo a livello articolo
-- introduce un algoritmo sostituibile per stimare la base mensile di scorta
+- introduce una strategy selezionabile per stimare la base mensile di scorta
+- introduce parametri configurabili per le logiche stock, senza hardcode nel codice
 - calcola:
   - `monthly_stock_base_qty`
   - `capacity_calculated_qty`
@@ -48,7 +49,7 @@ Introdurre una prima stock policy minimale che permetta di:
 
 - non introduce stagionalita
 - non introduce family default per la `capacity`
-- non introduce algoritmi multipli selezionabili in UI
+- non introduce selezione libera degli algoritmi dalla UI operativa
 - non introduce consumo stock-driven nel ramo `by_customer_order_line`
 - non introduce ancora `Production Proposals`
 
@@ -57,15 +58,18 @@ Introdurre una prima stock policy minimale che permetta di:
 La stock policy V1 vale solo per:
 
 - `planning_mode = by_article`
+- `effective_gestione_scorte_attiva = true`
 
 Non vale per:
 
 - `planning_mode = by_customer_order_line`
+- articoli `by_article` con gestione scorte disattivata
 
 Conseguenza:
 
 - non serve un flag separato `has_stock_policy`
-- il prerequisito naturale della stock policy e stare nel ramo `by_article`
+- serve invece un flag operativo esplicito:
+  - `gestione_scorte_attiva`
 
 ## 5. Configurazione V1
 
@@ -73,6 +77,7 @@ Conseguenza:
 
 Campi proposti:
 
+- `gestione_scorte_attiva`
 - `stock_months`
 - `stock_trigger_months`
 
@@ -84,6 +89,7 @@ Questi valori hanno senso solo se il `planning_mode` effettivo dell'articolo e:
 
 Campi proposti:
 
+- `override_gestione_scorte_attiva`
 - `override_stock_months`
 - `override_stock_trigger_months`
 - `capacity_override_qty`
@@ -92,12 +98,16 @@ Campi proposti:
 
 Il Core `articoli` dovra in futuro poter esporre:
 
+- `effective_gestione_scorte_attiva`
 - `effective_stock_months`
 - `effective_stock_trigger_months`
 - `capacity_effective_qty`
 
 Regole:
 
+- `effective_gestione_scorte_attiva`:
+  - override articolo se presente
+  - altrimenti default famiglia
 - `effective_stock_months`:
   - override articolo se presente
   - altrimenti default famiglia
@@ -112,6 +122,8 @@ Nota:
 
 - la `capacity` e proprieta dell'articolo, non della famiglia
 - quindi non esiste un `family capacity default`
+- il `planning_mode = by_article` resta prerequisito necessario ma non sufficiente:
+  - la stock policy si applica solo con `effective_gestione_scorte_attiva = true`
 
 ## 6. Metrica base mensile
 
@@ -125,18 +137,79 @@ Definizione:
 
 Origine:
 
-- calcolata a partire dai movimenti storici Easy rilevanti
+- calcolata a partire dai movimenti storici gia sincronizzati nei mirror V2
+- in V1 la sorgente operativa e:
+  - `sync_mag_reale`
+- non si leggono dati direttamente da Easy dentro questa logica
 
 Vincolo architetturale:
 
-- l'algoritmo di calcolo deve essere sostituibile
-- non va hardcoded direttamente nei moduli operativi
+- la logica deve essere selezionabile per `strategy_key`
+- la selezione deve avvenire da configurazione interna V2, non da hardcode
+- i parametri numerici della logica devono essere configurabili
+- la strategy deve essere risolta contro un registry chiuso nel codice
 
 Forma concettuale:
 
-- `estimate_monthly_stock_base(context) -> qty`
+- `estimate_monthly_stock_base(strategy_key, params, context) -> qty`
 
-L'algoritmo specifico V1 verra fissato nei task attuativi.
+Strategia iniziale prevista:
+
+- `monthly_stock_base_from_sales_v1`
+
+### Profilo algoritmico concordato per `monthly_stock_base_from_sales_v1`
+
+La prima strategy V1 deve essere descritta in modo preciso cosi:
+
+- perimetro articoli:
+  - solo articoli con `planning_mode = by_article`
+- sorgente dati:
+  - mirror interno `sync_mag_reale`
+- driver movimenti:
+  - in V1 contano tutte le righe con `quantita_scaricata > 0`
+  - non si applica ancora un filtro esplicito su `causale_movimento_codice`
+- quantita usata:
+  - quantita scaricata / consumo rilevante per articolo
+- granularita:
+  - consumo mensile per articolo
+- finestre temporali iniziali:
+  - `12 mesi`
+  - `6 mesi`
+  - `3 mesi`
+- per ogni finestra:
+  - si raccolgono i movimenti nel perimetro temporale
+  - si applica filtro outlier con soglia configurabile
+  - si aggregano i consumi per mese
+  - si calcola il percentile configurato sui consumi mensili
+- risultato finale:
+  - media dei risultati ottenuti sulle finestre attive
+
+### Parametri configurabili della strategy
+
+I parametri numerici non devono essere hardcoded e devono vivere nella configurazione
+interna delle logiche stock.
+
+Parametri previsti per V1:
+
+- `min_movements`
+- `zscore_threshold`
+- `percentile`
+- `windows_months`
+- `rounding_scale`
+- `min_nonzero_months`
+
+### Fallback e comportamento atteso
+
+- se lo storico e insufficiente rispetto ai parametri minimi configurati:
+  - `monthly_stock_base_qty = None` in V1
+- se non esistono movimenti rilevanti nel periodo:
+  - `monthly_stock_base_qty = None`
+- `None` significa:
+  - base mensile incalcolabile per dati insufficienti
+- `0` significa:
+  - consumo reale zero, se la strategia produce esplicitamente quel risultato
+- il rounding finale e parametrico
+- la strategy deve restare sostituibile, ma il profilo sopra e il riferimento V1 concordato
 
 ## 7. Capacity
 
@@ -150,6 +223,13 @@ Regola:
 
 - `capacity_effective_qty = capacity_override_qty` se presente
 - altrimenti `capacity_effective_qty = capacity_calculated_qty`
+
+Logica di setup:
+
+- `capacity_calculated_qty` usa la logica fissa `capacity_from_containers_v1`
+- `capacity_from_containers_v1` non e strategy-switchable
+- i suoi parametri numerici restano comunque configurabili da configurazione interna V2
+- i dati sorgente arrivano dai mirror V2 articolo/config, non da Easy diretto
 
 Scopo:
 
@@ -176,11 +256,44 @@ Usa direttamente:
 
 gia esistente in `Planning Candidates by_article`.
 
+### Orizzonte temporale stock
+
+La componente stock-driven non deve reagire agli impegni cliente troppo lontani.
+
+Serve quindi un primo `stock horizon` semplice.
+
+Regola V1:
+
+- il look-ahead stock sugli impegni e limitato a:
+  - `effective_stock_months`
+
+Forma concettuale:
+
+- `stock_lookahead_months = effective_stock_months`
+- `capped_commitments_qty`:
+  - impegni con data consegna entro `today + stock_lookahead_months`
+
+La componente stock-driven usa quindi una disponibilita dedicata di orizzonte:
+
+```text
+stock_horizon_availability_qty =
+  inventory_qty
+  - customer_set_aside_qty
+  - capped_commitments_qty
+  + incoming_supply_qty
+```
+
+Nota:
+
+- il `customer_shortage_qty` continua a usare la logica customer-driven del planning
+- il cap temporale vale solo per la componente `stock_replenishment_qty`
+
 ### Regola di trigger
 
 Scatta un fabbisogno stock-driven se:
 
-- `future_availability_qty < trigger_stock_qty`
+- `effective_gestione_scorte_attiva = true`
+- `stock_horizon_availability_qty < trigger_stock_qty`
 
 ## 9. Caso limite da evitare
 
@@ -208,7 +321,7 @@ La regola corretta V1 e:
 Formule:
 
 - `customer_shortage_qty = max(-future_availability_qty, 0)`
-- `stock_replenishment_qty = max(target_stock_qty - max(future_availability_qty, 0), 0)`
+- `stock_replenishment_qty = max(target_stock_qty - max(stock_horizon_availability_qty, 0), 0)`
 - `required_qty_total = customer_shortage_qty + stock_replenishment_qty`
 
 Questa forma:
@@ -229,6 +342,8 @@ Campi attesi nel futuro read model / computed fact:
 - `capacity_effective_qty`
 - `target_stock_qty`
 - `trigger_stock_qty`
+- `strategy_key`
+- `params_snapshot`
 - `computed_at`
 - `algorithm_key`
 
@@ -241,6 +356,7 @@ La logica di scorta segue la stessa regola generale gia adottata in V2:
 
 Quindi:
 
+- la selezione della strategy della base mensile
 - il calcolo della base mensile
 - il calcolo di target/trigger
 - la decisione di fabbisogno stock-driven
@@ -265,6 +381,7 @@ La stock policy V1 ridotta e:
 - solo `by_article`
 - senza `family capacity default`
 - con:
+  - `gestione_scorte_attiva`
   - `stock_months`
   - `stock_trigger_months`
   - `capacity_override_qty`

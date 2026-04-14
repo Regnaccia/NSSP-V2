@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Login from '@/pages/Login'
 import SurfaceChooser from '@/pages/SurfaceChooser'
 import AdminHome from '@/pages/surfaces/AdminHome'
+import AdminStockLogicPage from '@/pages/surfaces/AdminStockLogicPage'
 import AdminWarningsPage from '@/pages/surfaces/AdminWarningsPage'
 import LogisticaHome from '@/pages/surfaces/LogisticaHome'
 import MagazzinoHome from '@/pages/surfaces/MagazzinoHome'
@@ -69,6 +70,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/stock-logic"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminStockLogicPage />
               </ProtectedRoute>
             }
           />

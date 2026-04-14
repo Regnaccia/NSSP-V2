@@ -15,7 +15,7 @@ Tutti gli endpoint richiedono autenticazione Bearer.
 Il Core non espone mai i target sync_* grezzi.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -35,11 +35,15 @@ from nssp_v2.core.articoli import (
     list_articoli,
     list_famiglie,
     list_famiglie_catalog,
+    set_articolo_gestione_scorte_override,
     set_articolo_policy_override,
+    set_articolo_stock_policy_override,
     set_famiglia_articolo,
+    set_famiglia_stock_policy,
     toggle_famiglia_active,
     toggle_famiglia_aggrega_codice_produzione,
     toggle_famiglia_considera_produzione,
+    toggle_famiglia_gestione_scorte,
 )
 from nssp_v2.shared.db import get_session
 
@@ -71,6 +75,38 @@ class CreateFamigliaRequest(BaseModel):
     code: str
     label: str
     sort_order: int | None = None
+
+
+class SetFamigliaStockPolicyRequest(BaseModel):
+    """Corpo PATCH stock-policy famiglia (DL-ARCH-V2-030, TASK-V2-093).
+
+    stock_months e stock_trigger_months sono nullable: None rimuove il default.
+    Validi solo per articoli con planning_mode = by_article (aggrega_codice_in_produzione = True).
+    """
+    stock_months: float | None
+    stock_trigger_months: float | None
+
+
+class SetStockPolicyOverrideRequest(BaseModel):
+    """Corpo PATCH stock-policy-override articolo (DL-ARCH-V2-030, TASK-V2-089).
+
+    Tutti i campi sono opzionali nel body ma vengono sempre applicati al momento della chiamata.
+    - None  = eredita il default di famiglia (rimuove l'override)
+    - valore numerico = sovrascrive
+    """
+    override_stock_months: float | None
+    override_stock_trigger_months: float | None
+    capacity_override_qty: float | None
+
+
+class SetGestioneScorteOverrideRequest(BaseModel):
+    """Corpo PATCH gestione-scorte-override articolo (TASK-V2-098).
+
+    - None  = eredita il default di famiglia (rimuove l'override)
+    - True  = sovrascrive con True
+    - False = sovrascrive con False
+    """
+    override_gestione_scorte_attiva: bool | None
 
 
 @router.get("/articoli", response_model=list[ArticoloItem])
@@ -167,6 +203,52 @@ def patch_famiglia_considera_produzione(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
+@router.patch("/famiglie/{code}/stock-policy", response_model=FamigliaRow)
+def patch_famiglia_stock_policy(
+    code: str,
+    body: SetFamigliaStockPolicyRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Imposta i default stock policy della famiglia V1 (TASK-V2-093).
+
+    body.stock_months: null = rimuove il default, valore = imposta.
+    body.stock_trigger_months: null = rimuove il default, valore = imposta.
+    404 se la famiglia non esiste.
+    """
+    from decimal import Decimal
+    try:
+        row = set_famiglia_stock_policy(
+            session,
+            code,
+            stock_months=Decimal(str(body.stock_months)) if body.stock_months is not None else None,
+            stock_trigger_months=Decimal(str(body.stock_trigger_months)) if body.stock_trigger_months is not None else None,
+        )
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.patch("/famiglie/{code}/gestione-scorte", response_model=FamigliaRow)
+def patch_famiglia_gestione_scorte(
+    code: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Inverte il flag gestione_scorte_attiva della famiglia (TASK-V2-096, TASK-V2-097).
+
+    Prerequisito per la stock policy: planning_mode = by_article.
+    404 se la famiglia non esiste.
+    """
+    try:
+        row = toggle_famiglia_gestione_scorte(session, code)
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
 @router.get("/famiglie", response_model=list[FamigliaItem])
 def get_famiglie(
     _: dict = Depends(get_current_user),
@@ -241,18 +323,22 @@ def get_criticita(
 def get_planning_candidates(
     _: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
+    horizon_days: int = Query(default=30, ge=1, description="Orizzonte temporale in giorni usato solo per il filtro customer horizon (TASK-V2-104)."),
 ):
     """Lista planning candidates V1: future_availability_qty < 0, ordinati per fabbisogno minimo decrescente.
 
     Candidato = articolo scoperto anche dopo la supply gia in corso (produzioni attive).
     Regola V1: future_availability_qty = availability_qty + incoming_supply_qty < 0.
 
+    Il parametro horizon_days controlla solo il flag is_within_customer_horizon.
+    Il cap stock-driven usa esclusivamente effective_stock_months (stock horizon, TASK-V2-103).
+
     Il risultato include effective policy (DL-ARCH-V2-026) per consentire alla UI
     il filtro solo_in_produzione basato su effective_considera_in_produzione.
 
     La logica di candidatura e applicata nel Core (DL-ARCH-V2-023, DL-ARCH-V2-025).
     """
-    return list_planning_candidates_v1(session)
+    return list_planning_candidates_v1(session, customer_horizon_days=horizon_days)
 
 
 @router.patch(
@@ -300,6 +386,69 @@ def patch_policy_override(
         codice_articolo,
         override_considera=body.override_considera_in_produzione,
         override_aggrega=body.override_aggrega_codice_in_produzione,
+    )
+    session.commit()
+    detail = get_articolo_detail(session, codice_articolo)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Articolo '{codice_articolo}' non trovato")
+    return detail
+
+
+@router.patch(
+    "/articoli/{codice_articolo:path}/stock-policy-override",
+    response_model=ArticoloDetail,
+)
+def patch_stock_policy_override(
+    codice_articolo: str,
+    body: SetStockPolicyOverrideRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Imposta gli override di stock policy per un articolo (TASK-V2-089).
+
+    body.override_stock_months: null = eredita famiglia, valore = sovrascrive.
+    body.override_stock_trigger_months: null = eredita famiglia, valore = sovrascrive.
+    body.capacity_override_qty: null = rimuove override, valore = sovrascrive.
+
+    Restituisce il dettaglio aggiornato dell'articolo con metriche stock ricalcolate.
+    404 se l'articolo non esiste in sync_articoli.
+    """
+    from decimal import Decimal
+    set_articolo_stock_policy_override(
+        session,
+        codice_articolo,
+        override_stock_months=Decimal(str(body.override_stock_months)) if body.override_stock_months is not None else None,
+        override_stock_trigger_months=Decimal(str(body.override_stock_trigger_months)) if body.override_stock_trigger_months is not None else None,
+        capacity_override_qty=Decimal(str(body.capacity_override_qty)) if body.capacity_override_qty is not None else None,
+    )
+    session.commit()
+    detail = get_articolo_detail(session, codice_articolo)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Articolo '{codice_articolo}' non trovato")
+    return detail
+
+
+@router.patch(
+    "/articoli/{codice_articolo:path}/gestione-scorte-override",
+    response_model=ArticoloDetail,
+)
+def patch_gestione_scorte_override(
+    codice_articolo: str,
+    body: SetGestioneScorteOverrideRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Imposta l'override gestione_scorte_attiva per un articolo (TASK-V2-098).
+
+    body.override_gestione_scorte_attiva: null = eredita famiglia, True/False = sovrascrive.
+
+    Restituisce il dettaglio aggiornato dell'articolo.
+    404 se l'articolo non esiste in sync_articoli.
+    """
+    set_articolo_gestione_scorte_override(
+        session,
+        codice_articolo,
+        override_gestione_scorte_attiva=body.override_gestione_scorte_attiva,
     )
     session.commit()
     detail = get_articolo_detail(session, codice_articolo)
