@@ -89,6 +89,7 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-029.md](decisions/ARCH/DL-ARCH-V2-029.md) | `Warnings` come modulo trasversale canonico: un warning esiste una sola volta e la visibilita per reparti o surface si modella via audience, non con duplicazione |
 | [decisions/ARCH/DL-ARCH-V2-030.md](decisions/ARCH/DL-ARCH-V2-030.md) | Prima definizione della stock policy V1 come estensione minima del planning `by_article`, con strategy selection configurabile per `monthly_stock_base_qty` e capacity setup fissa |
 | [decisions/ARCH/DL-ARCH-V2-031.md](decisions/ARCH/DL-ARCH-V2-031.md) | Introduzione di `customer horizon`, `stock horizon` e separazione UI tra driver `fabbisogno cliente` e `scorta` senza duplicare il Core planning |
+| [decisions/ARCH/DL-ARCH-V2-032.md](decisions/ARCH/DL-ARCH-V2-032.md) | Modello descrittivo unificato di `Planning Candidates`, con `description_parts` e `display_description` comuni ai rami `by_article` e `by_customer_order_line` |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |

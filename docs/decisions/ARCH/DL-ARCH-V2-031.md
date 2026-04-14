@@ -118,6 +118,93 @@ Conseguenza:
 - la UI non deve inventare una data per candidate puramente stock-driven
 - la futura semantica `earliest_uncovered_due_date` resta un'evoluzione successiva, fuori scope V1
 
+### 2.4 La descrizione per-riga deriva dal Core ordini, non da concatenazioni UI
+
+Nel ramo `by_customer_order_line` il mirror e il Core ordini gia distinguono:
+
+- segmento principale della riga
+- righe descrittive di continuazione aggregate
+
+Decisione:
+
+- il Core `Planning Candidates` deve esporre un campo esplicito:
+  - `full_order_line_description`
+- questo campo deriva da:
+  - `article_description_segment`
+  - `description_lines`
+
+Conseguenza:
+
+- la UI planning non deve ricostruire la descrizione completa lato frontend
+- la descrizione primaria del candidate per-riga usa `full_order_line_description`
+
+### 2.5 La destinazione richiesta segue la richiesta cliente quando esiste
+
+La vista planning puo esporre anche la destinazione della richiesta, ma solo con semantica
+esplicita e spiegabile.
+
+Decisione:
+
+- `by_customer_order_line`
+  - la destinazione deriva dalla riga ordine cliente
+  - il testo mostrato usa:
+    - `nickname_destinazione`, se presente
+    - altrimenti la label di default della destinazione
+- `by_article`
+  - la destinazione puo essere esposta solo se associabile in modo non ambiguo alla richiesta
+    cliente che guida la data mostrata
+  - se il mapping non e univoco:
+    - `requested_destination_display = "Multiple"`
+  - nei casi `stock-only`:
+    - `requested_destination_display = null`
+
+### 2.6 La leggibilita UI usa badge, non semantiche duplicate
+
+Per migliorare la leggibilita del modulo planning:
+
+- `famiglia_label` puo essere resa come badge con palette centralizzata
+- `primary_driver` e i motivi attivi possono essere resi come badge sintetici
+- i casi misti mostrano sia `Cliente` sia `Scorta`, ma restano una sola riga e una sola
+  appartenenza primaria
+
+Questo e un refinement di presentazione, non una modifica del modello canonico del candidate.
+
+### 2.7 I warning articolo possono essere consumati nella vista planning
+
+Poiche il planning `by_article` puo evidenziare fabbisogni stock-driven, la vista planning puo
+mostrare anche gli warning attivi collegati all'articolo.
+
+Regola:
+
+- `Planning Candidates` non genera warning propri
+- consuma warning canonici del modulo `Warnings`
+- la visibilita dei warning in planning resta governata da:
+  - `visible_to_areas`
+  - area corrente dell'utente
+
+Primo warning di riferimento:
+
+- `INVALID_STOCK_CAPACITY`
+
+### 2.8 Il quick edit planning riusa il dominio `articoli`
+
+La vista planning puo offrire una quick action di configurazione articolo per ridurre il tempo di
+correzione degli errori configurativi.
+
+Regola:
+
+- la quick action apre un modal o entry point rapido
+- il modal riusa i contract e la semantica della surface `articoli`
+- non viene introdotto un secondo dominio di configurazione planning-specifico
+
+Perimetro minimo della quick action:
+
+- famiglia articolo
+- `gestione_scorte_attiva`
+- `stock_months`
+- `stock_trigger_months`
+- `capacity_override_qty`
+
 ### 3. Il customer-driven introduce un primo `customer horizon`
 
 La componente customer-driven puo essere valutata anche rispetto a un primo orizzonte temporale

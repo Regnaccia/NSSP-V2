@@ -235,11 +235,20 @@ Non va privilegiata la descrizione anagrafica articolo se diversa da quella comm
 
 ### 10.3 Misura
 
-La vista deve esporre anche la misura, per migliorare la leggibilita operativa del candidate.
+La vista deve esporre anche la misura in una colonna dedicata, per migliorare la leggibilita
+operativa del candidate.
 
 ### 10.4 Reason
 
 La vista deve mostrare sempre la ragione per cui la riga e presente.
+
+Per i candidate `by_article` con piu componenti attive:
+
+- la UI deve mostrare un badge sintetico per il driver primario
+- la UI deve poter mostrare anche i motivi secondari attivi
+- i casi misti devono quindi restare leggibili come:
+  - `Cliente`
+  - `Scorta`
 
 ### 10.5 Separazione operativa in UI
 
@@ -309,6 +318,119 @@ Vincolo:
 - non deve essere mostrata una data inventata per candidate puramente stock-driven
 - la futura semantica `prima data scoperta` resta fuori scope per questa V1
 
+### 10.8 Descrizione ordine completa
+
+Nel ramo `by_customer_order_line` la descrizione mostrata non deve fermarsi al solo segmento
+principale della riga se il Core ordini ha gia aggregato anche righe descrittive collegate.
+
+Regola:
+
+- il Core planning deve esporre una `full_order_line_description`
+- la descrizione completa deriva da:
+  - `article_description_segment`
+  - `description_lines`
+
+La UI deve usare questa descrizione completa come testo primario del candidate per-riga.
+
+### 10.8.1 Modello descrittivo unificato
+
+Per evitare che i due rami del planning usino modelli descrittivi incompatibili, il Core deve
+convergere verso un contratto unico:
+
+- `description_parts: list[str]`
+- `display_description: str`
+
+Regola di costruzione:
+
+- `by_customer_order_line`
+  - `description_parts = [article_description_segment, ...description_lines]`
+- `by_article`
+  - `description_parts = [descrizione_1, descrizione_2]`
+
+In entrambi i casi:
+
+- i segmenti vuoti vengono rimossi
+- l'ordine dei segmenti viene preservato
+- `display_description` deriva da `description_parts`
+- fallback finale:
+  - `article_code` se `description_parts` e vuota
+
+`by_customer_order_line` resta il riferimento semantico piu ricco e guida la forma del modello
+canonico.
+
+### 10.9 Destinazione richiesta
+
+La vista puo esporre anche la destinazione associata alla richiesta, ma con semantica esplicita.
+
+Regola:
+
+- nel ramo `by_customer_order_line`
+  - la destinazione deriva dalla riga ordine cliente
+  - il testo mostrato segue il comportamento:
+    - `nickname_destinazione`, se presente
+    - altrimenti label di default della destinazione
+- nel ramo `by_article`
+  - la destinazione e valorizzabile solo se e associabile in modo non ambiguo alla richiesta
+    cliente che guida la data mostrata
+  - se la richiesta cliente rilevante non e univoca, il campo puo mostrare `Multiple`
+  - nei casi `stock-only`, il campo resta vuoto / `null`
+
+### 10.10 Famiglia e motivi come badge
+
+Per aumentare la leggibilita:
+
+- `famiglia_label` deve poter essere resa come badge visivo
+- `reason_code` / `primary_driver` devono poter essere resi come badge sintetici
+
+La palette dei badge famiglia deve essere centralizzata e avere fallback neutro.
+
+### 10.11 Warning articolo nella vista planning
+
+Poiche il ramo `by_article` puo ora includere la componente stock-driven, la vista planning deve
+rendere visibili anche gli errori di configurazione articolo che impattano direttamente la lettura
+del candidate.
+
+Regola:
+
+- `Planning Candidates` puo esporre una colonna `warnings`
+- la colonna mostra gli warning attivi collegati all'articolo del candidate
+- gli warning devono essere letti dal modulo `Warnings`, non ricalcolati nella query planning
+- la lista warning mostrata deve rispettare:
+  - `visible_to_areas`
+  - area corrente dell'utente
+
+Primo warning in scope:
+
+- `INVALID_STOCK_CAPACITY`
+
+La UI deve poter mostrare badge warning sintetici, mantenendo la possibilita di estensione a tipi
+warning futuri.
+
+### 10.12 Quick edit articolo dalla vista planning
+
+Per ridurre il tempo tra rilevazione del problema e correzione, la vista planning puo offrire una
+quick action di configurazione articolo.
+
+Regola:
+
+- vicino al codice articolo puo esistere un'azione rapida, per esempio un pulsante `ingranaggio`
+- l'azione apre un modal di configurazione articolo
+- il modal non introduce un nuovo dominio di configurazione
+- il modal deve riusare i contract gia esistenti della surface `articoli`
+
+Perimetro minimo del modal:
+
+- famiglia articolo
+- `gestione_scorte_attiva`
+- `stock_months`
+- `stock_trigger_months`
+- `capacity_override_qty`
+
+Vincolo:
+
+- il modal e un entry point rapido verso configurazioni gia esistenti
+- non deve divergere semanticamente dalla surface `articoli`
+
 ## 11. Entity Model
 
 Shape logica minima:
@@ -348,6 +470,8 @@ max(target_stock_qty - max(stock_horizon_availability_qty, 0), 0)
 Campi ramo `by_article`:
 
 ```text
+description_parts
+display_description
 availability_qty
 incoming_supply_qty
 future_availability_qty
@@ -357,16 +481,23 @@ required_qty_total
 primary_driver
 is_within_customer_horizon
 earliest_customer_delivery_date
+requested_destination_display
+active_warnings
 ```
 
 Campi ramo `by_customer_order_line`:
 
 ```text
+description_parts
+display_description
 order_reference
 line_reference
 order_line_description
+full_order_line_description
 measure
 requested_delivery_date
+requested_destination_display
+active_warnings
 line_open_demand_qty
 linked_incoming_supply_qty
 line_future_coverage_qty

@@ -189,6 +189,7 @@ def test_within_horizon_true(session: Session):
     candidates = list_planning_candidates_v1(session)
     assert len(candidates) == 1
     assert candidates[0].is_within_customer_horizon is True
+    assert candidates[0].earliest_customer_delivery_date == delivery.date()
 
 
 def test_within_horizon_false(session: Session):
@@ -212,6 +213,7 @@ def test_within_horizon_none_no_delivery_date(session: Session):
     candidates = list_planning_candidates_v1(session)
     assert len(candidates) == 1
     assert candidates[0].is_within_customer_horizon is None
+    assert candidates[0].earliest_customer_delivery_date is None
 
 
 def test_within_horizon_none_nessuna_riga(session: Session):
@@ -314,3 +316,4 @@ def test_by_col_horizon_none(session: Session):
     col_candidates = [c for c in candidates if c.planning_mode == "by_customer_order_line"]
     assert len(col_candidates) == 1
     assert col_candidates[0].is_within_customer_horizon is None
+    assert col_candidates[0].requested_delivery_date == delivery.date()

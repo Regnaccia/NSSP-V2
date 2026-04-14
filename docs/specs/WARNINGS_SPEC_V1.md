@@ -176,8 +176,11 @@ Questo implica:
 ### Planning Candidates
 
 - non deve trattare `negative_stock` come need produttivo
-- puo in futuro mostrare badge warning
+- puo mostrare badge warning e una colonna warning di supporto operativo
+- deve consumare warning canonici filtrati per `visible_to_areas`
 - non deve possedere la logica warning
+- puo offrire azioni rapide verso la configurazione articolo, ma senza duplicare il dominio
+  `articoli`
 
 ### Articoli
 

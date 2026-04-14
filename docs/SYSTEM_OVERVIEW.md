@@ -1,7 +1,7 @@
 # ODE V2 - System Overview
 
 ## Date
-2026-04-13
+2026-04-14
 
 ## Scopo
 
@@ -186,12 +186,18 @@ Disponibile:
   - `customer_shortage_qty`
   - `stock_replenishment_qty`
   - `required_qty_total`
+  - `primary_driver`
 - la componente stock-driven si applica solo con:
   - `planning_mode = by_article`
   - `effective_gestione_scorte_attiva = true`
 - primi horizon planning gia attivi:
   - `customer horizon`
   - `stock horizon`
+- `customer horizon` e `stock horizon` sono ora separati correttamente
+- `required_qty_minimum` nel ramo `by_article` segue il driver primario anche nei casi `stock-only`
+- la tabella planning espone la data richiesta con semantica distinta:
+  - `requested_delivery_date` nel ramo per-riga
+  - `earliest_customer_delivery_date` nel ramo aggregato solo se esiste componente customer
 - surface UI dedicata con:
   - ricerca `codice`
   - ricerca `descrizione`

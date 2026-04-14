@@ -42,9 +42,19 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from nssp_v2.core.planning_mode import PlanningMode
+
+
+class PlanningCandidateActiveWarning(BaseModel):
+    """Forma minima warning esposta nel contratto Planning Candidates."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    severity: str
+    message: str
 
 
 class PlanningCandidateItem(BaseModel):
@@ -86,6 +96,10 @@ class PlanningCandidateItem(BaseModel):
     # Reason esplicita (DL-ARCH-V2-028 §4) — sempre valorizzata
     reason_code: str
     reason_text: str
+    description_parts: list[str] = Field(default_factory=list)
+    display_description: str
+    active_warning_codes: list[str] = Field(default_factory=list)
+    active_warnings: list[PlanningCandidateActiveWarning] = Field(default_factory=list)
     # Misura (DL-ARCH-V2-028 §3)
     misura: str | None = None
     required_qty_minimum: Decimal
@@ -93,6 +107,7 @@ class PlanningCandidateItem(BaseModel):
     # - customer: shortage cliente > 0 (precedenza anche nei casi misti)
     # - stock: solo componente scorta attiva
     primary_driver: Literal["customer", "stock"] | None = None
+    requested_destination_display: str | None = None
     computed_at: datetime
 
     # ─── by_article (None per by_customer_order_line) ─────────────────────────
@@ -116,6 +131,7 @@ class PlanningCandidateItem(BaseModel):
     # None  se nessuna riga ordine per questo articolo ha expected_delivery_date valorizzata.
     # Sempre None per by_customer_order_line (il flag appartiene al ramo by_article).
     is_within_customer_horizon: bool | None = None
+    earliest_customer_delivery_date: date | None = None
     # Data_consegna piu vicina tra le righe ordine — None se nessuna data o by_customer_order_line.
     # Esposta per consentire alla UI di applicare un orizzonte configurabile (TASK-V2-102).
     nearest_delivery_date: date | None = None
@@ -125,6 +141,8 @@ class PlanningCandidateItem(BaseModel):
     line_reference: int | None = None
     # Descrizione dalla riga ordine (DL-ARCH-V2-028 §2) — None per by_article
     order_line_description: str | None = None
+    full_order_line_description: str | None = None
+    requested_delivery_date: date | None = None
     line_open_demand_qty: Decimal | None = None
     linked_incoming_supply_qty: Decimal | None = None
     line_future_coverage_qty: Decimal | None = None

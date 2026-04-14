@@ -102,6 +102,23 @@ Conseguenze:
 
 Ma la logica di generazione e persistenza resta centralizzata.
 
+### 5.1 Integrazione mirata nella vista planning
+
+`Planning Candidates` puo consumare warning articolo per rendere immediatamente visibili anomalie
+che impattano la lettura o la configurazione del candidate.
+
+Regola:
+
+- la vista planning puo mostrare warning attivi per articolo in una colonna dedicata
+- gli warning restano canonici e posseduti dal modulo `Warnings`
+- la vista planning non replica la logica di detection
+
+Primo caso rilevante:
+
+- `INVALID_STOCK_CAPACITY`
+
+La presenza del warning in planning e un enrichment operativo, non una seconda sorgente di verita.
+
 ### 6. Governance amministrativa
 
 Le regole di visibilita dei warning non vengono delegate ai singoli moduli operativi.

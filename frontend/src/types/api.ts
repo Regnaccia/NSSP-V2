@@ -229,6 +229,11 @@ export interface CriticitaItem {
 /** Vocabolario esplicito planning_mode (DL-ARCH-V2-027, TASK-V2-069) */
 export type PlanningMode = 'by_article' | 'by_customer_order_line'
 export type PlanningPrimaryDriver = 'customer' | 'stock'
+export interface PlanningActiveWarningItem {
+  code: string
+  severity: string
+  message: string
+}
 
 /** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071, TASK-V2-074) */
 export interface PlanningCandidateItem {
@@ -246,11 +251,19 @@ export interface PlanningCandidateItem {
   reason_code: string
   /** Testo leggibile della reason (DL-ARCH-V2-028 §4) */
   reason_text: string
+  /** Segmenti descrittivi canonici unificati (TASK-V2-110) */
+  description_parts: string[]
+  /** Descrizione di presentazione canonica derivata da description_parts */
+  display_description: string
+  /** Warning attivi articolo visibili all'utente corrente (TASK-V2-111) */
+  active_warning_codes: string[]
+  active_warnings: PlanningActiveWarningItem[]
   /** Unità di misura / misura articolo (DL-ARCH-V2-028 §3) — null se non disponibile */
   misura: string | null
   /** abs del deficit — fabbisogno minimo in entrambe le modalità */
   required_qty_minimum: string
   primary_driver: PlanningPrimaryDriver | null
+  requested_destination_display: string | null
   computed_at: string
 
   // ─── by_article (null per by_customer_order_line) ────────────────────────
@@ -270,6 +283,7 @@ export interface PlanningCandidateItem {
   required_qty_total: string | null
   /** True se data_consegna più vicina ≤ today + customer_horizon_days. Null se nessuna data o by_customer_order_line */
   is_within_customer_horizon: boolean | null
+  earliest_customer_delivery_date: string | null
   /** Data_consegna più vicina (ISO date string) tra le righe ordine. Null se nessuna data o by_customer_order_line */
   nearest_delivery_date: string | null
 
@@ -280,6 +294,8 @@ export interface PlanningCandidateItem {
   line_reference: number | null
   /** Descrizione dalla riga ordine cliente (DL-ARCH-V2-028 §2) — null per by_article */
   order_line_description: string | null
+  full_order_line_description: string | null
+  requested_delivery_date: string | null
   /** max(ordered - set_aside - fulfilled, 0) per la riga — null per by_article */
   line_open_demand_qty: string | null
   /** Supply da produzioni collegate a questa riga — null per by_article */

@@ -48,6 +48,10 @@ Spiegare il problema e il perche del task.
 
 ## Pattern Checklist
 
+Riferimento predefinito:
+
+- `docs/guides/IMPLEMENTATION_PATTERNS.md`
+
 Compilare in modo sintetico per ogni nuovo task. Usare:
 
 - `Si`
@@ -69,6 +73,19 @@ Checklist minima:
 - `Richiede aggiornamenti a spec / DL / guide oltre al task?`
 
 Se uno o piu punti sono `Si`, aggiungere una nota breve con il perche nella sezione `Implementation Notes` o `Constraints`.
+
+## Pattern References
+
+Facoltativo ma consigliato quando il task segue pattern gia consolidati.
+
+Elencare qui i pattern rilevanti della guida:
+
+- `Pattern X - Nome pattern`
+
+Esempio:
+
+- `Pattern 14 - Configurazione articolo: governance nel modello, visibilita in articoli`
+- `Pattern 15 - Governance in admin, consumo nelle surface operative`
 
 ## Refresh / Sync Behavior
 

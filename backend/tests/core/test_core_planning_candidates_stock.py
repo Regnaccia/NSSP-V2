@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from nssp_v2.shared.db import Base
 from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
+from nssp_v2.core.clienti_destinazioni.models import CoreDestinazioneConfig
 from nssp_v2.core.availability.models import CoreAvailability
 from nssp_v2.core.planning_candidates.logic import (
     customer_shortage_qty_v1,
@@ -36,6 +37,8 @@ from nssp_v2.core.planning_candidates.logic import (
 from nssp_v2.core.planning_candidates.queries import list_planning_candidates_v1
 from nssp_v2.core.stock_policy.config_model import CoreStockLogicConfig  # noqa: F401
 from nssp_v2.sync.articoli.models import SyncArticolo
+from nssp_v2.sync.clienti.models import SyncCliente
+from nssp_v2.sync.destinazioni.models import SyncDestinazione
 from nssp_v2.sync.mag_reale.models import SyncMagReale  # noqa: F401
 
 # Modelli per registrare Base.metadata
@@ -76,9 +79,11 @@ def _famiglia(session, code="FAM1", stock_months=None, stock_trigger_months=None
     session.flush()
 
 
-def _art(session, codice="ART001"):
+def _art(session, codice="ART001", descrizione_1=None, descrizione_2=None):
     session.add(SyncArticolo(
         codice_articolo=codice,
+        descrizione_1=descrizione_1,
+        descrizione_2=descrizione_2,
         attivo=True,
         synced_at=_NOW,
     ))
@@ -269,8 +274,27 @@ def test_shortage_cliente_genera_candidate(session):
     assert len(result) == 1
     item = result[0]
     assert item.reason_code == "future_availability_negative"
+    assert item.description_parts == []
+    assert item.display_description == "ART001"
     assert item.customer_shortage_qty == Decimal("80")
     assert item.future_availability_qty == Decimal("-80")
+    assert item.earliest_customer_delivery_date is None
+
+
+def test_by_article_description_contract_uses_articolo_segments(session):
+    """by_article: description_parts=[descrizione_1, descrizione_2], display_description unificata."""
+    _famiglia(session, aggrega=True)
+    _art(session, codice="ART001", descrizione_1="LINGUETTE UNI 6604/B", descrizione_2="C45")
+    _config(session)
+    _avail(session, inventory=0, set_aside=0, committed=80)
+    session.commit()
+
+    result = list_planning_candidates_v1(session)
+    assert len(result) == 1
+    item = result[0]
+    assert item.planning_mode == "by_article"
+    assert item.description_parts == ["LINGUETTE UNI 6604/B", "C45"]
+    assert item.display_description == "LINGUETTE UNI 6604/B | C45"
 
 
 def test_shortage_cliente_required_qty_minimum(session):
@@ -315,8 +339,55 @@ def test_stock_trigger_genera_candidate(session):
     # replenishment = max(90 - max(25, 0), 0) = max(90-25, 0) = 65
     assert item.stock_replenishment_qty == Decimal("65")
     assert item.required_qty_minimum == Decimal("65")
+    assert item.earliest_customer_delivery_date is None
     # total = 0 + 65 = 65
     assert item.required_qty_total == Decimal("65")
+
+
+def test_planning_candidate_include_invalid_stock_capacity_warning_per_area(session):
+    """Planning candidate espone INVALID_STOCK_CAPACITY quando visibile all'area utente."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("6"), stock_trigger_months=Decimal("2"))
+    _art(session)
+    _config(session)
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 4, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 3, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 2, 1))
+    _avail(session, inventory=25)  # stock_below_trigger
+    session.commit()
+
+    result = list_planning_candidates_v1(
+        session,
+        user_areas=["produzione"],
+        is_admin=False,
+    )
+    assert len(result) == 1
+    item = result[0]
+    assert "INVALID_STOCK_CAPACITY" in item.active_warning_codes
+    assert any(w.code == "INVALID_STOCK_CAPACITY" for w in item.active_warnings)
+
+
+def test_planning_candidate_warning_filtered_out_if_area_not_visible(session):
+    """Planning warnings in candidate rispettano visible_to_areas dell'utente."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("6"), stock_trigger_months=Decimal("2"))
+    _art(session)
+    _config(session)
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 4, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 3, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 2, 1))
+    _avail(session, inventory=25)  # stock_below_trigger
+    session.commit()
+
+    result = list_planning_candidates_v1(
+        session,
+        user_areas=["logistica"],
+        is_admin=False,
+    )
+    assert len(result) == 1
+    item = result[0]
+    assert item.active_warning_codes == []
+    assert item.active_warnings == []
 
 
 def test_stock_trigger_non_raggiunto_non_candidate(session):
@@ -334,6 +405,138 @@ def test_stock_trigger_non_raggiunto_non_candidate(session):
 
     result = list_planning_candidates_v1(session)
     assert result == []
+
+
+def test_stock_only_con_righe_cliente_non_espone_data_customer(session):
+    """Stock-only: nessuna data richiesta inventata anche se esistono righe cliente datate."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("6"), stock_trigger_months=Decimal("2"))
+    _art(session)
+    _config(session)
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 4, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 3, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 2, 1))
+    _avail(session, inventory=25)
+    session.add(SyncRigaOrdineCliente(
+        order_reference="ORD002",
+        line_reference=1,
+        article_code="ART001",
+        ordered_qty=Decimal("10"),
+        set_aside_qty=Decimal("0"),
+        fulfilled_qty=Decimal("0"),
+        expected_delivery_date=datetime(2026, 5, 10),
+        synced_at=_NOW,
+    ))
+    session.commit()
+
+    result = list_planning_candidates_v1(session)
+    assert len(result) == 1
+    item = result[0]
+    assert item.primary_driver == "stock"
+    assert item.earliest_customer_delivery_date is None
+    assert item.requested_destination_display is None
+
+
+def test_by_article_customer_destination_display_univoca(session):
+    """By_article customer-driven: destinazione richiesta valorizzata se mapping univoco."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("6"), stock_trigger_months=Decimal("2"))
+    _art(session, codice="ART001")
+    _config(session, codice="ART001")
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 4, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 3, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 2, 1))
+    _avail(session, codice="ART001", inventory=0, committed=50)  # shortage
+
+    session.add(SyncCliente(codice_cli="C100", ragione_sociale="Cliente 100", attivo=True, synced_at=_NOW))
+    session.add(CoreDestinazioneConfig(
+        codice_destinazione="MAIN:C100",
+        nickname_destinazione="Dest C100",
+        updated_at=_NOW,
+    ))
+    session.add(SyncRigaOrdineCliente(
+        order_reference="ORD100",
+        line_reference=1,
+        article_code="ART001",
+        customer_code="C100",
+        ordered_qty=Decimal("50"),
+        set_aside_qty=Decimal("0"),
+        fulfilled_qty=Decimal("0"),
+        expected_delivery_date=datetime(2026, 4, 25),
+        synced_at=_NOW,
+    ))
+    session.commit()
+
+    result = list_planning_candidates_v1(session)
+    assert len(result) == 1
+    assert result[0].primary_driver == "customer"
+    assert result[0].requested_destination_display == "Dest C100"
+
+
+def test_by_article_customer_destination_display_multiple(session):
+    """By_article customer-driven: se mapping non univoco -> Multiple."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("6"), stock_trigger_months=Decimal("2"))
+    _art(session, codice="ART001")
+    _config(session, codice="ART001")
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 4, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 3, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 2, 1))
+    _avail(session, codice="ART001", inventory=0, committed=100)  # shortage
+
+    session.add(SyncCliente(codice_cli="C101", ragione_sociale="Cliente 101", attivo=True, synced_at=_NOW))
+    session.add(SyncCliente(codice_cli="C102", ragione_sociale="Cliente 102", attivo=True, synced_at=_NOW))
+    session.add(CoreDestinazioneConfig(codice_destinazione="MAIN:C101", nickname_destinazione="Dest A", updated_at=_NOW))
+    session.add(CoreDestinazioneConfig(codice_destinazione="MAIN:C102", nickname_destinazione="Dest B", updated_at=_NOW))
+    # stessa earliest date su 2 destinazioni diverse
+    session.add(SyncRigaOrdineCliente(
+        order_reference="ORD101",
+        line_reference=1,
+        article_code="ART001",
+        customer_code="C101",
+        ordered_qty=Decimal("50"),
+        set_aside_qty=Decimal("0"),
+        fulfilled_qty=Decimal("0"),
+        expected_delivery_date=datetime(2026, 4, 20),
+        synced_at=_NOW,
+    ))
+    session.add(SyncRigaOrdineCliente(
+        order_reference="ORD102",
+        line_reference=1,
+        article_code="ART001",
+        customer_code="C102",
+        ordered_qty=Decimal("50"),
+        set_aside_qty=Decimal("0"),
+        fulfilled_qty=Decimal("0"),
+        expected_delivery_date=datetime(2026, 4, 20),
+        synced_at=_NOW,
+    ))
+    session.commit()
+
+    result = list_planning_candidates_v1(session)
+    assert len(result) == 1
+    assert result[0].primary_driver == "customer"
+    assert result[0].requested_destination_display == "Multiple"
+
+
+def test_stock_below_trigger_con_target_non_configurato_driver_stock(session):
+    """Hardening: reason stock_below_trigger non deve finire in driver customer."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=None, stock_trigger_months=Decimal("2"))
+    _art(session)
+    _config(session)
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 4, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 3, 1))
+    _add_movement(session, "ART001", Decimal("15"), datetime(2026, 2, 1))
+    # trigger = 2 * 15 = 30; fav=10 -> stock_below_trigger
+    _avail(session, inventory=10)
+    session.commit()
+
+    result = list_planning_candidates_v1(session)
+    assert len(result) == 1
+    item = result[0]
+    assert item.reason_code == "stock_below_trigger"
+    assert item.primary_driver == "stock"
 
 
 # ─── Nessun doppio conteggio (DL-ARCH-V2-030 §9) ────────────────────────────
@@ -443,13 +646,36 @@ def test_by_customer_order_line_no_stock_fields(session):
         updated_at=_NOW,
     ))
     session.flush()
+    session.add(SyncCliente(
+        codice_cli="C001",
+        ragione_sociale="Cliente Uno",
+        attivo=True,
+        synced_at=_NOW,
+    ))
+    session.add(CoreDestinazioneConfig(
+        codice_destinazione="MAIN:C001",
+        nickname_destinazione="Dest principale",
+        updated_at=_NOW,
+    ))
+    session.flush()
     session.add(SyncRigaOrdineCliente(
         order_reference="ORD001",
         line_reference=1,
         article_code="ART_COL",
+        article_description_segment="SEG A",
+        customer_code="C001",
         ordered_qty=Decimal("100"),
         set_aside_qty=Decimal("0"),
         fulfilled_qty=Decimal("0"),
+        expected_delivery_date=datetime(2026, 4, 20),
+        synced_at=_NOW,
+    ))
+    session.add(SyncRigaOrdineCliente(
+        order_reference="ORD001",
+        line_reference=2,
+        continues_previous_line=True,
+        article_description_segment="SEG B",
+        customer_code="C001",
         synced_at=_NOW,
     ))
     session.commit()
@@ -463,3 +689,45 @@ def test_by_customer_order_line_no_stock_fields(session):
     assert item.stock_replenishment_qty is None
     assert item.required_qty_total is None
     assert item.reason_code == "line_demand_uncovered"
+    assert item.requested_delivery_date is not None
+    assert item.description_parts == ["SEG A", "SEG B"]
+    assert item.display_description == "SEG A | SEG B"
+    assert item.full_order_line_description == "SEG A | SEG B"
+    assert item.requested_destination_display == "Dest principale"
+
+
+def test_by_customer_order_line_description_fallback_to_article_code(session):
+    """by_customer_order_line: se segmenti assenti -> display_description fallback su article_code."""
+    session.add(ArticoloFamiglia(
+        code="FAM_COL",
+        label="Famiglia COL",
+        is_active=True,
+        considera_in_produzione=True,
+        aggrega_codice_in_produzione=False,
+    ))
+    session.flush()
+    _art(session, codice="ART_COL")
+    session.add(CoreArticoloConfig(
+        codice_articolo="ART_COL",
+        famiglia_code="FAM_COL",
+        updated_at=_NOW,
+    ))
+    session.flush()
+    session.add(SyncRigaOrdineCliente(
+        order_reference="ORD001",
+        line_reference=1,
+        article_code="ART_COL",
+        ordered_qty=Decimal("25"),
+        set_aside_qty=Decimal("0"),
+        fulfilled_qty=Decimal("0"),
+        expected_delivery_date=datetime(2026, 4, 20),
+        synced_at=_NOW,
+    ))
+    session.commit()
+
+    result = list_planning_candidates_v1(session)
+    by_col = [r for r in result if r.planning_mode == "by_customer_order_line"]
+    assert len(by_col) == 1
+    item = by_col[0]
+    assert item.description_parts == []
+    assert item.display_description == "ART_COL"

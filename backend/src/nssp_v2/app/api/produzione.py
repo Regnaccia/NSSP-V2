@@ -321,7 +321,7 @@ def get_criticita(
 
 @router.get("/planning-candidates", response_model=list[PlanningCandidateItem])
 def get_planning_candidates(
-    _: dict = Depends(get_current_user),
+    payload: dict = Depends(get_current_user),
     session: Session = Depends(get_session),
     horizon_days: int = Query(default=30, ge=1, description="Orizzonte temporale in giorni usato solo per il filtro customer horizon (TASK-V2-104)."),
 ):
@@ -338,7 +338,15 @@ def get_planning_candidates(
 
     La logica di candidatura e applicata nel Core (DL-ARCH-V2-023, DL-ARCH-V2-025).
     """
-    return list_planning_candidates_v1(session, customer_horizon_days=horizon_days)
+    roles: list[str] = payload.get("roles", [])
+    is_admin = "admin" in roles
+    user_areas = [r for r in roles if r in KNOWN_AREAS]
+    return list_planning_candidates_v1(
+        session,
+        customer_horizon_days=horizon_days,
+        user_areas=user_areas,
+        is_admin=is_admin,
+    )
 
 
 @router.patch(

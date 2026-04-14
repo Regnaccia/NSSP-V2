@@ -1,7 +1,7 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-13
+2026-04-14
 
 ## Stato generale
 
@@ -102,7 +102,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-102`
+- `TASK-V2-001` -> `TASK-V2-107`
 
 Ultimi task chiusi rilevanti:
 
@@ -133,13 +133,20 @@ Ultimi task chiusi rilevanti:
 - `TASK-V2-100` customer horizon Core in `Planning Candidates`
 - `TASK-V2-101` stock horizon cap sugli impegni della componente scorta
 - `TASK-V2-102` filtri UI `Planning Candidates` per driver e customer horizon
-
-## Task aperti
-
 - `TASK-V2-103` separazione Core tra `customer horizon` e `stock horizon`
 - `TASK-V2-104` fix semantico UI/API del filtro `customer horizon`
 - `TASK-V2-105` classificazione primaria `customer|stock` dei candidate `by_article`
 - `TASK-V2-106` `required_qty_minimum` coerente nei candidate `stock-only`
+- `TASK-V2-107` data richiesta in `Planning Candidates` con semantica distinta per riga ordine e ramo aggregato
+
+## Task aperti
+
+- `TASK-V2-108` contratto Core planning per descrizione completa e destinazione richiesta
+- `TASK-V2-109` refinement UI `Planning Candidates` per leggibilita finale
+- `TASK-V2-110` modello descrittivo unificato con `description_parts` e `display_description`
+- `TASK-V2-111` enrichment Core/API degli warning articolo in planning
+- `TASK-V2-112` colonna `Warnings` nella tabella planning
+- `TASK-V2-113` quick config modal articolo dalla vista planning
 
 ## Task deferred
 
@@ -153,14 +160,23 @@ Ultimi task chiusi rilevanti:
 ## Prossima sequenza consigliata
 
 I prossimi stream naturali sono:
-- correggere la deviazione semantica tra `customer horizon` e `stock horizon` introdotta nell'implementazione:
-  - `TASK-V2-103`
-  - `TASK-V2-104`
-- evitare la doppia presenza dei casi misti `customer + stock` nelle schede planning:
-  - `TASK-V2-105`
-- riallineare `required_qty_minimum` al driver primario anche nei casi `stock-only`:
-  - `TASK-V2-106`
-- poi decidere se aprire `Production Proposals` sopra planning+scorte o direttamente sul planning attuale
+- chiudere il refinement finale di leggibilita/usabilita del modulo planning:
+  - `TASK-V2-110`
+  - `TASK-V2-108`
+  - `TASK-V2-109`
+- integrare il modulo `Warnings` direttamente nel planning operativo:
+  - `TASK-V2-111`
+  - `TASK-V2-112`
+  - `TASK-V2-113`
+- aprire `Production Proposals` sopra un planning ormai coerente anche su:
+  - `customer horizon`
+  - `stock horizon`
+  - `primary_driver`
+  - `required_qty_minimum` dei casi `stock-only`
+  - data richiesta in tabella
+- valutare piu avanti badge warning in:
+  - `articoli`
+  - `Planning Candidates`
 
 Valutazioni rinviate:
 

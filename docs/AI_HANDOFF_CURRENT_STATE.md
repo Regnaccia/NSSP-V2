@@ -151,9 +151,15 @@ Current behavior:
   - `customer_shortage_qty`
   - `stock_replenishment_qty`
   - `required_qty_total`
-- planning now also exposes first temporal semantics:
+- by-article rows now also expose:
+  - `primary_driver`
+  - `required_qty_minimum` coerente col driver primario, anche nei casi `stock-only`
+  - `earliest_customer_delivery_date` quando esiste componente customer
+- by-customer-order-line rows now also expose:
+  - `requested_delivery_date`
+- planning now has distinct temporal semantics:
   - `is_within_customer_horizon`
-  - stock-driven cap on commitments within stock horizon
+  - stock-driven cap on commitments within stock horizon, separato dal filtro customer
 
 ### 7. Produzione - Warnings
 
@@ -203,13 +209,21 @@ Current shape:
   - `availability_qty`
   - `incoming_supply_qty`
   - `future_availability_qty`
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+  - `required_qty_total`
+  - `primary_driver`
+  - `earliest_customer_delivery_date`
 - `by_customer_order_line` uses:
   - `line_open_demand_qty`
   - `linked_incoming_supply_qty`
   - `line_future_coverage_qty`
+  - `requested_delivery_date`
 - candidates exist only when the relevant coverage metric is negative
 - incoming supply excludes productions effectively completed
 - planning uses `stock_effective = max(stock_calculated, 0)` rather than raw negative stock
+- `required_qty_minimum` is now aligned with the primary driver, including `stock-only` cases
+- `customer horizon` and `stock horizon` are distinct semantics
 
 ### Warnings
 
@@ -348,7 +362,12 @@ Not implemented yet:
 
 Currently open in the active roadmap:
 
-- no active task at the moment
+- `TASK-V2-108` extend planning Core contracts for full order-line description and requested destination
+- `TASK-V2-109` final UI readability refinement for Planning Candidates
+- `TASK-V2-110` unify planning descriptive model with `description_parts` and `display_description`
+- `TASK-V2-111` enrich planning candidates with active article warnings
+- `TASK-V2-112` show warning badges in planning candidates table
+- `TASK-V2-113` add quick article-config modal from planning
 
 Deferred in the active roadmap:
 
@@ -361,12 +380,25 @@ Operational note:
 
 ## What Is The Next Logical Reasoning Area
 
-The immediate next reasoning area is deciding whether to open `Production Proposals` on top of the now-complete planning + stock slice, or to refine planning further before that module.
+The immediate next reasoning area is opening `Production Proposals` on top of a planning + stock slice that is now coherent also on:
 
-The next meaningful design area is:
+- distinct `customer horizon` / `stock horizon`
+- primary-driver classification
+- stock-only minimum quantity semantics
+- requested delivery date readability
 
-- opening `Production Proposals`
-- or explicitly deciding a further refinement step on planning before proposals
+Before opening `Production Proposals`, one last UI-focused refinement is now tracked:
+
+- richer planning readability:
+  - unified descriptive model
+  - full order-line description
+  - requested destination display
+  - family badges
+  - compact reason badges
+  - dedicated measure column
+- tighter operational integration with `Warnings`:
+  - active article warnings in planning
+  - quick edit path to article configuration
 
 Explicitly deferred for now:
 
@@ -403,5 +435,6 @@ If another AI agent must start reasoning today, the correct mental model is:
 - Warnings is the first transversal anomaly module
 - semantic refresh and canonical article-key discipline are already established
 - stock policy governance, enabled flag and invalid-capacity warning are already active
-- first temporal horizons in planning are already active
+- first temporal horizons in planning are already active and separated correctly
+- planning mixed cases now classify to a single `primary_driver`
 - the next major evolution is deciding the opening of `Production Proposals`

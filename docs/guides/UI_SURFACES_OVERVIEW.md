@@ -232,11 +232,14 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
   - `customer_shortage_qty`
   - `stock_replenishment_qty`
   - `required_qty_total`
+  - `primary_driver`
+  - `earliest_customer_delivery_date`
 - per il ramo `by_customer_order_line`:
   - `order_reference`
   - `line_reference`
   - `misura`
   - descrizione ordine primaria
+  - `requested_delivery_date`
   - `line_open_demand_qty`
   - `linked_incoming_supply_qty`
   - `line_future_coverage_qty`
@@ -260,6 +263,9 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
 - `incoming_supply_qty` esclude le produzioni completate, anche via override
 - la logica planning usa stock clampato a zero
 - la componente stock-driven vale solo con `effective_gestione_scorte_attiva = true`
+- `customer horizon` e `stock horizon` sono separati correttamente
+- i casi misti `customer + stock` compaiono una sola volta, nella scheda `customer`
+- `required_qty_minimum` segue il `primary_driver`, anche nei casi `stock-only`
 - la vista puo separare operativamente i driver senza duplicare il candidate Core
 
 ## 7. Produzione - Warnings

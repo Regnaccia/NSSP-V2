@@ -129,6 +129,46 @@ Regola:
 
 La futura semantica `prima data scoperta` resta fuori scope per questa V1.
 
+## 4.4 Descrizione e destinazione della richiesta
+
+Nel ramo `by_customer_order_line` la UI planning non deve usare solo il primo segmento descrittivo
+della riga.
+
+Regole:
+
+- il target canonico e:
+  - `description_parts`
+  - `display_description`
+- `by_customer_order_line` e il riferimento semantico del modello
+- nel ramo per-riga:
+  - `description_parts = [article_description_segment, ...description_lines]`
+- nel ramo aggregato:
+  - `description_parts = [descrizione_1, descrizione_2]`
+- `display_description` deriva da `description_parts`
+- la destinazione richiesta usa:
+  - `nickname_destinazione`, se presente
+  - altrimenti la label di default della destinazione
+
+Nel ramo `by_article`:
+
+- la destinazione puo essere mostrata solo se associabile in modo non ambiguo alla richiesta
+  cliente che guida la data mostrata
+- se il mapping non e univoco:
+  - `Multiple`
+- nei casi `stock-only`:
+  - nessuna destinazione inventata
+
+## 4.5 Badge di leggibilita
+
+La UI planning puo migliorare la leggibilita con badge sintetici, senza cambiare il modello Core.
+
+Regole:
+
+- `famiglia_label` puo essere resa come badge con palette centralizzata
+- `primary_driver` e i motivi attivi possono essere resi come badge sintetici
+- i casi misti mostrano badge multipli (`Cliente`, `Scorta`) ma restano una sola riga
+- `misura` va esposta in una colonna dedicata
+
 ## 5. Stock Policy V1
 
 La stock policy V1 vale solo se entrambe le condizioni sono vere:
@@ -274,6 +314,19 @@ Regole:
 - `planning_mode = by_article`
 - `effective_gestione_scorte_attiva = true`
 - `capacity_effective_qty` invalida o assente
+
+### 11.1 Integrazione nella vista planning
+
+La vista `Planning Candidates` puo mostrare warning attivi dell'articolo, ma senza duplicare la
+logica del modulo `Warnings`.
+
+Regole:
+
+- i warning in planning sono un enrichment di lettura
+- la colonna `Warnings` consuma warning canonici filtrati per `visible_to_areas`
+- il primo warning rilevante e:
+  - `INVALID_STOCK_CAPACITY`
+- il quick fix da planning deve riusare la configurazione articolo gia esistente
 
 ## 12. Confini Importanti
 

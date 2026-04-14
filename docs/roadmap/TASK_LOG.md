@@ -118,7 +118,14 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-100` | Completed | Primo `customer horizon` Core per i candidate cliente, basato su `data_consegna` e senza scartare i fuori orizzonte |
 | `TASK-V2-101` | Completed | Introduzione di `stock horizon` nel ramo `by_article` con cap temporale sugli impegni per la sola componente scorta |
 | `TASK-V2-102` | Completed | Filtri UI `Planning Candidates` per `Tutti / Solo fabbisogno cliente / Solo scorta` e filtro `customer horizon` |
-| `TASK-V2-103` | Todo | Riallineamento Core tra `customer horizon` e `stock horizon`, oggi accoppiati in modo improprio |
-| `TASK-V2-104` | Todo | Riallineamento UI/API del filtro `customer horizon` per eliminare side effects sulla componente scorta |
-| `TASK-V2-105` | Todo | Classificazione primaria `customer|stock` per evitare che i casi misti compaiano in entrambe le schede planning |
-| `TASK-V2-106` | Todo | Valorizzazione di `required_qty_minimum` anche nei candidate `stock-only`, allineandolo al driver primario |
+| `TASK-V2-103` | Completed | Separazione Core tra `customer horizon` e `stock horizon`, eliminando l'accoppiamento improprio |
+| `TASK-V2-104` | Completed | Riallineamento UI/API del filtro `customer horizon` senza side effects sulla componente scorta |
+| `TASK-V2-105` | Completed | Classificazione primaria `customer|stock` per evitare doppia presenza dei casi misti |
+| `TASK-V2-106` | Completed | Valorizzazione di `required_qty_minimum` nei candidate `stock-only` secondo il driver primario |
+| `TASK-V2-107` | Completed | Esposizione della data richiesta in `Planning Candidates` con semantica distinta per ramo aggregato e per-riga |
+| `TASK-V2-108` | Todo | Estensione del contratto Core planning per descrizione completa e destinazione richiesta |
+| `TASK-V2-109` | Todo | Refinement finale UI `Planning Candidates` per leggibilita, badge e colonne dedicate |
+| `TASK-V2-110` | Todo | Unificazione del modello descrittivo planning con `description_parts` e `display_description` |
+| `TASK-V2-111` | Todo | Enrichment Core/API dei warning articolo in `Planning Candidates` |
+| `TASK-V2-112` | Todo | Colonna `Warnings` nella tabella `Planning Candidates` con badge sintetici |
+| `TASK-V2-113` | Todo | Quick config modal articolo dalla vista `Planning Candidates` |

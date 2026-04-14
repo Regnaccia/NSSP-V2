@@ -17,15 +17,16 @@
  * La logica di candidatura e applicata nel Core backend — la UI consuma esiti.
  *
  * Colonne TASK-V2-075:
- * - "Motivo" → reason_text esplicito (DL-ARCH-V2-028 §4)
- * - misura → inline nel Codice (DL-ARCH-V2-028 §3)
- * - Descrizione by_customer_order_line → order_line_description come primaria (via display_label backend)
+ * - "Motivi" sintetici Cliente/Scorta
+ * - colonna misura dedicata
+ * - descrizione unificata da description_parts / display_description (TASK-V2-110)
+ * - colonna Warnings da active_warnings (TASK-V2-112)
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
-import type { PlanningCandidateItem, PlanningMode, SyncSurfaceResponse } from '@/types/api'
+import type { ArticoloDetail, FamigliaItem, PlanningCandidateItem, SyncSurfaceResponse } from '@/types/api'
 
 // ─── Tipi locali ──────────────────────────────────────────────────────────────
 
@@ -33,10 +34,13 @@ type LoadStatus = 'loading' | 'idle' | 'error'
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error'
 /** Filtro driver: Tutti / Solo fabbisogno cliente / Solo scorta (TASK-V2-102) */
 type DriverFilter = 'tutti' | 'fabbisogno' | 'scorta'
+type TriState = 'null' | 'true' | 'false'
 
 /** Chiavi di ordinamento semantiche — indipendenti dallo shape del ramo */
 type SortKey =
+  | 'article_code'
   | 'famiglia_label'
+  | 'requested_date'
   | 'demand'
   | 'availability'
   | 'supply'
@@ -52,6 +56,24 @@ function fmtQty(val: string | null): string {
   return isNaN(n) ? val : n.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
 }
 
+function fmtDate(val: string | null): string {
+  if (!val) return '—'
+  const d = new Date(`${val}T00:00:00`)
+  if (isNaN(d.getTime())) return val
+  return d.toLocaleDateString('it-IT')
+}
+
+function isDateWithinHorizon(val: string | null, horizonDays: number): boolean {
+  if (!val) return false
+  const delivery = new Date(`${val}T00:00:00`)
+  if (isNaN(delivery.getTime())) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const horizon = new Date(today)
+  horizon.setDate(horizon.getDate() + horizonDays)
+  return delivery <= horizon
+}
+
 /** Normalizzazione codice articolo (DL-UIX-V2-004): . → x, X varianti → x */
 function normalizeCodice(input: string): string {
   return input.trim().replace(/\s*[xX]\s*/g, 'x').replace(/\./g, 'x').toLowerCase()
@@ -65,7 +87,11 @@ function matchesCodice(item: PlanningCandidateItem, raw: string): boolean {
 function matchesDesc(item: PlanningCandidateItem, raw: string): boolean {
   if (!raw.trim()) return true
   const needle = raw.trim().toLowerCase()
-  return item.display_label.toLowerCase().includes(needle)
+  const haystack = [item.display_description, item.display_label, ...item.description_parts]
+    .filter((s): s is string => Boolean(s))
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes(needle)
 }
 
 /** Domanda unificata: per-riga (by_col) o aggregata (by_article) */
@@ -83,6 +109,21 @@ function resolveCoverage(item: PlanningCandidateItem): number {
   return parseFloat(item.line_future_coverage_qty ?? item.future_availability_qty ?? '0')
 }
 
+function resolveRequestedDate(item: PlanningCandidateItem): string | null {
+  return item.planning_mode === 'by_customer_order_line'
+    ? item.requested_delivery_date
+    : item.earliest_customer_delivery_date
+}
+
+function resolveDescriptionLines(item: PlanningCandidateItem): string[] {
+  const normalizedParts = item.description_parts
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  if (normalizedParts.length > 0) return normalizedParts
+  const fallback = (item.display_description || item.display_label).trim()
+  return fallback ? [fallback] : ['—']
+}
+
 function cmpItems(
   a: PlanningCandidateItem,
   b: PlanningCandidateItem,
@@ -93,10 +134,23 @@ function cmpItems(
   let bv: number | string
 
   switch (key) {
+    case 'article_code':
+      av = a.article_code.toLowerCase()
+      bv = b.article_code.toLowerCase()
+      break
     case 'famiglia_label':
       av = (a.famiglia_label ?? '').toLowerCase()
       bv = (b.famiglia_label ?? '').toLowerCase()
       break
+    case 'requested_date': {
+      const ad = resolveRequestedDate(a)
+      const bd = resolveRequestedDate(b)
+      const at = ad ? new Date(`${ad}T00:00:00`).getTime() : Number.POSITIVE_INFINITY
+      const bt = bd ? new Date(`${bd}T00:00:00`).getTime() : Number.POSITIVE_INFINITY
+      av = Number.isNaN(at) ? Number.POSITIVE_INFINITY : at
+      bv = Number.isNaN(bt) ? Number.POSITIVE_INFINITY : bt
+      break
+    }
     case 'demand':
       av = resolveDemand(a)
       bv = resolveDemand(b)
@@ -126,44 +180,272 @@ function cmpItems(
   return 0
 }
 
-// ─── Badge reason (DL-ARCH-V2-028 §4) ────────────────────────────────────────
+// ─── Badge family / motivi ───────────────────────────────────────────────────
 
-/**
- * Badge visivo per il reason_code (DL-ARCH-V2-028 §4).
- * Mostra reason_text — il reason_code determina il colore.
- */
-function ReasonBadge({ reasonCode, reasonText }: { reasonCode: string; reasonText: string }) {
-  const cls =
-    reasonCode === 'future_availability_negative'
-      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-      : reasonCode === 'line_demand_uncovered'
-      ? 'bg-rose-50 text-rose-700 border border-rose-200'
-      : 'bg-muted text-muted-foreground'
+const FAMILY_BADGE_CLASSES = [
+  'bg-sky-50 text-sky-700 border border-sky-200',
+  'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  'bg-amber-50 text-amber-700 border border-amber-200',
+  'bg-rose-50 text-rose-700 border border-rose-200',
+  'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  'bg-cyan-50 text-cyan-700 border border-cyan-200',
+]
+
+function familyBadgeClass(label: string | null): string {
+  if (!label) return 'bg-muted text-muted-foreground border border-border'
+  const key = label.trim().toUpperCase()
+  let hash = 0
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  return FAMILY_BADGE_CLASSES[hash % FAMILY_BADGE_CLASSES.length]
+}
+
+function FamilyBadge({ label }: { label: string | null }) {
+  if (!label) return <span className="text-muted-foreground/50 italic">—</span>
   return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${cls}`}>
-      {reasonText}
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${familyBadgeClass(label)}`}>
+      {label}
     </span>
   )
 }
 
-// ─── Badge planning_mode ───────────────────────────────────────────────────────
+function DriverBadges({ item }: { item: PlanningCandidateItem }) {
+  const hasCustomer = (parseFloat(item.customer_shortage_qty ?? '0') || 0) > 0
+  const hasStock = (parseFloat(item.stock_replenishment_qty ?? '0') || 0) > 0
 
-function PlanningModeBadge({ mode }: { mode: PlanningMode | null }) {
-  if (mode === 'by_customer_order_line') {
-    return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
-        per riga
-      </span>
-    )
+  if (!hasCustomer && !hasStock) {
+    if (item.primary_driver === 'customer') {
+      return <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">Cliente</span>
+    }
+    if (item.primary_driver === 'stock') {
+      return <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 border border-orange-200">Scorta</span>
+    }
+    return <span className="text-muted-foreground/50 italic">—</span>
   }
-  if (mode === 'by_article') {
-    return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 whitespace-nowrap">
-        articolo
-      </span>
-    )
+
+  return (
+    <div className="flex items-center gap-1">
+      {hasCustomer && (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">Cliente</span>
+      )}
+      {hasStock && (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 border border-orange-200">Scorta</span>
+      )}
+    </div>
+  )
+}
+
+function boolFromTriState(v: TriState): boolean | null {
+  if (v === 'true') return true
+  if (v === 'false') return false
+  return null
+}
+
+function triStateFromBool(v: boolean | null | undefined): TriState {
+  if (v === true) return 'true'
+  if (v === false) return 'false'
+  return 'null'
+}
+
+function parseOptionalNumber(v: string): number | null {
+  const n = parseFloat(v.replace(',', '.'))
+  return isNaN(n) ? null : n
+}
+
+function extractError(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const resp = (err as { response?: { data?: { detail?: string } } }).response
+    if (resp?.data?.detail) return resp.data.detail
   }
-  return <span className="text-muted-foreground/50 italic text-xs">—</span>
+  return fallback
+}
+
+function QuickConfigModal({
+  articleCode,
+  famiglie,
+  detail,
+  loading,
+  saving,
+  onClose,
+  onSave,
+}: {
+  articleCode: string
+  famiglie: FamigliaItem[]
+  detail: ArticoloDetail | null
+  loading: boolean
+  saving: boolean
+  onClose: () => void
+  onSave: (payload: {
+    famigliaCode: string | null
+    gestioneScorteOverride: boolean | null
+    stockMonthsOverride: number | null
+    stockTriggerMonthsOverride: number | null
+    capacityOverrideQty: number | null
+  }) => Promise<void>
+}) {
+  const [famigliaCode, setFamigliaCode] = useState<string>('')
+  const [gestioneScorte, setGestioneScorte] = useState<TriState>('null')
+  const [stockMonthsInput, setStockMonthsInput] = useState('')
+  const [stockTriggerInput, setStockTriggerInput] = useState('')
+  const [capacityOverrideInput, setCapacityOverrideInput] = useState('')
+
+  useEffect(() => {
+    if (!detail) return
+    setFamigliaCode(detail.famiglia_code ?? '')
+    setGestioneScorte(triStateFromBool(detail.override_gestione_scorte_attiva))
+    setStockMonthsInput(detail.override_stock_months ?? '')
+    setStockTriggerInput(detail.override_stock_trigger_months ?? '')
+    setCapacityOverrideInput(detail.capacity_override_qty ?? '')
+  }, [detail?.codice_articolo]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveDisabled = loading || saving || detail == null
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-background border rounded-xl shadow-lg w-full max-w-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-base">Quick Config Articolo</h2>
+            <p className="text-xs text-muted-foreground font-mono">{articleCode}</p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">
+            ×
+          </button>
+        </div>
+
+        {loading && (
+          <div className="text-sm text-muted-foreground">Caricamento dettaglio articolo…</div>
+        )}
+
+        {!loading && detail && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="space-y-1">
+              <span className="text-xs text-muted-foreground">Famiglia</span>
+              <select
+                value={famigliaCode}
+                onChange={(e) => setFamigliaCode(e.target.value)}
+                className="w-full border rounded-md px-2 py-1.5 text-sm"
+                disabled={saving}
+              >
+                <option value="">(nessuna)</option>
+                {famiglie.map((f) => (
+                  <option key={f.code} value={f.code}>{f.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-xs text-muted-foreground">Gestione scorte (override)</span>
+              <select
+                value={gestioneScorte}
+                onChange={(e) => setGestioneScorte(e.target.value as TriState)}
+                className="w-full border rounded-md px-2 py-1.5 text-sm"
+                disabled={saving}
+              >
+                <option value="null">Eredita famiglia</option>
+                <option value="true">Attiva</option>
+                <option value="false">Disattiva</option>
+              </select>
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-xs text-muted-foreground">Stock months (override)</span>
+              <input
+                type="text"
+                value={stockMonthsInput}
+                onChange={(e) => setStockMonthsInput(e.target.value)}
+                placeholder={detail.effective_stock_months ?? 'eredita famiglia'}
+                className="w-full border rounded-md px-2 py-1.5 text-sm font-mono"
+                disabled={saving}
+              />
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-xs text-muted-foreground">Stock trigger months (override)</span>
+              <input
+                type="text"
+                value={stockTriggerInput}
+                onChange={(e) => setStockTriggerInput(e.target.value)}
+                placeholder={detail.effective_stock_trigger_months ?? 'eredita famiglia'}
+                className="w-full border rounded-md px-2 py-1.5 text-sm font-mono"
+                disabled={saving}
+              />
+            </label>
+
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-xs text-muted-foreground">Capacity override qty</span>
+              <input
+                type="text"
+                value={capacityOverrideInput}
+                onChange={(e) => setCapacityOverrideInput(e.target.value)}
+                placeholder="vuoto = nessun override"
+                className="w-full border rounded-md px-2 py-1.5 text-sm font-mono"
+                disabled={saving}
+              />
+            </label>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-1.5 px-3 border rounded-md text-sm hover:bg-muted transition-colors"
+            disabled={saving}
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            disabled={saveDisabled}
+            onClick={() =>
+              onSave({
+                famigliaCode: famigliaCode || null,
+                gestioneScorteOverride: boolFromTriState(gestioneScorte),
+                stockMonthsOverride: parseOptionalNumber(stockMonthsInput),
+                stockTriggerMonthsOverride: parseOptionalNumber(stockTriggerInput),
+                capacityOverrideQty: parseOptionalNumber(capacityOverrideInput),
+              })
+            }
+            className="py-1.5 px-3 rounded-md text-sm font-medium bg-foreground text-background disabled:opacity-50"
+          >
+            {saving ? 'Salvataggio…' : 'Salva'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function warningBadgeClass(code: string): string {
+  if (code === 'INVALID_STOCK_CAPACITY') {
+    return 'bg-red-50 text-red-700 border border-red-200'
+  }
+  return 'bg-amber-50 text-amber-700 border border-amber-200'
+}
+
+function warningBadgeLabel(code: string): string {
+  if (code === 'INVALID_STOCK_CAPACITY') return 'Capacity'
+  return code
+}
+
+function WarningBadges({ item }: { item: PlanningCandidateItem }) {
+  if (item.active_warnings.length === 0) {
+    return <span className="text-muted-foreground/50 italic">—</span>
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {item.active_warnings.map((warning, idx) => (
+        <span
+          key={`${item.article_code}-warn-${warning.code}-${idx}`}
+          title={warning.message}
+          className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${warningBadgeClass(warning.code)}`}
+        >
+          {warningBadgeLabel(warning.code)}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -446,19 +728,28 @@ function TabellaCandidates({
   sortKey,
   sortDir,
   onSort,
+  onOpenQuickConfig,
 }: {
   items: PlanningCandidateItem[]
   sortKey: SortKey
   sortDir: SortDir
   onSort: (k: SortKey) => void
+  onOpenQuickConfig: (articleCode: string) => void
 }) {
   return (
     <div className="flex-1 overflow-auto">
       <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-background">
           <tr>
-            <th className={thBase}>Codice</th>
+            <Th
+              label="Codice"
+              sortKey="article_code"
+              currentKey={sortKey}
+              dir={sortDir}
+              onSort={onSort}
+            />
             <th className={thBase}>Descrizione</th>
+            <th className={thBase}>Misura</th>
             <Th
               label="Famiglia"
               sortKey="famiglia_label"
@@ -466,8 +757,16 @@ function TabellaCandidates({
               dir={sortDir}
               onSort={onSort}
             />
-            <th className={thBase}>Mode</th>
-            <th className={thBase}>Motivo</th>
+            <th className={thBase}>Motivi</th>
+            <th className={thBase}>Warnings</th>
+            <th className={thBase}>Destinazione</th>
+            <Th
+              label="Data richiesta"
+              sortKey="requested_date"
+              currentKey={sortKey}
+              dir={sortDir}
+              onSort={onSort}
+            />
             <th className={thBase}>Ordine / Riga</th>
             <Th
               label="Domanda"
@@ -523,6 +822,8 @@ function TabellaCandidates({
             const demandVal = isByCol ? item.line_open_demand_qty : item.customer_open_demand_qty
             const supplyVal = isByCol ? item.linked_incoming_supply_qty : item.incoming_supply_qty
             const coverageVal = isByCol ? item.line_future_coverage_qty : item.future_availability_qty
+            const requestedDate = resolveRequestedDate(item)
+            const descLines = resolveDescriptionLines(item)
 
             return (
               <tr
@@ -530,28 +831,60 @@ function TabellaCandidates({
                 className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
               >
                 <td className={tdCls}>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
                     <span className="font-mono text-xs">{item.article_code}</span>
-                    {item.misura && (
-                      <span className="text-[10px] text-muted-foreground">{item.misura}</span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onOpenQuickConfig(item.article_code)}
+                      className="text-[11px] px-1.5 py-0.5 border rounded hover:bg-muted transition-colors"
+                      title="Quick config articolo"
+                    >
+                      ⚙
+                    </button>
                   </div>
                 </td>
                 <td className={tdCls}>
-                  <span className="text-foreground">{item.display_label}</span>
+                  <div className="flex flex-col gap-0.5">
+                    {descLines.map((line, idx) => (
+                      <span key={`${rowKey}-desc-${idx}`} className="text-foreground">
+                        {line}
+                      </span>
+                    ))}
+                  </div>
                 </td>
                 <td className={tdCls}>
-                  {item.famiglia_label ? (
-                    <span className="text-muted-foreground">{item.famiglia_label}</span>
+                  {item.misura ? (
+                    <span className="font-mono text-xs text-muted-foreground">{item.misura}</span>
                   ) : (
                     <span className="text-muted-foreground/50 italic">—</span>
                   )}
                 </td>
                 <td className={tdCls}>
-                  <PlanningModeBadge mode={item.planning_mode} />
+                  <FamilyBadge label={item.famiglia_label} />
                 </td>
                 <td className={tdCls}>
-                  <ReasonBadge reasonCode={item.reason_code} reasonText={item.reason_text} />
+                  <DriverBadges item={item} />
+                </td>
+                <td className={tdCls}>
+                  <WarningBadges item={item} />
+                </td>
+                <td className={tdCls}>
+                  {item.requested_destination_display ? (
+                    <span className="text-muted-foreground">{item.requested_destination_display}</span>
+                  ) : item.primary_driver === 'stock' ? (
+                    <span className="text-muted-foreground/60 italic text-xs">solo scorta</span>
+                  ) : (
+                    <span className="text-muted-foreground/50 italic">—</span>
+                  )}
+                </td>
+                <td className={tdCls}>
+                  {requestedDate ? (
+                    <span className="font-mono text-xs text-muted-foreground">{fmtDate(requestedDate)}</span>
+                  ) : item.primary_driver === 'stock' ? (
+                    <span className="text-muted-foreground/60 italic text-xs">solo scorta</span>
+                  ) : (
+                    <span className="text-muted-foreground/50 italic">—</span>
+                  )}
                 </td>
                 <td className={tdCls}>
                   {isByCol && item.order_reference != null ? (
@@ -600,6 +933,11 @@ export default function PlanningCandidatesPage() {
   const [driverFilter, setDriverFilter] = useState<DriverFilter>('tutti')
   const [soloEntroHorizon, setSoloEntroHorizon] = useState(false)
   const [horizonDays, setHorizonDays] = useState(30)
+  const [famiglieConfig, setFamiglieConfig] = useState<FamigliaItem[]>([])
+  const [quickConfigArticleCode, setQuickConfigArticleCode] = useState<string | null>(null)
+  const [quickConfigDetail, setQuickConfigDetail] = useState<ArticoloDetail | null>(null)
+  const [quickConfigLoading, setQuickConfigLoading] = useState(false)
+  const [quickConfigSaving, setQuickConfigSaving] = useState(false)
 
   // Ordinamento — default: required_qty_minimum desc (UIX_SPEC_PLANNING_CANDIDATES)
   const [sortKey, setSortKey] = useState<SortKey>('required_qty_minimum')
@@ -624,6 +962,13 @@ export default function PlanningCandidatesPage() {
   useEffect(() => {
     loadCandidates()
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    apiClient
+      .get<FamigliaItem[]>('/produzione/famiglie')
+      .then((r) => setFamiglieConfig(r.data))
+      .catch(() => {})
   }, [])
 
   // Ri-fetcha quando horizonDays cambia (debounced 600ms)
@@ -700,9 +1045,12 @@ export default function PlanningCandidatesPage() {
         // Filtro customer horizon: usa is_within_customer_horizon calcolato dal server con horizon_days
         if (driverFilter === 'scorta') return true
         if (!soloEntroHorizon) return true
+        if (i.planning_mode === 'by_customer_order_line') {
+          return isDateWithinHorizon(i.requested_delivery_date, horizonDays)
+        }
         return i.is_within_customer_horizon === true
       })
-  }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter, driverFilter, soloEntroHorizon])
+  }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter, driverFilter, soloEntroHorizon, horizonDays])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => cmpItems(a, b, sortKey, sortDir))
@@ -714,6 +1062,70 @@ export default function PlanningCandidatesPage() {
     } else {
       setSortKey(key)
       setSortDir(key === 'required_qty_minimum' ? 'desc' : 'asc')
+    }
+  }
+
+  const openQuickConfig = async (articleCode: string) => {
+    setQuickConfigArticleCode(articleCode)
+    setQuickConfigLoading(true)
+    setQuickConfigDetail(null)
+    try {
+      const { data } = await apiClient.get<ArticoloDetail>(
+        `/produzione/articoli/${encodeURIComponent(articleCode)}`,
+      )
+      setQuickConfigDetail(data)
+    } catch {
+      toast.error('Impossibile caricare il dettaglio articolo')
+      setQuickConfigArticleCode(null)
+    } finally {
+      setQuickConfigLoading(false)
+    }
+  }
+
+  const closeQuickConfig = () => {
+    setQuickConfigArticleCode(null)
+    setQuickConfigDetail(null)
+    setQuickConfigLoading(false)
+    setQuickConfigSaving(false)
+  }
+
+  const saveQuickConfig = async (payload: {
+    famigliaCode: string | null
+    gestioneScorteOverride: boolean | null
+    stockMonthsOverride: number | null
+    stockTriggerMonthsOverride: number | null
+    capacityOverrideQty: number | null
+  }) => {
+    if (!quickConfigArticleCode) return
+    setQuickConfigSaving(true)
+    try {
+      await apiClient.patch(
+        `/produzione/articoli/${encodeURIComponent(quickConfigArticleCode)}/famiglia`,
+        { famiglia_code: payload.famigliaCode },
+      )
+      await apiClient.patch<ArticoloDetail>(
+        `/produzione/articoli/${encodeURIComponent(quickConfigArticleCode)}/gestione-scorte-override`,
+        { override_gestione_scorte_attiva: payload.gestioneScorteOverride },
+      )
+      await apiClient.patch<ArticoloDetail>(
+        `/produzione/articoli/${encodeURIComponent(quickConfigArticleCode)}/stock-policy-override`,
+        {
+          override_stock_months: payload.stockMonthsOverride,
+          override_stock_trigger_months: payload.stockTriggerMonthsOverride,
+          capacity_override_qty: payload.capacityOverrideQty,
+        },
+      )
+      const { data } = await apiClient.get<ArticoloDetail>(
+        `/produzione/articoli/${encodeURIComponent(quickConfigArticleCode)}`,
+      )
+      setQuickConfigDetail(data)
+      await loadCandidates()
+      toast.success('Configurazione articolo aggiornata')
+      closeQuickConfig()
+    } catch (err: unknown) {
+      toast.error(extractError(err, 'Errore durante il salvataggio configurazione'))
+    } finally {
+      setQuickConfigSaving(false)
     }
   }
 
@@ -773,6 +1185,19 @@ export default function PlanningCandidatesPage() {
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={handleSort}
+          onOpenQuickConfig={openQuickConfig}
+        />
+      )}
+
+      {quickConfigArticleCode && (
+        <QuickConfigModal
+          articleCode={quickConfigArticleCode}
+          famiglie={famiglieConfig}
+          detail={quickConfigDetail}
+          loading={quickConfigLoading}
+          saving={quickConfigSaving}
+          onClose={closeQuickConfig}
+          onSave={saveQuickConfig}
         />
       )}
     </div>
