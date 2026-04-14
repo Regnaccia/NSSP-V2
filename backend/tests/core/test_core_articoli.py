@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from nssp_v2.shared.db import Base
 from nssp_v2.sync.articoli.models import SyncArticolo
 from nssp_v2.core.articoli.queries import get_articolo_detail, list_articoli
+from nssp_v2.core.stock_policy.config_model import CoreStockLogicConfig  # noqa: F401
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -153,6 +154,15 @@ def test_get_articolo_detail_exists(session):
 def test_get_articolo_detail_not_found(session):
     detail = get_articolo_detail(session, "NONEXISTENT")
     assert detail is None
+
+
+def test_get_articolo_detail_case_insensitive_lookup(session):
+    session.add(_articolo("16x10x80A1", desc1="Vite"))
+    session.commit()
+
+    detail = get_articolo_detail(session, "16X10X80A1")
+    assert detail is not None
+    assert detail.codice_articolo == "16x10x80A1"
 
 
 def test_get_articolo_detail_display_label_desc1_only(session):

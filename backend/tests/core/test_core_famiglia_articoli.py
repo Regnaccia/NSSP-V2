@@ -113,6 +113,21 @@ def test_set_famiglia_articolo_crea_config(session):
     assert config.famiglia_code == "materia_prima"
 
 
+def test_set_famiglia_articolo_case_insensitive_uses_sync_raw_code(session):
+    _seed_famiglie(session)
+    session.add(_articolo("art001"))
+    session.commit()
+
+    set_famiglia_articolo(session, "ART001", "materia_prima")
+    session.commit()
+
+    cfg_raw = session.get(CoreArticoloConfig, "art001")
+    cfg_upper = session.get(CoreArticoloConfig, "ART001")
+    assert cfg_raw is not None
+    assert cfg_raw.famiglia_code == "materia_prima"
+    assert cfg_upper is None
+
+
 def test_set_famiglia_articolo_aggiorna_config(session):
     _seed_famiglie(session)
     session.add(_articolo("ART001"))

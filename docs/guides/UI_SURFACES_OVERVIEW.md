@@ -220,10 +220,12 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
 ### Cosa espone
 
 - codice articolo
-- descrizione
+- descrizione unificata:
+  - `display_description`
 - famiglia
 - `planning_mode`
 - `reason`
+- `Warnings`
 - per il ramo `by_article`:
   - `customer_open_demand_qty`
   - `availability_qty`
@@ -234,11 +236,13 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
   - `required_qty_total`
   - `primary_driver`
   - `earliest_customer_delivery_date`
+  - warning articolo attivi
 - per il ramo `by_customer_order_line`:
   - `order_reference`
   - `line_reference`
   - `misura`
-  - descrizione ordine primaria
+  - descrizione ordine completa
+  - destinazione richiesta leggibile
   - `requested_delivery_date`
   - `line_open_demand_qty`
   - `linked_incoming_supply_qty`
@@ -257,6 +261,7 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
   - `Solo fabbisogno cliente`
   - `Solo scorta`
 - filtro `customer horizon`
+- quick action di configurazione articolo dalla riga planning
 
 ### Note
 
@@ -266,6 +271,8 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
 - `customer horizon` e `stock horizon` sono separati correttamente
 - i casi misti `customer + stock` compaiono una sola volta, nella scheda `customer`
 - `required_qty_minimum` segue il `primary_driver`, anche nei casi `stock-only`
+- la colonna `Warnings` consuma warning canonici dal modulo `Warnings`, filtrati per area
+- la quick action planning riusa i contract del dominio `articoli`
 - la vista puo separare operativamente i driver senza duplicare il candidate Core
 
 ## 7. Produzione - Warnings

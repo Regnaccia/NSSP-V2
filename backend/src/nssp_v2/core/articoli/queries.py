@@ -105,6 +105,40 @@ def _load_famiglie_map(session: Session) -> dict[str, ArticoloFamiglia]:
     }
 
 
+def _resolve_sync_articolo_code(session: Session, codice_articolo: str) -> str | None:
+    """Risolvi un codice articolo in modo case-insensitive verso sync_articoli.
+
+    Serve come bridge tra:
+    - codici canonical usati in altri slice (es. planning candidates)
+    - codici raw presenti in sync_articoli / PK core_articolo_config
+    """
+    raw = (codice_articolo or "").strip()
+    if not raw:
+        return None
+
+    # Fast-path: match esatto
+    exact = (
+        session.query(SyncArticolo.codice_articolo)
+        .filter(SyncArticolo.codice_articolo == raw)
+        .first()
+    )
+    if exact is not None:
+        return exact[0]
+
+    canonical = normalize_article_code(raw)
+    if canonical is None:
+        return None
+
+    # Fallback: match case-insensitive
+    row = (
+        session.query(SyncArticolo.codice_articolo)
+        .filter(func.upper(func.trim(SyncArticolo.codice_articolo)) == canonical)
+        .order_by(SyncArticolo.codice_articolo)
+        .first()
+    )
+    return row[0] if row is not None else None
+
+
 # ─── Read model: catalogo famiglie ───────────────────────────────────────────
 
 def list_famiglie(session: Session) -> list[FamigliaItem]:
@@ -134,7 +168,7 @@ def list_articoli(session: Session) -> list[ArticoloItem]:
         session.query(SyncArticolo, CoreArticoloConfig)
         .outerjoin(
             CoreArticoloConfig,
-            SyncArticolo.codice_articolo == CoreArticoloConfig.codice_articolo,
+            func.upper(SyncArticolo.codice_articolo) == func.upper(CoreArticoloConfig.codice_articolo),
         )
         .filter(SyncArticolo.attivo == True)  # noqa: E712
         .order_by(SyncArticolo.codice_articolo)
@@ -176,14 +210,17 @@ def get_articolo_detail(
     Restituisce None se l'articolo non esiste in sync_articoli.
     """
     famiglie = _load_famiglie_map(session)
+    resolved_code = _resolve_sync_articolo_code(session, codice_articolo)
+    if resolved_code is None:
+        return None
 
     row = (
         session.query(SyncArticolo, CoreArticoloConfig)
         .outerjoin(
             CoreArticoloConfig,
-            SyncArticolo.codice_articolo == CoreArticoloConfig.codice_articolo,
+            func.upper(SyncArticolo.codice_articolo) == func.upper(CoreArticoloConfig.codice_articolo),
         )
-        .filter(SyncArticolo.codice_articolo == codice_articolo)
+        .filter(SyncArticolo.codice_articolo == resolved_code)
         .first()
     )
     if row is None:
@@ -501,12 +538,13 @@ def set_famiglia_articolo(
         if not famiglia.is_active:
             raise ValueError(f"Famiglia '{famiglia_code}' non è attiva")
 
-    config = session.get(CoreArticoloConfig, codice_articolo)
+    target_code = _resolve_sync_articolo_code(session, codice_articolo) or codice_articolo
+    config = session.get(CoreArticoloConfig, target_code)
     now = datetime.now(timezone.utc)
 
     if config is None:
         config = CoreArticoloConfig(
-            codice_articolo=codice_articolo,
+            codice_articolo=target_code,
             famiglia_code=famiglia_code,
             updated_at=now,
         )
@@ -537,12 +575,13 @@ def set_articolo_policy_override(
 
     Non modifica mai sync_articoli.
     """
-    config = session.get(CoreArticoloConfig, codice_articolo)
+    target_code = _resolve_sync_articolo_code(session, codice_articolo) or codice_articolo
+    config = session.get(CoreArticoloConfig, target_code)
     now = datetime.now(timezone.utc)
 
     if config is None:
         config = CoreArticoloConfig(
-            codice_articolo=codice_articolo,
+            codice_articolo=target_code,
             updated_at=now,
         )
         session.add(config)
@@ -569,12 +608,13 @@ def set_articolo_gestione_scorte_override(
 
     Non modifica mai sync_articoli.
     """
-    config = session.get(CoreArticoloConfig, codice_articolo)
+    target_code = _resolve_sync_articolo_code(session, codice_articolo) or codice_articolo
+    config = session.get(CoreArticoloConfig, target_code)
     now = datetime.now(timezone.utc)
 
     if config is None:
         config = CoreArticoloConfig(
-            codice_articolo=codice_articolo,
+            codice_articolo=target_code,
             updated_at=now,
         )
         session.add(config)
@@ -602,12 +642,13 @@ def set_articolo_stock_policy_override(
 
     Non modifica mai sync_articoli.
     """
-    config = session.get(CoreArticoloConfig, codice_articolo)
+    target_code = _resolve_sync_articolo_code(session, codice_articolo) or codice_articolo
+    config = session.get(CoreArticoloConfig, target_code)
     now = datetime.now(timezone.utc)
 
     if config is None:
         config = CoreArticoloConfig(
-            codice_articolo=codice_articolo,
+            codice_articolo=target_code,
             updated_at=now,
         )
         session.add(config)

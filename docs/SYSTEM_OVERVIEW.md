@@ -198,6 +198,18 @@ Disponibile:
 - la tabella planning espone la data richiesta con semantica distinta:
   - `requested_delivery_date` nel ramo per-riga
   - `earliest_customer_delivery_date` nel ramo aggregato solo se esiste componente customer
+- il contratto descrittivo planning e ora unificato:
+  - `description_parts`
+  - `display_description`
+- la leggibilita UI planning e stata rifinita con:
+  - colonna `misura`
+  - badge famiglia
+  - badge motivi sintetici
+  - destinazione richiesta leggibile
+  - colonna `Warnings`
+  - quick config modal articolo
+- la vista planning consuma anche warning articolo attivi filtrati per area
+- quick edit planning -> articoli usa bridge case-insensitive tra codice canonical e codice raw
 - surface UI dedicata con:
   - ricerca `codice`
   - ricerca `descrizione`
@@ -284,6 +296,9 @@ Nota:
 - stock policy V1 come estensione del ramo `by_article`, con riuso di `future_availability_qty` e flag esplicito `gestione_scorte_attiva`
 - configurazione logiche stock V1 con `strategy_key` selezionabile per `monthly_stock_base_qty` e `capacity_from_containers_v1` fissa
 - algoritmo stock V1 riallineato con finestre multiple, percentile, filtro outlier e parametri configurabili
+- modello descrittivo planning unificato con `description_parts` + `display_description`
+- integrazione contestuale `Warnings -> Planning Candidates` senza duplicare logica warning
+- bridge case-insensitive planning -> articoli per lookup e write config
 
 ## Stato attuale
 
@@ -320,3 +335,4 @@ Task deferred:
 - `docs/decisions/ARCH/DL-ARCH-V2-029.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-030.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-031.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-032.md`

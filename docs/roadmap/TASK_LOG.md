@@ -123,9 +123,10 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-105` | Completed | Classificazione primaria `customer|stock` per evitare doppia presenza dei casi misti |
 | `TASK-V2-106` | Completed | Valorizzazione di `required_qty_minimum` nei candidate `stock-only` secondo il driver primario |
 | `TASK-V2-107` | Completed | Esposizione della data richiesta in `Planning Candidates` con semantica distinta per ramo aggregato e per-riga |
-| `TASK-V2-108` | Todo | Estensione del contratto Core planning per descrizione completa e destinazione richiesta |
-| `TASK-V2-109` | Todo | Refinement finale UI `Planning Candidates` per leggibilita, badge e colonne dedicate |
-| `TASK-V2-110` | Todo | Unificazione del modello descrittivo planning con `description_parts` e `display_description` |
-| `TASK-V2-111` | Todo | Enrichment Core/API dei warning articolo in `Planning Candidates` |
-| `TASK-V2-112` | Todo | Colonna `Warnings` nella tabella `Planning Candidates` con badge sintetici |
-| `TASK-V2-113` | Todo | Quick config modal articolo dalla vista `Planning Candidates` |
+| `TASK-V2-108` | Completed | Estensione del contratto Core planning per descrizione completa, destinazione richiesta e campi di leggibilita |
+| `TASK-V2-109` | Completed | Refinement finale UI `Planning Candidates` con misura, badge famiglia, motivi sintetici e destinazione leggibile |
+| `TASK-V2-110` | Completed | Unificazione del modello descrittivo planning con `description_parts` e `display_description` |
+| `TASK-V2-111` | Completed | Enrichment Core/API dei warning articolo in `Planning Candidates` |
+| `TASK-V2-112` | Completed | Colonna `Warnings` nella tabella `Planning Candidates` con badge sintetici |
+| `TASK-V2-113` | Completed | Quick config modal articolo dalla vista `Planning Candidates` |
+| `TASK-V2-114` | Completed | Bridge case-insensitive planning -> articoli per lookup e write config articolo |

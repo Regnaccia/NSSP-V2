@@ -131,9 +131,10 @@ Task registrati:
 - `TASK-V2-105-planning-primary-driver-classification.md` - completato
 - `TASK-V2-106-required-qty-minimum-for-stock-only-candidates.md` - completato
 - `TASK-V2-107-planning-candidates-requested-delivery-date.md` - completato
-- `TASK-V2-108-core-planning-candidates-readability-contracts.md` - todo
-- `TASK-V2-109-ui-planning-candidates-readability-refinement.md` - todo
-- `TASK-V2-110-unify-planning-candidate-description-model.md` - todo
-- `TASK-V2-111-core-planning-candidates-article-warnings-enrichment.md` - todo
-- `TASK-V2-112-ui-planning-candidates-warnings-column.md` - todo
-- `TASK-V2-113-ui-planning-candidates-article-quick-config-modal.md` - todo
+- `TASK-V2-108-core-planning-candidates-readability-contracts.md` - completato
+- `TASK-V2-109-ui-planning-candidates-readability-refinement.md` - completato
+- `TASK-V2-110-unify-planning-candidate-description-model.md` - completato
+- `TASK-V2-111-core-planning-candidates-article-warnings-enrichment.md` - completato
+- `TASK-V2-112-ui-planning-candidates-warnings-column.md` - completato
+- `TASK-V2-113-ui-planning-candidates-article-quick-config-modal.md` - completato
+- `TASK-V2-114-core-articoli-case-insensitive-code-bridge.md` - completato

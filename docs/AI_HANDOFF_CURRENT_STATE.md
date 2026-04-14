@@ -26,6 +26,7 @@ At the current stage it already supports:
 - a real operational `Planning Candidates` surface with branching by planning mode
 - a transversal `Warnings` module with first dedicated surface
 - first stock-policy governance with dedicated `admin` page and explicit stock-enabled flag
+- final planning readability slice with unified descriptions, warning visibility and quick article config
 
 It is not yet a scheduler, MRP engine, or production planner.
 
@@ -147,6 +148,11 @@ Current behavior:
 - planning logic clamps stock with `stock_effective = max(stock_calculated, 0)`
 - candidates expose explicit `reason_code` / `reason_text`
 - by-customer-order-line rows expose `misura` and primary order-line description
+- planning readability contracts are now richer:
+  - `description_parts`
+  - `display_description`
+  - full order-line description in the per-line branch
+  - requested destination display
 - by-article rows already expose stock-driven breakdown:
   - `customer_shortage_qty`
   - `stock_replenishment_qty`
@@ -157,6 +163,12 @@ Current behavior:
   - `earliest_customer_delivery_date` quando esiste componente customer
 - by-customer-order-line rows now also expose:
   - `requested_delivery_date`
+- planning candidates now also expose article warning context:
+  - `active_warning_codes`
+  - `active_warnings`
+- planning UI now includes:
+  - warnings column
+  - quick article-config entry point
 - planning now has distinct temporal semantics:
   - `is_within_customer_horizon`
   - stock-driven cap on commitments within stock horizon, separato dal filtro customer
@@ -214,11 +226,13 @@ Current shape:
   - `required_qty_total`
   - `primary_driver`
   - `earliest_customer_delivery_date`
+  - `active_warning_codes`
 - `by_customer_order_line` uses:
   - `line_open_demand_qty`
   - `linked_incoming_supply_qty`
   - `line_future_coverage_qty`
   - `requested_delivery_date`
+  - `display_description`
 - candidates exist only when the relevant coverage metric is negative
 - incoming supply excludes productions effectively completed
 - planning uses `stock_effective = max(stock_calculated, 0)` rather than raw negative stock
@@ -350,7 +364,6 @@ Rule:
 
 Not implemented yet:
 
-- warning badges in `articoli` and `Planning Candidates`
 - production proposals
 - production scheduling
 - lot sizing / multiples
@@ -362,12 +375,7 @@ Not implemented yet:
 
 Currently open in the active roadmap:
 
-- `TASK-V2-108` extend planning Core contracts for full order-line description and requested destination
-- `TASK-V2-109` final UI readability refinement for Planning Candidates
-- `TASK-V2-110` unify planning descriptive model with `description_parts` and `display_description`
-- `TASK-V2-111` enrich planning candidates with active article warnings
-- `TASK-V2-112` show warning badges in planning candidates table
-- `TASK-V2-113` add quick article-config modal from planning
+- none
 
 Deferred in the active roadmap:
 
@@ -386,19 +394,11 @@ The immediate next reasoning area is opening `Production Proposals` on top of a 
 - primary-driver classification
 - stock-only minimum quantity semantics
 - requested delivery date readability
-
-Before opening `Production Proposals`, one last UI-focused refinement is now tracked:
-
-- richer planning readability:
-  - unified descriptive model
-  - full order-line description
-  - requested destination display
-  - family badges
-  - compact reason badges
-  - dedicated measure column
-- tighter operational integration with `Warnings`:
-  - active article warnings in planning
-  - quick edit path to article configuration
+- unified descriptive model
+- full order-line description
+- requested destination display
+- active article warnings in planning
+- quick edit path to article configuration
 
 Explicitly deferred for now:
 

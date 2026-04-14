@@ -56,6 +56,16 @@ Sono oggi disponibili:
   - `reason_code` / `reason_text`
   - `misura`
   - descrizione ordine primaria nel ramo per-riga
+- refinement finale di leggibilita planning completato:
+  - modello descrittivo unificato:
+    - `description_parts`
+    - `display_description`
+  - descrizione ordine completa nel ramo `by_customer_order_line`
+  - destinazione richiesta leggibile
+  - badge famiglia
+  - badge motivi sintetici con casi misti visibili ma non duplicati
+  - colonna `Warnings` con warning articolo attivi
+  - quick config modal articolo direttamente dalla vista planning
 - modulo trasversale `Warnings` V1 con:
   - warning canonici unici
   - tipi iniziali:
@@ -68,7 +78,7 @@ Sono oggi disponibili:
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-031`
+- `ARCH/` fino a `DL-ARCH-V2-032`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -102,7 +112,7 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-107`
+- `TASK-V2-001` -> `TASK-V2-114`
 
 Ultimi task chiusi rilevanti:
 
@@ -138,15 +148,13 @@ Ultimi task chiusi rilevanti:
 - `TASK-V2-105` classificazione primaria `customer|stock` dei candidate `by_article`
 - `TASK-V2-106` `required_qty_minimum` coerente nei candidate `stock-only`
 - `TASK-V2-107` data richiesta in `Planning Candidates` con semantica distinta per riga ordine e ramo aggregato
-
-## Task aperti
-
-- `TASK-V2-108` contratto Core planning per descrizione completa e destinazione richiesta
-- `TASK-V2-109` refinement UI `Planning Candidates` per leggibilita finale
+- `TASK-V2-108` contratti Core planning per descrizione completa, destinazione richiesta e campi di leggibilita
+- `TASK-V2-109` refinement UI `Planning Candidates` per badge, misura, descrizioni e destinazioni
 - `TASK-V2-110` modello descrittivo unificato con `description_parts` e `display_description`
 - `TASK-V2-111` enrichment Core/API degli warning articolo in planning
 - `TASK-V2-112` colonna `Warnings` nella tabella planning
 - `TASK-V2-113` quick config modal articolo dalla vista planning
+- `TASK-V2-114` bridge case-insensitive planning -> articoli per lookup e write config
 
 ## Task deferred
 
@@ -160,23 +168,17 @@ Ultimi task chiusi rilevanti:
 ## Prossima sequenza consigliata
 
 I prossimi stream naturali sono:
-- chiudere il refinement finale di leggibilita/usabilita del modulo planning:
-  - `TASK-V2-110`
-  - `TASK-V2-108`
-  - `TASK-V2-109`
-- integrare il modulo `Warnings` direttamente nel planning operativo:
-  - `TASK-V2-111`
-  - `TASK-V2-112`
-  - `TASK-V2-113`
 - aprire `Production Proposals` sopra un planning ormai coerente anche su:
   - `customer horizon`
   - `stock horizon`
   - `primary_driver`
   - `required_qty_minimum` dei casi `stock-only`
   - data richiesta in tabella
+  - modello descrittivo unificato
+  - warning articolo e quick edit contestuale
 - valutare piu avanti badge warning in:
   - `articoli`
-  - `Planning Candidates`
+  - `Planning Candidates` extra rispetto alla colonna warning gia introdotta
 
 Valutazioni rinviate:
 
