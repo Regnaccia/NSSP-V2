@@ -35,6 +35,7 @@ Disponibile:
 - gestione utenti e ruoli
 - pagina admin per warning visibility
 - pagina admin dedicata alle logiche stock
+- pagina admin dedicata alle logiche proposal
 
 Nota:
 
@@ -95,6 +96,11 @@ Disponibile:
   - `override_stock_months`
   - `override_stock_trigger_months`
   - `capacity_override_qty`
+- configurazione proposal articolo:
+  - `proposal_logic_key`
+  - `proposal_logic_article_params`
+- valore effettivo proposal esposto:
+  - `effective_proposal_logic_key`
 - refresh semantico backend-controlled `refresh_articoli()` con chain interna completa
 
 ### Produzioni
@@ -245,6 +251,27 @@ Stato attuale:
 - gli utenti operativi vedono nella surface `Warnings` solo i warning inclusi nella propria area
 - `admin` mantiene vista trasversale completa
 
+### Production Proposals
+
+Disponibile:
+
+- nuovo dominio Core/API `production_proposals`
+- surface dedicata `Production Proposals`
+- granularita che segue il candidate:
+  - `by_article`
+  - `by_customer_order_line`
+- workspace temporaneo generato da selezione in `Planning Candidates`
+- storico persistente degli export con workflow:
+  - `exported`
+  - `reconciled`
+  - `cancelled`
+- logica proposal V1 minima:
+  - `proposal_required_qty_total_v1`
+- configurazione globale logiche proposal in `admin`
+- assegnazione e parametri proposal specifici per articolo
+- export CSV batch del workspace
+- riconciliazione via `ODE_REF` sui mirror produzioni
+
 ### Criticita Articoli
 
 Disponibile:
@@ -282,6 +309,7 @@ Nota:
 - `availability`
 - `planning_candidates`
 - `warnings`
+- `production_proposals`
 
 ## Pattern consolidati
 
@@ -299,6 +327,8 @@ Nota:
 - modello descrittivo planning unificato con `description_parts` + `display_description`
 - integrazione contestuale `Warnings -> Planning Candidates` senza duplicare logica warning
 - bridge case-insensitive planning -> articoli per lookup e write config
+- proposal logic config con suite globale `admin` + override articolo
+- `Production Proposals` come workspace temporaneo downstream di `Planning Candidates`, con persistenza solo all'export
 
 ## Stato attuale
 
@@ -312,10 +342,12 @@ Il perimetro quantitativo e planning V1/V2 di base e operativo:
 - stock-driven planning gia integrato nel ramo `by_article`
 - governance stock separata in `admin`
 - primi horizon planning gia introdotti
+- primo slice `Production Proposals` V1 con workspace temporaneo, export batch e reconcile
 
 Task aperti correnti:
 
-- nessuno
+- `TASK-V2-115` contratti Core/API per preview export EasyJob in `Production Proposals`
+- `TASK-V2-116` tabella UI `Production Proposals` allineata alla preview export EasyJob
 
 Task deferred:
 
@@ -336,3 +368,4 @@ Task deferred:
 - `docs/decisions/ARCH/DL-ARCH-V2-030.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-031.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-032.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-033.md`

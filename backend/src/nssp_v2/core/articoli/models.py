@@ -11,7 +11,7 @@ Ownership: Core layer — nessun dato qui viene scritto dal layer sync.
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Integer, Numeric, String
+from sqlalchemy import Boolean, DateTime, Integer, JSON, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from nssp_v2.shared.db import Base
@@ -57,6 +57,11 @@ class ArticoloFamiglia(Base):
     # True  = stock policy attiva (prerequisito: planning_mode = by_article).
     gestione_scorte_attiva: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Flag abilitazione configurazione lunghezza barra grezza articolo (TASK-V2-118, DL-ARCH-V2-035).
+    # False = il campo raw_bar_length_mm non e pertinente per gli articoli della famiglia.
+    # True  = il campo raw_bar_length_mm e configurabile per gli articoli della famiglia.
+    raw_bar_length_mm_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
 
 class CoreArticoloConfig(Base):
     """Configurazione interna per articolo.
@@ -99,3 +104,12 @@ class CoreArticoloConfig(Base):
     # Override gestione scorte attiva articolo-specifico (TASK-V2-096, DL-ARCH-V2-030).
     # Tri-state nullable: None = eredita dalla famiglia; True/False = sovrascrive.
     override_gestione_scorte_attiva: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Proposal logic articolo-specifica V1.
+    proposal_logic_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    proposal_logic_article_params_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # Lunghezza barra grezza articolo-specifica (TASK-V2-118, DL-ARCH-V2-035).
+    # Nessun default famiglia: proprieta esclusiva dell'articolo.
+    # Pertinente solo se la famiglia ha raw_bar_length_mm_enabled = True.
+    raw_bar_length_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)

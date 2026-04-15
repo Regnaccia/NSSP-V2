@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from nssp_v2.shared.db import Base
 from nssp_v2.core.availability.models import CoreAvailability
-from nssp_v2.core.warnings import is_invalid_stock_capacity, is_negative_stock, list_warnings_v1
+from nssp_v2.core.warnings import is_invalid_stock_capacity, is_missing_raw_bar_length, is_negative_stock, list_warnings_v1
 
 # Importati per registrare tutti i modelli in Base.metadata prima di create_all
 from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig  # noqa: F401
@@ -473,3 +473,197 @@ def test_entrambi_i_tipi_warning_coesistono(session):
     types = {w.type for w in all_warnings}
     assert "NEGATIVE_STOCK" in types
     assert "INVALID_STOCK_CAPACITY" in types
+
+
+# ─── Logica pura: is_missing_raw_bar_length (TASK-V2-122) ────────────────────
+
+def test_is_missing_raw_bar_length_none():
+    assert is_missing_raw_bar_length(None) is True
+
+
+def test_is_missing_raw_bar_length_zero():
+    assert is_missing_raw_bar_length(Decimal("0")) is True
+
+
+def test_is_missing_raw_bar_length_negativo():
+    assert is_missing_raw_bar_length(Decimal("-1")) is True
+
+
+def test_is_missing_raw_bar_length_valido():
+    assert is_missing_raw_bar_length(Decimal("3000")) is False
+
+
+def test_is_missing_raw_bar_length_piccolo_positivo():
+    assert is_missing_raw_bar_length(Decimal("0.001")) is False
+
+
+# ─── Helpers per MISSING_RAW_BAR_LENGTH integration tests ─────────────────────
+
+def _famiglia_bar(session, code="BARRE", raw_bar_length_mm_enabled=True):
+    session.add(ArticoloFamiglia(
+        code=code,
+        label=code.capitalize(),
+        is_active=True,
+        considera_in_produzione=True,
+        aggrega_codice_in_produzione=True,
+        gestione_scorte_attiva=False,
+        raw_bar_length_mm_enabled=raw_bar_length_mm_enabled,
+    ))
+    session.flush()
+
+
+def _art_bar(session, codice="ART001"):
+    session.add(SyncArticolo(
+        codice_articolo=codice,
+        attivo=True,
+        synced_at=_NOW,
+    ))
+    session.flush()
+
+
+def _config_bar(session, codice="ART001", famiglia_code="BARRE", raw_bar_length_mm=None):
+    session.add(CoreArticoloConfig(
+        codice_articolo=codice,
+        famiglia_code=famiglia_code,
+        raw_bar_length_mm=raw_bar_length_mm,
+        updated_at=_NOW,
+    ))
+    session.flush()
+
+
+# ─── Query: MISSING_RAW_BAR_LENGTH generato ──────────────────────────────────
+
+def test_missing_bar_genera_warning_quando_valore_assente(session):
+    """Famiglia con raw_bar_length_mm_enabled=True, articolo senza raw_bar_length_mm → warning."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert len(warnings) == 1
+    w = warnings[0]
+    assert w.article_code == "ART001"
+    assert w.warning_id == "MISSING_RAW_BAR_LENGTH:ART001"
+    assert w.entity_type == "article"
+    assert w.entity_key == "ART001"
+    assert w.source_module == "warnings"
+    assert w.severity == "warning"
+    assert w.famiglia_code == "BARRE"
+    assert w.raw_bar_length_mm_enabled is True
+    assert w.raw_bar_length_mm is None
+
+
+def test_missing_bar_genera_warning_quando_valore_zero(session):
+    """raw_bar_length_mm = 0 e non valido → warning."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _config_bar(session, "ART001", raw_bar_length_mm=Decimal("0"))
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert len(warnings) == 1
+    assert warnings[0].raw_bar_length_mm == Decimal("0")
+
+
+def test_missing_bar_nessun_warning_quando_valore_valido(session):
+    """Articolo con raw_bar_length_mm > 0 → nessun warning."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _config_bar(session, "ART001", raw_bar_length_mm=Decimal("3000"))
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert warnings == []
+
+
+def test_missing_bar_nessun_warning_quando_flag_disabilitato(session):
+    """Famiglia con raw_bar_length_mm_enabled=False → nessun warning anche senza valore."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=False)
+    _art_bar(session, "ART001")
+    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert warnings == []
+
+
+def test_missing_bar_audience_corretta(session):
+    """visible_to_areas default include produzione e admin."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert len(warnings) == 1
+    areas = warnings[0].visible_to_areas
+    assert "produzione" in areas
+    assert "admin" in areas
+
+
+def test_missing_bar_piu_articoli(session):
+    """Piu articoli nella stessa famiglia con flag abilitato → un warning per articolo."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _art_bar(session, "ART002")
+    _art_bar(session, "ART003")
+    _config_bar(session, "ART001", raw_bar_length_mm=None)       # → warning
+    _config_bar(session, "ART002", raw_bar_length_mm=Decimal("3000"))  # → nessun warning
+    _config_bar(session, "ART003", raw_bar_length_mm=Decimal("0"))     # → warning
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert len(warnings) == 2
+    codes = {w.article_code for w in warnings}
+    assert codes == {"ART001", "ART003"}
+
+
+def test_missing_bar_warning_id_unici(session):
+    """warning_id distinto per ogni articolo."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _art_bar(session, "ART002")
+    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    _config_bar(session, "ART002", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    ids = {w.warning_id for w in warnings}
+    assert ids == {"MISSING_RAW_BAR_LENGTH:ART001", "MISSING_RAW_BAR_LENGTH:ART002"}
+
+
+def test_missing_bar_non_popola_campi_stock(session):
+    """MISSING_RAW_BAR_LENGTH non popola stock_calculated/anomaly_qty/capacity_*."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_bar(session, "ART001")
+    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert len(warnings) == 1
+    w = warnings[0]
+    assert w.stock_calculated is None
+    assert w.anomaly_qty is None
+    assert w.capacity_effective_qty is None
+
+
+def test_tutti_i_tipi_warning_coesistono(session):
+    """NEGATIVE_STOCK, INVALID_STOCK_CAPACITY e MISSING_RAW_BAR_LENGTH coesistono."""
+    _config_stock(session)
+    _famiglia_w(session, code="FAM1", aggrega=True)
+    _famiglia_bar(session, code="BARRE", raw_bar_length_mm_enabled=True)
+    # ART001: stock negativo → NEGATIVE_STOCK; by_article senza capacity → INVALID_STOCK_CAPACITY
+    _art_w(session, codice="ART001", contenitori=None)
+    _config_art_w(session, codice="ART001", famiglia_code="FAM1")
+    _avail(session, "ART001", Decimal("-5"))
+    # ART002: barra mancante → MISSING_RAW_BAR_LENGTH
+    _art_bar(session, "ART002")
+    _config_bar(session, "ART002", famiglia_code="BARRE", raw_bar_length_mm=None)
+    session.commit()
+
+    all_warnings = list_warnings_v1(session)
+    types = {w.type for w in all_warnings}
+    assert "NEGATIVE_STOCK" in types
+    assert "INVALID_STOCK_CAPACITY" in types
+    assert "MISSING_RAW_BAR_LENGTH" in types

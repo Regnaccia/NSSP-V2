@@ -29,6 +29,7 @@ const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
   admin: [
     { path: '/admin/utenti', label: 'Utenti' },
     { path: '/admin/stock-logic', label: 'Logiche stock' },
+    { path: '/admin/proposal-logic', label: 'Logiche proposal' },
     { path: '/admin/warnings', label: 'Warning Config' },
   ],
   logistica: [
@@ -40,6 +41,7 @@ const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
     { path: '/produzione/produzioni', label: 'Produzioni' },
     { path: '/produzione/criticita', label: 'Criticità (legacy)' },
     { path: '/produzione/planning-candidates', label: 'Planning' },
+    { path: '/produzione/proposals', label: 'Proposals' },
     { path: '/produzione/warnings', label: 'Avvertimenti' },
   ],
 }

@@ -2,326 +2,466 @@
 
 ## 1. Contesto
 
-Il sistema dispone gia di:
+Il sistema dispone oggi di:
 
-- mirror Easy read-only
-- fact canonici:
-  - `inventory`
-  - `commitments`
-  - `customer_set_aside`
-  - `availability`
-- Core `produzioni`
-- Core e UI `Planning Candidates`
-- planning policy a livello famiglia e articolo
+- fact canonici ODE
+- `Planning Candidates` come inbox live del bisogno
+- `Warnings` come contesto anomalia separato
+- stock policy V1 sul ramo `by_article`
+- sync produzioni Easy e riconciliazione via note
 
-`Planning Candidates` identifica oggi il bisogno produttivo.
-
-Manca ancora il livello successivo:
-
-- trasformare il bisogno in una proposta operativa persistente
-- gestire override, validazione, export e riconciliazione
-
-## 2. Obiettivo del modulo
-
-Il modulo `Production Proposals` ha lo scopo di:
-
-- determinare cosa produrre
-- proporre quantita operative realistiche
-- supportare validazione ed export verso Easy
-- mantenere separate le anomalie dati dalla decisione produttiva
-
-## 3. Posizionamento architetturale
-
-Pipeline target:
+Il punto corretto del flusso e:
 
 ```text
 Easy facts
 -> ODE canonical facts
 -> ODE Planning Candidates
--> ODE Production Proposals
--> ODE validation / export
+-> selezione operatore in Planning Candidates
+-> ODE Proposal Workspace temporaneo
+-> export XLSX
+-> ODE Exported Proposal History
 -> Easy execution
--> ODE sync produzioni attive
+-> ODE sync produzioni
+-> ODE reconcile via ODE_REF
 ```
 
-Regola chiave:
+## 2. Obiettivo del modulo
 
-- `Planning Candidates` rileva il bisogno
-- `Production Proposals` prende in carico il bisogno e lo trasforma in decisione operativa persistente
+`Production Proposals` non e piu una seconda inbox persistente del need.
 
-## 4. Scope V1
+La V1 deve:
 
-### Il modulo FA
+- partire da candidate selezionati esplicitamente in `Planning Candidates`
+- congelare uno snapshot temporaneo dei candidate selezionati
+- permettere override quantitativi prima dell'export
+- esportare le righe del workspace come file `xlsx` compatibile con EasyJob
+- persistere solo lo storico esportato
+- riconciliare lo storico esportato via `ODE_REF`
 
-- crea una proposal persistente a partire da un bisogno gia identificato
-- mantiene separati:
-  - facts di partenza
-  - proposta calcolata
-  - override operatore
-  - stato workflow
-- consente validazione operativa prima dell'export
-- prepara la correlazione robusta con Easy
+## 3. Confine tra Planning e Proposals
 
-### Il modulo NON FA ancora
+### Planning Candidates
 
-- non fa scheduling
-- non assegna macchine o risorse
-- non calcola tempi reali di produzione
-- non usa ancora scoring come parte del primo slice
-- non introduce ancora archivio disegni o logiche predittive
+Resta:
 
-## 5. Entita centrale
+- inbox live del bisogno
+- superficie di triage
+- punto di selezione dei candidate
 
-### Production Proposal
+Aggiunge:
 
-`Production Proposal` e l'oggetto operativo principale.
+- selezione multipla
+- azione `Genera proposte`
 
-Rappresenta:
+Non introduce:
 
-- fabbisogno derivato dai dati reali
-- proposta quantitativa generata dalle logiche di business
-- stato decisionale e operativo
+- stato persistente di presa in carico
+- proposal persistenti pre-export
 
-Non e una semplice vista.
-E una projection operativa con lifecycle proprio.
+### Production Proposals
 
-## 6. Dati base della proposal
+Diventa:
 
-### Facts di riferimento
+- `workspace` temporaneo quando aperto da planning
+- storico persistente degli export quando aperto senza `workspace_id`
 
+## 4. Workspace temporaneo
+
+Nuova entita applicativa:
+
+- `ProposalWorkspace`
+
+Campi minimi:
+
+- `workspace_id`
+- `status`:
+  - `open`
+  - `exported`
+  - `abandoned`
+- `created_at`
+- `expires_at`
+- `updated_at`
+
+Il workspace contiene righe congelate derivate dai candidate selezionati.
+
+## 5. Riga di workspace
+
+Ogni riga mantiene almeno:
+
+- `source_candidate_id`
+- `planning_mode`
 - `article_code`
-- `stock_calculated`
-- `required_qty`
-- `commitments`
-
-### Dati derivati operativi
-
-- `stock_effective = max(stock_calculated, 0)`
-- `proposal_expansion_ratio = proposed_qty / required_qty`
-
-Regola:
-
-- `stock_calculated` resta sempre visibile per audit e debug
-- `stock_effective` e il valore usato dalle logiche operative
-
-## 7. Proposal decisionale
-
-Campi attesi:
-
-- `proposed_qty`
-- `lot_applied`
-- `multiple_applied`
+- `primary_driver`
+- `required_qty_minimum`
+- `required_qty_total`
+- `customer_shortage_qty`
 - `stock_replenishment_qty`
-- `policy_snapshot`
-
-V1:
-
-- la proposal parte dal `required_qty` gia emerso a monte
-- applica solo la logica decisionale della proposta
-- non ridefinisce da zero il bisogno
-
-## 8. Override
-
-Campi:
-
+- `display_description`
+- `requested_delivery_date`
+- `requested_destination_display`
+- `active_warning_codes`
+- `proposal_logic_key`
+- `proposal_logic_params_snapshot`
+- `proposed_qty`
 - `override_qty`
 - `override_reason`
-- `override_by`
-- `override_at`
+- `final_qty`
 
-Regola:
+Regola quantitativa:
 
 ```text
+base_qty = required_qty_total
 final_qty = override_qty se presente, altrimenti proposed_qty
 ```
 
-## 9. Workflow minimo
+Compatibilita:
 
-Stati previsti:
+- se un candidate legacy non valorizza `required_qty_total`, e ammesso fallback tecnico a `required_qty_minimum`
 
-- `draft`
-- `validated`
-- `exported`
-- `reconciled`
+## 6. Freeze dei candidate
 
-## 10. UX V1
+Quando l'utente clicca `Genera proposte`:
 
-### Lista principale
-
-Una singola lista operativa che mostra:
-
-- articolo
-- qty richiesta
-- qty proposta
-- indicatori sintetici
-- eventuali warning
-
-### Azioni principali
-
-- apertura dettaglio
-- override tramite modal
-- validazione per export
-
-## 11. Gestione giacenza negativa
-
-### Problema
-
-```text
-stock_calculated < 0
-```
-
-### Regola V1
-
-- `stock_effective = max(stock_calculated, 0)`
-
-Usato per:
-
-- logiche di produzione
-- disponibilita operativa
-
-### Conservazione del dato originario
-
-- `stock_calculated` viene sempre mantenuto
-
-Uso:
-
-- audit
-- debug
-- analisi anomalie
-
-### Principio
-
-Le giacenze negative non generano automaticamente produzione.
-
-Le anomalie vivono in un modulo separato:
-
-- `Warnings`
-
-## 12. Warnings
-
-`Warnings` e un modulo separato da `Production Proposals`.
-
-### Primo tipo V1
-
-- `NEGATIVE_STOCK`
-
-### Dati warning
-
-- `article_code`
-- `stock_calculated`
-- `anomaly_qty`
-- `type`
-- `severity`
-- `created_at`
-
-### Nota
-
-Le proposals possono mostrare:
-
-- badge warning
-- link alla schermata anomalie
-
-Ma il lifecycle del warning resta separato dalla proposal.
-
-## 13. Origine del need
-
-Driver principale V1:
-
-- domanda reale gia identificata in `Planning Candidates`
-
-Driver futuri:
-
-- candidate stock-driven
-- policy piu ricche
-
-Anomalie:
-
-- non sempre generano produzione
-- vanno trattate separatamente
-
-## 14. Integrazione con Easy
-
-### Problema
-
-Easy assegna ID non controllati.
-
-### Soluzione
-
-Introduzione di una correlation key:
-
-```text
-[ODE_REF=PP000123]
-```
-
-### Posizionamento
-
-Inserita nel campo note di Easy.
-
-### Flusso di riconciliazione
-
-```text
-ODE export
--> Easy crea produzione
--> ODE sync produzioni
--> match tramite ODE_REF
-```
-
-### Mapping atteso
-
-- `proposal_id <-> easy_production_id`
-
-### Scelte escluse
-
-- lettura "ultima riga Easy"
-- flag booleani generici
-- matching su articolo e quantita
-
-## 15. Scoring
-
-Lo scoring appartiene al modulo `Production Proposal`, ma non entra nel primo slice attuativo.
-
-Posizionamento futuro:
-
-- post-logica proposal
-- pre-validazione o come supporto alla lista
-
-Output futuri attesi:
-
-- `need_score`
-- `operational_cost_score`
-- `business_value_score`
-- `final_priority_score`
-
-## 16. Principio architetturale
-
-- ODE = sistema decisionale
-- Easy = sistema esecutivo
+- il backend riceve `source_candidate_id[]`
+- rilegge i candidate correnti
+- congela solo quelli ancora presenti
+- scarta quelli mancanti e li riporta nel risultato
 
 Conseguenze:
 
-- logica complessa in ODE
-- Easy riceve solo l'output minimo necessario
-- la robustezza del modulo non dipende dai limiti del gestionale
+- il workspace e stabile
+- refresh successivi di planning non modificano il workspace
+- planning resta la sola vista live del bisogno
 
-## 17. Relazione con moduli esistenti
+## 7. Logiche proposal
 
-### Upstream
+La V1 mantiene il pattern gia usato altrove:
 
-- `Planning Candidates`
-  - detection del bisogno
-  - input della proposal
+- suite globale configurabile in `admin`
+- assegnazione logica e parametri specifici a livello articolo
+- nessun default famiglia in V1
 
-### Parallelo
+Campi articolo:
 
-- `Warnings`
-  - gestione separata delle anomalie
+- `proposal_logic_key`
+- `proposal_logic_article_params`
 
-### Downstream
+Prima logica V1:
 
-- export Easy
-- sync produzioni attive
-- riconciliazione proposal <-> produzione Easy
+- `proposal_target_pieces_v1`
 
-## 18. Principio guida finale
+Semantica della prima logica:
 
-> `Production Proposals` prende in carico un bisogno gia identificato, lo trasforma in una decisione operativa persistente e validabile, mantenendo separate le anomalie dati dalla logica produttiva.
+- propone esattamente i pezzi mancanti al target
+- `proposed_qty = required_qty_total`
+- `note_fragment = null`
+
+Ruolo della prima logica:
+
+- baseline minima della V1
+- fallback semplice e sempre valido anche in scenari futuri piu ricchi
+
+Seconda logica V1:
+
+- `proposal_full_bar_v1`
+
+Semantica della seconda logica:
+
+- lavora a barre intere di materiale
+- usa la configurazione articolo `raw_bar_length_mm`
+- usa i dati materiale:
+  - `quantita_materiale_grezzo_occorrente`
+  - `quantita_materiale_grezzo_scarto`
+- produce un `note_fragment` sintetico:
+  - `BAR xN`
+
+Configurazione collegata:
+
+- famiglia:
+  - `raw_bar_length_mm_enabled`
+  - abilita la configurabilita del campo barra, non la scelta della logica
+- articolo:
+  - `raw_bar_length_mm`
+  - `proposal_logic_key`
+
+Formula canonica:
+
+```text
+usable_mm_per_piece = quantita_materiale_grezzo_occorrente + quantita_materiale_grezzo_scarto
+pieces_per_bar = floor(raw_bar_length_mm / usable_mm_per_piece)
+bars_required = ceil(required_qty_total / pieces_per_bar)
+proposed_qty = bars_required * pieces_per_bar
+note_fragment = "BAR x{bars_required}"
+```
+
+Check capienza:
+
+```text
+availability_qty + proposed_qty <= capacity_effective_qty
+```
+
+Fallback obbligatorio a `proposal_target_pieces_v1` se:
+
+- `raw_bar_length_mm` manca
+- `usable_mm_per_piece <= 0`
+- `pieces_per_bar <= 0`
+- la proposta a barre sfora `capacity_effective_qty`
+- la proposta a barre porterebbe a sotto-coprire `customer_shortage_qty`
+
+Regola esplicita:
+
+- `proposal_full_bar_v1` non deve mai proporre meno di `customer_shortage_qty`
+- in V1 non e ammesso overflow di capienza
+- in V1 non si blocca la proposta per config barra mancante: si fa fallback a pezzi
+
+## 8. Chiusura senza export
+
+Regola operativa:
+
+- se il workspace viene chiuso senza export, viene `abandoned`
+- non resta alcuna proposal persistente pre-export
+- i candidate continuano a vivere normalmente in planning
+
+Il sistema puo anche abbandonare automaticamente workspace scaduti.
+
+## 9. Persistenza al boundary di export
+
+La persistenza di lungo periodo inizia all'export.
+
+Entita persistenti V1:
+
+- `ProductionProposalExportBatch`
+- snapshot esportati in `core_production_proposals`
+
+Ogni snapshot esportato conserva:
+
+- i campi principali del workspace row
+- `ode_ref`
+- `export_batch_id`
+- stato reconcile
+
+## 10. Workflow V1
+
+### Workflow workspace
+
+- `open`
+- `exported`
+- `abandoned`
+
+### Workflow storico esportato
+
+- `exported`
+- `reconciled`
+- `cancelled` solo per eventuale gestione futura di audit, non per drift dal planning
+
+Sono esplicitamente rimossi:
+
+- `draft` persistente
+- `validated` persistente
+- auto-cancel dovuto alla scomparsa del candidate
+- auto-refresh proposal da planning
+
+## 11. Export V1
+
+Il formato V1 canonico di export non e CSV.
+
+Il formato reale target e:
+
+- file `xlsx`
+- un singolo sheet
+- una riga per ogni workspace row
+
+### 11.1 Colonne XLSX EasyJob
+
+Le colonne V1 sono:
+
+- `cliente`
+- `codice`
+- `descrizione`
+- `immagine`
+- `misura`
+- `quantità`
+- `materiale`
+- `mm_materiale`
+- `ordine`
+- `note`
+- `user`
+
+### 11.2 Mapping colonna per colonna
+
+- `cliente`
+  - se il candidate contiene componente `customer`: `requested_destination_display`
+  - altrimenti: `MAGAZZINO`
+- `codice`
+  - `article_code`
+- `descrizione`
+  - serializzazione di `description_parts` come literal Python-list:
+    - `['riga_1', 'riga_2', ..., 'riga_n']`
+- `immagine`
+  - `codice_immagine`
+- `misura`
+  - `misura_articolo`
+- `quantità`
+  - `final_qty`
+- `materiale`
+  - `materiale_grezzo_codice`
+- `mm_materiale`
+  - `quantita_materiale_grezzo_occorrente`
+- `ordine`
+  - `order_reference/line_reference`
+  - se `line_reference` manca nel ramo customer: errore bloccante di export
+  - se il candidate e `stock-only`: vuoto
+- `note`
+  - `nota_business + ODE_REF`
+- `user`
+  - username operatore export
+  - opzionale
+
+### 11.3 Regola `note`
+
+La nota e deterministica.
+
+Se il candidate contiene componente `customer`:
+
+- prefisso da data consegna:
+  - `CONS: dd/mm/yyyy`
+- poi eventuale output testuale della logica di produzione
+- chiusura con `ODE_REF`
+
+Se il candidate e `stock-only`:
+
+- nessun prefisso consegna
+- eventuale output testuale della logica di produzione
+- chiusura con `ODE_REF`
+
+Per `proposal_full_bar_v1`:
+
+- l'output testuale della logica e:
+  - `BAR xN`
+
+### 11.4 Vincoli di validazione export
+
+Il writer `xlsx` deve bloccare l'export se:
+
+- il candidate contiene componente `customer`
+- `order_reference` o `line_reference` non consentono di costruire `ordine`
+
+La validazione e bloccante sull'intero batch.
+
+### 11.5 Persistenza ed export
+
+`ODE_REF` viene assegnato al momento dell'export.
+
+Dopo export:
+
+- il workspace passa a `exported`
+- gli snapshot esportati entrano nello storico persistente
+
+## 12. Reconcile V1
+
+Il reconcile V1 opera solo sullo storico esportato:
+
+```text
+ODE export XLSX
+-> Easy crea produzione
+-> ODE sync produzioni
+-> match via ODE_REF
+```
+
+## 13. Warnings
+
+`Warnings` resta separato.
+
+Il workspace e lo storico esportato possono mostrare:
+
+- `active_warning_codes`
+- badge sintetici
+
+Warning rilevante introdotto dal dominio `full bar`:
+
+- `MISSING_RAW_BAR_LENGTH`
+  - famiglia richiede `raw_bar_length_mm`
+  - articolo non configurato correttamente
+
+Ma:
+
+- non ricalcolano warning
+- non ne possiedono il lifecycle
+- non introducono blocchi automatici in V1
+
+## 14. Surface V1
+
+### Planning Candidates
+
+Azioni nuove:
+
+- selezione righe
+- `Genera proposte`
+
+### Production Proposals
+
+Modalita:
+
+- `workspace mode` se aperta con `workspace_id`
+- `history mode` altrimenti
+
+Workspace mode espone:
+
+- righe congelate con preview quasi 1:1 del tracciato export EasyJob
+- override qty / reason
+- `Esporta`
+- `Chiudi senza esportare`
+
+History mode espone:
+
+- storico esportato
+- warning sintetici
+- `ode_ref`
+- stato di reconcile
+
+### 14.1 Preview export nella tabella proposals
+
+Prima dell'introduzione del writer `xlsx`, la surface `Production Proposals` deve gia rendere visibile il tracciato di export.
+
+La tabella workspace-oriented deve quindi esporre come colonne principali:
+
+- `cliente`
+- `codice`
+- `descrizione`
+- `immagine`
+- `misura`
+- `quantità`
+- `materiale`
+- `mm_materiale`
+- `ordine`
+- `note`
+- `user`
+- `warnings`
+
+Campi non strettamente necessari alla preview export possono essere rimossi dalla tabella principale o relegati a dettaglio secondario, ad esempio:
+
+- `planning_mode`
+- `primary_driver`
+- `required_qty_minimum`
+- breakdown quantitativi interni del planning
+
+### 14.2 Regola di rendering UI per `descrizione`
+
+La semantica dati resta:
+
+- serializzazione literal Python-list nel file export
+
+La regola di rendering UI invece e diversa:
+
+- la tabella proposal non mostra la repr della lista
+- la `descrizione` viene renderizzata come campo multilinea
+- ogni elemento di `description_parts` occupa una riga visiva distinta
+
+Questa distinzione e intenzionale:
+
+- storage/export: formato compatibile col template EasyJob
+- UI: formato leggibile dall'operatore
+
+## 15. Principio guida finale
+
+> `Planning Candidates` resta la sola inbox live del bisogno. `Production Proposals` diventa un workspace temporaneo generato da selezione umana, e solo l'export produce lo storico persistente e riconciliabile via `ODE_REF`.

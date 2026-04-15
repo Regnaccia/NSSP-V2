@@ -86,6 +86,7 @@ class PlanningCandidateItem(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # ─── Comuni ───────────────────────────────────────────────────────────────
+    source_candidate_id: str
     article_code: str
     display_label: str
     famiglia_code: str | None

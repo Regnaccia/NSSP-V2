@@ -809,6 +809,7 @@ def _list_by_article_candidates(
         )
 
         candidates.append((req, PlanningCandidateItem(
+            source_candidate_id=f"by_article::{avail.article_code}",
             article_code=avail.article_code,
             display_label=art.display_label,
             description_parts=art.description_parts,
@@ -931,6 +932,7 @@ def _list_by_customer_order_line_candidates(
         )
 
         candidates.append((req, PlanningCandidateItem(
+            source_candidate_id=f"by_customer_order_line::{canonical}::{riga.order_reference or ''}::{riga.line_reference}",
             article_code=canonical,
             display_label=display,
             description_parts=description_parts,

@@ -52,6 +52,9 @@ Documenti architetturali attivi:
 - `ARCH/DL-ARCH-V2-030.md`
 - `ARCH/DL-ARCH-V2-031.md`
 - `ARCH/DL-ARCH-V2-032.md`
+- `ARCH/DL-ARCH-V2-033.md`
+- `ARCH/DL-ARCH-V2-034.md`
+- `ARCH/DL-ARCH-V2-035.md`
 
 Documenti UIX attivi:
 

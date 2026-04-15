@@ -29,6 +29,7 @@ Gestione accessi e configurazioni interne trasversali.
 - `user_roles`
 - configurazione warning visibility
 - configurazione logiche stock
+- configurazione logiche proposal
 
 ### Cosa espone
 
@@ -37,6 +38,7 @@ Gestione accessi e configurazioni interne trasversali.
 - ruoli assegnati
 - pagina admin per configurare la visibilita warning
 - pagina admin dedicata alle logiche stock
+- pagina admin dedicata alle logiche proposal
 
 ### Azioni principali
 
@@ -45,6 +47,7 @@ Gestione accessi e configurazioni interne trasversali.
 - assegnare o rimuovere ruoli
 - configurare la visibilita warning
 - configurare strategy e parametri stock
+- configurare default logic e parametri globali proposal
 
 ### Note
 
@@ -130,12 +133,18 @@ Consultazione anagrafica articoli, configurazione minima di dominio e validazion
   - `override_stock_months`
   - `override_stock_trigger_months`
   - `capacity_override_qty`
+- configurazione proposal articolo:
+  - `proposal_logic_key`
+  - `proposal_logic_article_params`
+- valore effettivo proposal:
+  - `effective_proposal_logic_key`
 
 ### Azioni principali
 
 - selezione articolo
 - modifica `famiglia articolo`
 - modifica override planning policy
+- modifica config proposal articolo
 - refresh on demand articoli
 
 ### Note
@@ -346,7 +355,56 @@ Vista legacy degli articoli critici, basata su `availability_qty < 0`.
 - resta disponibile ma non e piu la surface primaria
 - la deprecazione formale e gia stata completata con `TASK-V2-080`
 
-## 9. Relazione tra schermate e fact canonici
+## 9. Produzione - Production Proposals
+
+### Funzione
+
+Vista proposal in due modalita:
+
+- `workspace` temporaneo aperto da `Planning Candidates`
+- storico persistente degli export
+
+### Entita logiche usate
+
+- `production_proposals`
+- `planning_candidates`
+- `warnings`
+- configurazione logiche proposal
+
+### Cosa espone
+
+- in `workspace mode`:
+  - candidate congelati
+  - `required_qty_total`
+  - `proposed_qty`
+  - `final_qty`
+  - warning sintetici
+  - data / destinazione
+- in `history mode`:
+  - snapshot esportati
+  - `ode_ref`
+  - stato reconcile
+
+### Azioni principali
+
+- da planning si entra con `Genera proposte`
+- in `workspace mode`:
+  - override qty / reason
+  - `Esporta`
+  - `Chiudi senza esportare`
+- in `history mode`:
+  - filtro per stato esportato / riconciliato
+  - reconcile via `ODE_REF`
+
+### Note
+
+- il planning resta l'unica inbox live del bisogno
+- non esistono piu proposal persistenti `draft`
+- la persistenza inizia all'export
+- l'export V1 e solo CSV
+- la surface non ricalcola warning o planning: consuma i contratti Core
+
+## 10. Relazione tra schermate e fact canonici
 
 ### Inventory
 
@@ -386,7 +444,13 @@ Usato oggi in:
 
 - vista `Warnings`
 
-## 10. Prossimi step UI naturali
+### Production Proposals
+
+Usato oggi in:
+
+- vista `Production Proposals`
+
+## 11. Prossimi step UI naturali
 
 - valutare piu avanti badge warning in:
   - `articoli`

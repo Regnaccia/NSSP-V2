@@ -265,6 +265,9 @@ function ColonnaDettaglio({
   onPolicyOverrideChange,
   onStockPolicyOverrideChange,
   onGestioneScorteOverrideChange,
+  proposalKnownLogics,
+  onProposalLogicConfigChange,
+  onRawBarLengthMmChange,
 }: {
   articoloSelezionato: string | null
   detail: ArticoloDetail | null
@@ -274,16 +277,24 @@ function ColonnaDettaglio({
   onPolicyOverrideChange: (codice: string, considera: boolean | null, aggrega: boolean | null) => Promise<ArticoloDetail>
   onStockPolicyOverrideChange: (codice: string, stockMonths: number | null, stockTriggerMonths: number | null, capacityOverride: number | null) => Promise<ArticoloDetail>
   onGestioneScorteOverrideChange: (codice: string, value: boolean | null) => Promise<ArticoloDetail>
+  proposalKnownLogics: string[]
+  onProposalLogicConfigChange: (codice: string, proposalLogicKey: string | null, proposalLogicArticleParams: Record<string, unknown>) => Promise<ArticoloDetail>
+  onRawBarLengthMmChange: (codice: string, value: number | null) => Promise<ArticoloDetail>
 }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [policySaveStatus, setPolicySaveStatus] = useState<SaveStatus>('idle')
   const [stockSaveStatus, setStockSaveStatus] = useState<SaveStatus>('idle')
   const [gestiSaveStatus, setGestiSaveStatus] = useState<SaveStatus>('idle')
+  const [proposalSaveStatus, setProposalSaveStatus] = useState<SaveStatus>('idle')
+  const [rawBarSaveStatus, setRawBarSaveStatus] = useState<SaveStatus>('idle')
 
   // Stato locale per gli override stock (stringa per i number input)
   const [stockMonthsInput, setStockMonthsInput] = useState<string>('')
   const [stockTriggerInput, setStockTriggerInput] = useState<string>('')
   const [capacityOverrideInput, setCapacityOverrideInput] = useState<string>('')
+  const [proposalLogicKeyInput, setProposalLogicKeyInput] = useState<string>('')
+  const [proposalLogicParamsInput, setProposalLogicParamsInput] = useState<string>('{}')
+  const [rawBarLengthInput, setRawBarLengthInput] = useState<string>('')
 
   // Resetta il feedback quando cambia articolo
   useEffect(() => {
@@ -291,9 +302,14 @@ function ColonnaDettaglio({
     setPolicySaveStatus('idle')
     setStockSaveStatus('idle')
     setGestiSaveStatus('idle')
+    setProposalSaveStatus('idle')
+    setRawBarSaveStatus('idle')
     setStockMonthsInput(detail?.override_stock_months ?? '')
     setStockTriggerInput(detail?.override_stock_trigger_months ?? '')
     setCapacityOverrideInput(detail?.capacity_override_qty ?? '')
+    setProposalLogicKeyInput(detail?.proposal_logic_key ?? '')
+    setProposalLogicParamsInput(JSON.stringify(detail?.proposal_logic_article_params ?? {}, null, 2))
+    setRawBarLengthInput(detail?.raw_bar_length_mm ?? '')
   }, [detail?.codice_articolo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFamigliaSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -363,6 +379,54 @@ function ColonnaDettaglio({
     } catch {
       setStockSaveStatus('error')
       setTimeout(() => setStockSaveStatus('idle'), 3500)
+    }
+  }
+
+  const handleProposalLogicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!detail) return
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(proposalLogicParamsInput || '{}') as Record<string, unknown>
+    } catch {
+      setProposalSaveStatus('error')
+      setTimeout(() => setProposalSaveStatus('idle'), 3500)
+      return
+    }
+    setProposalSaveStatus('saving')
+    try {
+      await onProposalLogicConfigChange(
+        detail.codice_articolo,
+        proposalLogicKeyInput || null,
+        parsed,
+      )
+      setProposalSaveStatus('saved')
+      setTimeout(() => setProposalSaveStatus('idle'), 2500)
+    } catch {
+      setProposalSaveStatus('error')
+      setTimeout(() => setProposalSaveStatus('idle'), 3500)
+    }
+  }
+
+  const handleRawBarLengthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!detail) return
+    const trimmed = rawBarLengthInput.trim()
+    const value = trimmed === '' ? null : parseFloat(trimmed.replace(',', '.'))
+    if (trimmed !== '' && (isNaN(value!) || value! <= 0)) {
+      setRawBarSaveStatus('error')
+      setTimeout(() => setRawBarSaveStatus('idle'), 3500)
+      return
+    }
+    setRawBarSaveStatus('saving')
+    try {
+      const updated = await onRawBarLengthMmChange(detail.codice_articolo, value)
+      setRawBarLengthInput(updated.raw_bar_length_mm ?? '')
+      setRawBarSaveStatus('saved')
+      setTimeout(() => setRawBarSaveStatus('idle'), 2500)
+    } catch {
+      setRawBarSaveStatus('error')
+      setTimeout(() => setRawBarSaveStatus('idle'), 3500)
     }
   }
 
@@ -829,6 +893,95 @@ function ColonnaDettaglio({
           </section>
         )}
 
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+            Proposal logic V1
+          </h3>
+          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
+            <p className="text-xs text-muted-foreground">
+              Effective logic: <span className="font-mono text-foreground">{detail.effective_proposal_logic_key ?? '—'}</span>
+            </p>
+          </div>
+          <form onSubmit={handleProposalLogicSubmit} className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Logic key articolo</label>
+              <select
+                value={proposalLogicKeyInput}
+                onChange={(e) => setProposalLogicKeyInput(e.target.value)}
+                className={inputCls}
+                disabled={proposalSaveStatus === 'saving'}
+              >
+                <option value="">Eredita default globale</option>
+                {proposalKnownLogics.map((logicKey) => (
+                  <option key={logicKey} value={logicKey}>
+                    {logicKey}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Params articolo-specifici (JSON)</label>
+              <textarea
+                value={proposalLogicParamsInput}
+                onChange={(e) => setProposalLogicParamsInput(e.target.value)}
+                className={`${inputCls} min-h-32 font-mono`}
+                disabled={proposalSaveStatus === 'saving'}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={proposalSaveStatus === 'saving'}
+                className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {proposalSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva proposal logic'}
+              </button>
+              {proposalSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+              {proposalSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+            </div>
+          </form>
+
+          {famiglie.find((f) => f.code === detail.famiglia_code)?.raw_bar_length_mm_enabled && (
+            <div className="border-t pt-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Lunghezza barra grezza (mm)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Dato articolo-specifico richiesto dalla logica <span className="font-mono">proposal_full_bar_v1</span>.
+                Lasciare vuoto per rimuovere il valore.
+              </p>
+              <form onSubmit={handleRawBarLengthSubmit} className="space-y-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">
+                    Valore corrente: <span className="font-mono text-foreground">{detail.raw_bar_length_mm != null ? `${detail.raw_bar_length_mm} mm` : '—'}</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="es. 3000.00"
+                    value={rawBarLengthInput}
+                    onChange={(e) => setRawBarLengthInput(e.target.value)}
+                    disabled={rawBarSaveStatus === 'saving'}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={rawBarSaveStatus === 'saving'}
+                    className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {rawBarSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva lunghezza barra'}
+                  </button>
+                  {rawBarSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+                  {rawBarSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+                </div>
+              </form>
+            </div>
+          )}
+        </section>
+
         {/* Dati Easy read-only */}
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
@@ -872,6 +1025,7 @@ export default function ProduzioneHome() {
   const [detail, setDetail] = useState<ArticoloDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [famiglie, setFamiglie] = useState<FamigliaItem[]>([])
+  const [proposalKnownLogics, setProposalKnownLogics] = useState<string[]>([])
 
   // Sync on demand state
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
@@ -897,6 +1051,12 @@ export default function ProduzioneHome() {
       .get<FamigliaItem[]>('/produzione/famiglie')
       .then((r) => setFamiglie(r.data))
       .catch(() => {})  // famiglie non bloccanti
+
+  const loadProposalLogics = () =>
+    apiClient
+      .get<{ known_logics: string[]; default_logic_key: string }>('/produzione/proposal-logic/catalog')
+      .then((r) => setProposalKnownLogics(r.data.known_logics))
+      .catch(() => {})
 
   const handleFamigliaChange = async (codice: string, familgiaCode: string | null) => {
     await apiClient.patch(`/produzione/articoli/${encodeURIComponent(codice)}/famiglia`, {
@@ -960,6 +1120,34 @@ export default function ProduzioneHome() {
     return data
   }
 
+  const handleProposalLogicConfigChange = async (
+    codice: string,
+    proposalLogicKey: string | null,
+    proposalLogicArticleParams: Record<string, unknown>,
+  ): Promise<ArticoloDetail> => {
+    const { data } = await apiClient.patch<ArticoloDetail>(
+      `/produzione/articoli/${encodeURIComponent(codice)}/proposal-logic`,
+      {
+        proposal_logic_key: proposalLogicKey,
+        proposal_logic_article_params: proposalLogicArticleParams,
+      },
+    )
+    setDetail(data)
+    return data
+  }
+
+  const handleRawBarLengthMmChange = async (
+    codice: string,
+    value: number | null,
+  ): Promise<ArticoloDetail> => {
+    const { data } = await apiClient.patch<ArticoloDetail>(
+      `/produzione/articoli/${encodeURIComponent(codice)}/raw-bar-length-mm`,
+      { raw_bar_length_mm: value },
+    )
+    setDetail(data)
+    return data
+  }
+
   const handleRefresh = async () => {
     setSyncStatus('syncing')
     try {
@@ -1000,6 +1188,7 @@ export default function ProduzioneHome() {
     loadArticoli()
     loadFreshness()
     loadFamiglie()
+    loadProposalLogics()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1046,6 +1235,9 @@ export default function ProduzioneHome() {
           onPolicyOverrideChange={handlePolicyOverrideChange}
           onStockPolicyOverrideChange={handleStockPolicyOverrideChange}
           onGestioneScorteOverrideChange={handleGestioneScorteOverrideChange}
+          proposalKnownLogics={proposalKnownLogics}
+          onProposalLogicConfigChange={handleProposalLogicConfigChange}
+          onRawBarLengthMmChange={handleRawBarLengthMmChange}
         />
       </div>
     </div>

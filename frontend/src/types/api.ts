@@ -90,6 +90,8 @@ export interface FamigliaItem {
   code: string
   label: string
   sort_order: number | null
+  /** Flag abilitazione configurazione campo barra (TASK-V2-123) */
+  raw_bar_length_mm_enabled: boolean
 }
 
 /** Riga tabella gestione famiglie — tutte, con conteggio articoli */
@@ -106,6 +108,8 @@ export interface FamigliaRow {
   stock_trigger_months: string | null
   /** Flag esplicito di applicabilita stock policy (TASK-V2-096) */
   gestione_scorte_attiva: boolean
+  /** Flag abilitazione configurazione campo lunghezza barra grezza (TASK-V2-118) */
+  raw_bar_length_mm_enabled: boolean
 }
 
 /** Riga di lista articoli */
@@ -180,6 +184,11 @@ export interface ArticoloDetail {
   trigger_stock_qty: string | null
   stock_computed_at: string | null
   stock_strategy_key: string | null
+  effective_proposal_logic_key: string | null
+  proposal_logic_key: string | null
+  proposal_logic_article_params: Record<string, unknown>
+  /** Lunghezza barra grezza in mm — null se non configurata (TASK-V2-118) */
+  raw_bar_length_mm: string | null
 }
 
 // ─── Core slice produzioni (DL-ARCH-V2-015) ──────────────────────────────────
@@ -237,6 +246,7 @@ export interface PlanningActiveWarningItem {
 
 /** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071, TASK-V2-074) */
 export interface PlanningCandidateItem {
+  source_candidate_id: string
   article_code: string
   /** Campo sintetico di presentazione */
   display_label: string
@@ -355,4 +365,128 @@ export interface WarningTypeConfigItem {
   is_default: boolean
   /** null quando is_default=true */
   updated_at: string | null
+}
+
+// ─── Production Proposals V1 ─────────────────────────────────────────────────
+
+export type ProductionProposalWorkflowStatus =
+  | 'exported'
+  | 'reconciled'
+  | 'cancelled'
+
+export type ProposalWorkspaceStatus = 'open' | 'exported' | 'abandoned'
+
+export interface ProposalWorkspaceRowItem {
+  row_id: number
+  source_candidate_id: string
+  planning_mode: string | null
+  article_code: string
+  display_label: string
+  display_description: string
+  primary_driver: PlanningPrimaryDriver | null
+  required_qty_minimum: string
+  required_qty_total: string
+  customer_shortage_qty: string | null
+  stock_replenishment_qty: string | null
+  requested_delivery_date: string | null
+  requested_destination_display: string | null
+  active_warning_codes: string[]
+  proposal_logic_key: string
+  proposed_qty: string
+  override_qty: string | null
+  override_reason: string | null
+  final_qty: string
+  order_reference: string | null
+  line_reference: number | null
+  computed_at: string
+  updated_at: string
+  // ─── Campi export-preview (TASK-V2-115) ──────────────────────────────────
+  description_parts: string[]
+  export_description: string
+  codice_immagine: string | null
+  materiale: string | null
+  mm_materiale: string | null
+  ordine: string | null
+  ordine_linea_mancante: boolean
+  note_preview: string
+  user_preview: string
+}
+
+export interface ProposalWorkspaceDetail {
+  workspace_id: string
+  status: ProposalWorkspaceStatus
+  created_at: string
+  expires_at: string
+  updated_at: string
+  rows: ProposalWorkspaceRowItem[]
+}
+
+export interface ProposalWorkspaceGenerateResult {
+  workspace_id: string
+  created_count: number
+  skipped_missing_count: number
+  workspace_row_count: number
+}
+
+export interface ProductionProposalItem {
+  proposal_id: number
+  source_candidate_id: string
+  workspace_id: string | null
+  workspace_row_id: number | null
+  planning_mode: string | null
+  article_code: string
+  display_label: string
+  display_description: string
+  primary_driver: PlanningPrimaryDriver | null
+  required_qty_minimum: string
+  required_qty_total: string
+  customer_shortage_qty: string | null
+  stock_replenishment_qty: string | null
+  requested_delivery_date: string | null
+  requested_destination_display: string | null
+  active_warning_codes: string[]
+  proposal_logic_key: string
+  proposed_qty: string
+  override_qty: string | null
+  override_reason: string | null
+  final_qty: string
+  workflow_status: ProductionProposalWorkflowStatus
+  ode_ref: string
+  export_batch_id: string | null
+  reconciled_production_bucket: string | null
+  reconciled_production_id_dettaglio: number | null
+  order_reference: string | null
+  line_reference: number | null
+  computed_at: string
+  updated_at: string
+  // ─── Campi export-preview (TASK-V2-115) ──────────────────────────────────
+  description_parts: string[]
+  export_description: string
+  codice_immagine: string | null
+  materiale: string | null
+  mm_materiale: string | null
+  ordine: string | null
+  ordine_linea_mancante: boolean
+  note_preview: string
+  user_preview: string
+}
+
+export interface ProductionProposalDetail extends ProductionProposalItem {
+  proposal_logic_params_snapshot: Record<string, unknown>
+  created_at: string
+}
+
+export interface ProductionProposalReconcileResult {
+  matched: number
+  unmatched: number
+  scanned: number
+  reconciled_at: string
+}
+
+export interface ProposalLogicConfigResponse {
+  default_logic_key: string
+  logic_params_by_key: Record<string, Record<string, unknown>>
+  is_default: boolean
+  updated_at: string | null
+  known_logics: string[]
 }

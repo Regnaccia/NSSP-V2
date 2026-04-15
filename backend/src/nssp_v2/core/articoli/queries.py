@@ -150,7 +150,12 @@ def list_famiglie(session: Session) -> list[FamigliaItem]:
         .all()
     )
     return [
-        FamigliaItem(code=r.code, label=r.label, sort_order=r.sort_order)
+        FamigliaItem(
+            code=r.code,
+            label=r.label,
+            sort_order=r.sort_order,
+            raw_bar_length_mm_enabled=r.raw_bar_length_mm_enabled,
+        )
         for r in rows
     ]
 
@@ -291,6 +296,12 @@ def get_articolo_detail(
         all_metrics = list_stock_metrics_v1(session)
         stock_metrics = next((m for m in all_metrics if m.article_code == normalized_article_code), None)
 
+    from nssp_v2.core.production_proposals.config import get_proposal_logic_config  # noqa: PLC0415
+    proposal_cfg = get_proposal_logic_config(session)
+    proposal_logic_key = config.proposal_logic_key if config is not None else None
+    proposal_logic_article_params = dict(config.proposal_logic_article_params_json or {}) if config is not None else {}
+    effective_proposal_logic_key = proposal_logic_key or proposal_cfg.default_logic_key
+
     return ArticoloDetail(
         codice_articolo=art.codice_articolo,
         descrizione_1=art.descrizione_1,
@@ -337,6 +348,10 @@ def get_articolo_detail(
         trigger_stock_qty=stock_metrics.trigger_stock_qty if stock_metrics else None,
         stock_computed_at=stock_metrics.computed_at if stock_metrics else None,
         stock_strategy_key=stock_metrics.strategy_key if stock_metrics else None,
+        effective_proposal_logic_key=effective_proposal_logic_key,
+        proposal_logic_key=proposal_logic_key,
+        proposal_logic_article_params=proposal_logic_article_params,
+        raw_bar_length_mm=config.raw_bar_length_mm if config is not None else None,
     )
 
 
@@ -354,6 +369,7 @@ def _famiglia_to_row(famiglia: ArticoloFamiglia, n_articoli: int) -> FamigliaRow
         stock_months=famiglia.stock_months,
         stock_trigger_months=famiglia.stock_trigger_months,
         gestione_scorte_attiva=famiglia.gestione_scorte_attiva,
+        raw_bar_length_mm_enabled=famiglia.raw_bar_length_mm_enabled,
         n_articoli=n_articoli,
     )
 
@@ -659,5 +675,74 @@ def set_articolo_stock_policy_override(
         config.override_stock_trigger_months = override_stock_trigger_months  # type: ignore[assignment]
     if capacity_override_qty is not _SENTINEL:
         config.capacity_override_qty = capacity_override_qty  # type: ignore[assignment]
+    config.updated_at = now
+    session.flush()
+
+
+def toggle_famiglia_raw_bar_length_mm_enabled(
+    session: Session,
+    code: str,
+) -> FamigliaRow:
+    """Inverte raw_bar_length_mm_enabled della famiglia (TASK-V2-118).
+
+    Raises:
+        ValueError: se la famiglia non esiste.
+    """
+    famiglia = session.query(ArticoloFamiglia).filter(ArticoloFamiglia.code == code).first()
+    if famiglia is None:
+        raise ValueError(f"Famiglia '{code}' non trovata")
+    famiglia.raw_bar_length_mm_enabled = not famiglia.raw_bar_length_mm_enabled
+    session.flush()
+    n = session.query(CoreArticoloConfig).filter(CoreArticoloConfig.famiglia_code == code).count()
+    return _famiglia_to_row(famiglia, n)
+
+
+def set_articolo_raw_bar_length_mm(
+    session: Session,
+    codice_articolo: str,
+    raw_bar_length_mm: Decimal | None,
+) -> None:
+    """Imposta o rimuove la lunghezza barra grezza per un articolo (TASK-V2-118).
+
+    Valore None = rimuove il dato (nessun default famiglia).
+
+    Non modifica mai sync_articoli.
+    """
+    target_code = _resolve_sync_articolo_code(session, codice_articolo) or codice_articolo
+    config = session.get(CoreArticoloConfig, target_code)
+    now = datetime.now(timezone.utc)
+
+    if config is None:
+        config = CoreArticoloConfig(
+            codice_articolo=target_code,
+            updated_at=now,
+        )
+        session.add(config)
+
+    config.raw_bar_length_mm = raw_bar_length_mm
+    config.updated_at = now
+    session.flush()
+
+
+def set_articolo_proposal_logic_config(
+    session: Session,
+    codice_articolo: str,
+    proposal_logic_key: str | None,
+    proposal_logic_article_params: dict | None,
+) -> None:
+    """Imposta o rimuove la proposal logic articolo-specifica."""
+    target_code = _resolve_sync_articolo_code(session, codice_articolo) or codice_articolo
+    config = session.get(CoreArticoloConfig, target_code)
+    now = datetime.now(timezone.utc)
+
+    if config is None:
+        config = CoreArticoloConfig(
+            codice_articolo=target_code,
+            updated_at=now,
+        )
+        session.add(config)
+
+    config.proposal_logic_key = proposal_logic_key
+    config.proposal_logic_article_params_json = dict(proposal_logic_article_params or {})
     config.updated_at = now
     session.flush()

@@ -9,6 +9,7 @@
  *   PATCH /api/produzione/famiglie/{code}/aggrega-codice-produzione     — toggle planning_mode default (by_article / by_customer_order_line)
  *   PATCH /api/produzione/famiglie/{code}/stock-policy                  — imposta stock_months e stock_trigger_months (TASK-V2-093)
  *   PATCH /api/produzione/famiglie/{code}/gestione-scorte               — toggle gestione_scorte_attiva (TASK-V2-097)
+ *   PATCH /api/produzione/famiglie/{code}/raw-bar-length-enabled        — toggle raw_bar_length_mm_enabled (TASK-V2-119)
  */
 
 import { useEffect, useState } from 'react'
@@ -110,6 +111,7 @@ function RigaFamiglia({
   const [togglingProd, setTogglingProd] = useState(false)
   const [togglingAggrega, setTogglingAggrega] = useState(false)
   const [togglingGestione, setTogglingGestione] = useState(false)
+  const [togglingBarLength, setTogglingBarLength] = useState(false)
 
   // Stock policy state — inizializza dai valori attuali della famiglia
   const [stockMonths, setStockMonths] = useState(famiglia.stock_months ?? '')
@@ -174,6 +176,20 @@ function RigaFamiglia({
       toast.error('Impossibile aggiornare il flag gestione scorte')
     } finally {
       setTogglingGestione(false)
+    }
+  }
+
+  const handleToggleBarLength = async () => {
+    setTogglingBarLength(true)
+    try {
+      const { data } = await apiClient.patch<FamigliaRow>(
+        `/produzione/famiglie/${encodeURIComponent(famiglia.code)}/raw-bar-length-enabled`
+      )
+      onToggled(data)
+    } catch {
+      toast.error('Impossibile aggiornare il flag campo barra')
+    } finally {
+      setTogglingBarLength(false)
     }
   }
 
@@ -248,6 +264,18 @@ function RigaFamiglia({
           disabled={togglingGestione}
           className="h-4 w-4 cursor-pointer accent-primary disabled:cursor-wait"
           title={famiglia.gestione_scorte_attiva ? 'Gestione scorte attiva' : 'Gestione scorte non attiva'}
+        />
+      </td>
+      <td className="py-2.5 pr-4 text-center">
+        <input
+          type="checkbox"
+          checked={famiglia.raw_bar_length_mm_enabled}
+          onChange={handleToggleBarLength}
+          disabled={togglingBarLength}
+          className="h-4 w-4 cursor-pointer accent-primary disabled:cursor-wait"
+          title={famiglia.raw_bar_length_mm_enabled
+            ? 'Campo lunghezza barra configurabile per gli articoli della famiglia'
+            : 'Campo lunghezza barra non configurabile per questa famiglia'}
         />
       </td>
       {/* Stock policy defaults — solo rilevanti per by_article con gestione scorte attiva */}
@@ -352,6 +380,7 @@ export default function FamigliePage() {
           </h2>
           <p className="text-xs text-muted-foreground">
             I campi <em>Stock mesi</em> e <em>Trigger mesi</em> valgono solo per articoli con planning mode <strong>by_article</strong> e <em>Gestione scorte</em> attiva.
+            Il flag <em>Campo barra</em> abilita la configurazione del dato <strong>lunghezza barra grezza</strong> per gli articoli della famiglia — non determina la logica proposal usata.
           </p>
 
           {loading && <p className="text-sm text-muted-foreground">Caricamento…</p>}
@@ -370,6 +399,7 @@ export default function FamigliePage() {
                     <th className="text-center py-2 pr-4 font-medium" title="Default planning: articoli nel perimetro produzione">In produzione</th>
                     <th className="text-center py-2 pr-4 font-medium" title="Planning mode default della famiglia: by_article = aggrega per codice articolo, by_customer_order_line = per riga ordine cliente">Planning mode</th>
                     <th className="text-center py-2 pr-4 font-medium" title="Prerequisito stock policy: attiva solo per articoli by_article con gestione scorte abilitata">Gestione scorte</th>
+                    <th className="text-center py-2 pr-4 font-medium" title="Abilita la configurazione del campo lunghezza barra grezza per gli articoli di questa famiglia (non determina la proposal logic)">Campo barra</th>
                     <th className="text-left py-2 pr-2 font-medium" title="Stock policy defaults V1 — Stock mesi / Trigger mesi (solo by_article con gestione scorte attiva)">
                       Stock mesi&nbsp;/&nbsp;Trigger mesi
                     </th>

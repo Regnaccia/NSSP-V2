@@ -27,6 +27,7 @@ At the current stage it already supports:
 - a transversal `Warnings` module with first dedicated surface
 - first stock-policy governance with dedicated `admin` page and explicit stock-enabled flag
 - final planning readability slice with unified descriptions, warning visibility and quick article config
+- a first persistent `Production Proposals` module with dedicated surface, export and reconcile
 
 It is not yet a scheduler, MRP engine, or production planner.
 
@@ -56,6 +57,7 @@ Current note:
 
 - warning visibility is configured by `visible_to_areas`
 - stock logic configuration has its own dedicated page
+- proposal logic configuration has its own dedicated page
 - `admin` has transversal visibility for governance
 
 ### 2. Logistica - Clienti / Destinazioni
@@ -104,6 +106,10 @@ Planning policy UI already available:
 - explicit planning-mode wording in UI:
   - `by_article`
   - `by_customer_order_line`
+- proposal logic config:
+  - `proposal_logic_key`
+  - `proposal_logic_article_params`
+  - `effective_proposal_logic_key`
 
 ### 4. Produzione - Catalogo Famiglie Articolo
 
@@ -190,7 +196,29 @@ Current behavior:
 - operational users only see warnings matching their current area
 - `admin` sees the transversal full list
 
-### 8. Produzione - Criticita Articoli
+### 8. Produzione - Production Proposals
+
+Purpose:
+
+- prepare export from explicitly selected planning candidates
+- support operator override inside a temporary workspace
+- persist only exported history for audit and reconcile
+
+Current behavior:
+
+- dedicated `Production Proposals` surface exists
+- proposal generation starts from selection in `Planning Candidates`
+- generated rows live in a temporary server-side workspace
+- proposal granularity follows the source candidate
+- workspace rows are frozen snapshots and do not drift from planning refresh
+- closing without export abandons the workspace
+- export is CSV batch only
+- reconcile is based on `ODE_REF`
+- proposal logic governance is split between:
+  - `admin` global suite config
+  - article-specific logic assignment/params
+
+### 9. Produzione - Criticita Articoli
 
 Purpose:
 
@@ -252,6 +280,31 @@ Current shape:
 - first type `NEGATIVE_STOCK`
 - warning identity is unique, not duplicated per reparto
 - admin config exists and uses `visible_to_areas`
+
+### Production Proposals
+
+Status:
+
+- Core slice implemented
+- UI surface implemented
+
+Current shape:
+
+- temporary workspace generated from selected planning candidates
+- frozen candidate snapshot per workspace row
+- `proposed_qty`, `override_qty`, `final_qty`
+- workspace lifecycle:
+  - `open`
+  - `exported`
+  - `abandoned`
+- exported persistent history:
+  - `exported`
+  - `reconciled`
+  - `cancelled`
+- CSV export batch from workspace
+- reconcile by `ODE_REF`
+- article-level proposal logic assignment
+- admin-level global proposal logic config
 
 ## Canonical Facts Already Available
 
@@ -364,7 +417,6 @@ Rule:
 
 Not implemented yet:
 
-- production proposals
 - production scheduling
 - lot sizing / multiples
 - machine/resource allocation
@@ -388,7 +440,12 @@ Operational note:
 
 ## What Is The Next Logical Reasoning Area
 
-The immediate next reasoning area is opening `Production Proposals` on top of a planning + stock slice that is now coherent also on:
+The immediate next reasoning area is evolving `Production Proposals` beyond the first slice, starting from:
+
+- `TASK-V2-115` Core/API export-preview contracts
+- `TASK-V2-116` UI export-preview table
+
+on top of a planning + stock slice that is now coherent also on:
 
 - distinct `customer horizon` / `stock horizon`
 - primary-driver classification
@@ -399,6 +456,14 @@ The immediate next reasoning area is opening `Production Proposals` on top of a 
 - requested destination display
 - active article warnings in planning
 - quick edit path to article configuration
+
+The first proposal slice already covers:
+
+- persistent proposals
+- workflow
+- CSV export batch
+- `ODE_REF` reconcile
+- admin + article proposal logic config
 
 Explicitly deferred for now:
 
@@ -423,6 +488,8 @@ Recommended reading order for another AI agent:
    - `DL-ARCH-V2-029`
    - `DL-ARCH-V2-030`
    - `DL-ARCH-V2-031`
+   - `DL-ARCH-V2-032`
+   - `DL-ARCH-V2-033`
 6. relevant specs in `docs/specs/`
 
 ## Practical Summary
@@ -437,4 +504,5 @@ If another AI agent must start reasoning today, the correct mental model is:
 - stock policy governance, enabled flag and invalid-capacity warning are already active
 - first temporal horizons in planning are already active and separated correctly
 - planning mixed cases now classify to a single `primary_driver`
-- the next major evolution is deciding the opening of `Production Proposals`
+- `Production Proposals` is now open in a first operational slice
+- the next major evolution is refining proposal logic, workflow and downstream execution semantics

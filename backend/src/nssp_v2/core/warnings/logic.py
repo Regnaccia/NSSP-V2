@@ -29,6 +29,21 @@ def is_negative_stock(inventory_qty: Decimal | None) -> bool:
     return inventory_qty < Decimal("0")
 
 
+def is_missing_raw_bar_length(raw_bar_length_mm: Decimal | None) -> bool:
+    """Condizione MISSING_RAW_BAR_LENGTH: raw_bar_length_mm is None o <= 0.
+
+    Segnala che un articolo appartiene a una famiglia con raw_bar_length_mm_enabled=True
+    ma non ha il dato barra configurato correttamente.
+
+    Restituisce True se:
+    - raw_bar_length_mm e None (dato assente)
+    - raw_bar_length_mm <= 0 (valore non valido)
+    """
+    if raw_bar_length_mm is None:
+        return True
+    return raw_bar_length_mm <= Decimal("0")
+
+
 def is_invalid_stock_capacity(capacity_effective_qty: Decimal | None) -> bool:
     """Condizione INVALID_STOCK_CAPACITY: capacity_effective_qty None o <= 0.
 

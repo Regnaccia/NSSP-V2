@@ -6,6 +6,7 @@ import Login from '@/pages/Login'
 import SurfaceChooser from '@/pages/SurfaceChooser'
 import AdminHome from '@/pages/surfaces/AdminHome'
 import AdminStockLogicPage from '@/pages/surfaces/AdminStockLogicPage'
+import AdminProposalLogicPage from '@/pages/surfaces/AdminProposalLogicPage'
 import AdminWarningsPage from '@/pages/surfaces/AdminWarningsPage'
 import LogisticaHome from '@/pages/surfaces/LogisticaHome'
 import MagazzinoHome from '@/pages/surfaces/MagazzinoHome'
@@ -14,6 +15,7 @@ import FamigliePage from '@/pages/surfaces/FamigliePage'
 import ProduzioniPage from '@/pages/surfaces/ProduzioniPage'
 import CriticitaPage from '@/pages/surfaces/CriticitaPage'
 import PlanningCandidatesPage from '@/pages/surfaces/PlanningCandidatesPage'
+import ProductionProposalsPage from '@/pages/surfaces/ProductionProposalsPage'
 import WarningsPage from '@/pages/surfaces/WarningsPage'
 
 /**
@@ -78,6 +80,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminStockLogicPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/proposal-logic"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminProposalLogicPage />
               </ProtectedRoute>
             }
           />
@@ -154,6 +164,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['produzione']}>
                 <PlanningCandidatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/produzione/proposals"
+            element={
+              <ProtectedRoute roles={['produzione']}>
+                <ProductionProposalsPage />
               </ProtectedRoute>
             }
           />

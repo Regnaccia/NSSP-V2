@@ -24,9 +24,16 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
-import type { ArticoloDetail, FamigliaItem, PlanningCandidateItem, SyncSurfaceResponse } from '@/types/api'
+import type {
+  ArticoloDetail,
+  FamigliaItem,
+  PlanningCandidateItem,
+  ProposalWorkspaceGenerateResult,
+  SyncSurfaceResponse,
+} from '@/types/api'
 
 // ─── Tipi locali ──────────────────────────────────────────────────────────────
 
@@ -453,15 +460,21 @@ function WarningBadges({ item }: { item: PlanningCandidateItem }) {
 function PageHeader({
   totalCount,
   shownCount,
+  selectedCount,
   loadStatus,
   syncStatus,
   onRefresh,
+  onGenerateProposals,
+  generateBusy,
 }: {
   totalCount: number
   shownCount: number
+  selectedCount: number
   loadStatus: LoadStatus
   syncStatus: SyncStatus
   onRefresh: () => void
+  onGenerateProposals: () => void
+  generateBusy: boolean
 }) {
   const busy = loadStatus === 'loading' || syncStatus === 'syncing'
 
@@ -490,17 +503,31 @@ function PageHeader({
       )}
 
       <div className="ml-auto">
-        <button
-          onClick={onRefresh}
-          disabled={busy}
-          className="py-1 px-3 border rounded-md text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
-        >
-          {syncStatus === 'syncing'
-            ? 'Aggiornamento dati…'
-            : loadStatus === 'loading'
-            ? 'Caricamento…'
-            : 'Aggiorna dati'}
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedCount > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {selectedCount} selezionat{selectedCount === 1 ? 'o' : 'i'}
+            </span>
+          )}
+          <button
+            onClick={onGenerateProposals}
+            disabled={busy || generateBusy || selectedCount === 0}
+            className="py-1 px-3 border rounded-md text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {generateBusy ? 'Generazione…' : 'Genera proposte'}
+          </button>
+          <button
+            onClick={onRefresh}
+            disabled={busy || generateBusy}
+            className="py-1 px-3 border rounded-md text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {syncStatus === 'syncing'
+              ? 'Aggiornamento dati…'
+              : loadStatus === 'loading'
+              ? 'Caricamento…'
+              : 'Aggiorna dati'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -725,22 +752,37 @@ function TabellaErrore() {
 
 function TabellaCandidates({
   items,
+  selectedSourceIds,
   sortKey,
   sortDir,
   onSort,
   onOpenQuickConfig,
+  onToggleSelected,
+  onToggleSelectAll,
 }: {
   items: PlanningCandidateItem[]
+  selectedSourceIds: string[]
   sortKey: SortKey
   sortDir: SortDir
   onSort: (k: SortKey) => void
   onOpenQuickConfig: (articleCode: string) => void
+  onToggleSelected: (sourceCandidateId: string) => void
+  onToggleSelectAll: (selectAll: boolean) => void
 }) {
+  const allSelected = items.length > 0 && items.every((item) => selectedSourceIds.includes(item.source_candidate_id))
+
   return (
     <div className="flex-1 overflow-auto">
       <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-background">
           <tr>
+            <th className={thBase}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={(e) => onToggleSelectAll(e.target.checked)}
+              />
+            </th>
             <Th
               label="Codice"
               sortKey="article_code"
@@ -816,7 +858,7 @@ function TabellaCandidates({
             const coverageNeg = resolveCoverage(item) < 0
 
             // Chiave riga stabile per entrambe le modalita
-            const rowKey = `${item.article_code}-${item.order_reference ?? ''}-${item.line_reference ?? ''}`
+            const rowKey = item.source_candidate_id
 
             // Valori unificati per le colonne condivise
             const demandVal = isByCol ? item.line_open_demand_qty : item.customer_open_demand_qty
@@ -830,6 +872,13 @@ function TabellaCandidates({
                 key={rowKey}
                 className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
               >
+                <td className={tdCls}>
+                  <input
+                    type="checkbox"
+                    checked={selectedSourceIds.includes(item.source_candidate_id)}
+                    onChange={() => onToggleSelected(item.source_candidate_id)}
+                  />
+                </td>
                 <td className={tdCls}>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-xs">{item.article_code}</span>
@@ -920,9 +969,12 @@ function TabellaCandidates({
 // ─── Surface principale ───────────────────────────────────────────────────────
 
 export default function PlanningCandidatesPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<PlanningCandidateItem[]>([])
   const [loadStatus, setLoadStatus] = useState<LoadStatus>('loading')
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
+  const [generateBusy, setGenerateBusy] = useState(false)
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([])
 
   // Filtri
   const [soloInProduzione, setSoloInProduzione] = useState(true)
@@ -1056,6 +1108,11 @@ export default function PlanningCandidatesPage() {
     return [...filtered].sort((a, b) => cmpItems(a, b, sortKey, sortDir))
   }, [filtered, sortKey, sortDir])
 
+  useEffect(() => {
+    const visibleIds = new Set(items.map((item) => item.source_candidate_id))
+    setSelectedSourceIds((prev) => prev.filter((id) => visibleIds.has(id)))
+  }, [items])
+
   const handleSort = (key: SortKey) => {
     if (key === sortKey) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -1129,14 +1186,38 @@ export default function PlanningCandidatesPage() {
     }
   }
 
+  const handleGenerateProposals = async () => {
+    if (selectedSourceIds.length === 0) return
+    setGenerateBusy(true)
+    try {
+      const { data } = await apiClient.post<ProposalWorkspaceGenerateResult>(
+        '/produzione/planning-candidates/generate-proposals-workspace',
+        { source_candidate_ids: selectedSourceIds },
+        { params: { horizon_days: horizonDaysRef.current } },
+      )
+      toast.success(
+        `Workspace creato: ${data.created_count} righe${data.skipped_missing_count > 0 ? `, ${data.skipped_missing_count} saltate` : ''}`,
+      )
+      setSelectedSourceIds([])
+      navigate(`/produzione/proposals?workspace_id=${encodeURIComponent(data.workspace_id)}`)
+    } catch (err: unknown) {
+      toast.error(extractError(err, 'Errore durante la generazione workspace proposal'))
+    } finally {
+      setGenerateBusy(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         totalCount={filtered.length}
         shownCount={sorted.length}
+        selectedCount={selectedSourceIds.length}
         loadStatus={loadStatus}
         syncStatus={syncStatus}
         onRefresh={handleRefresh}
+        onGenerateProposals={handleGenerateProposals}
+        generateBusy={generateBusy}
       />
 
       <FiltriBar
@@ -1182,10 +1263,27 @@ export default function PlanningCandidatesPage() {
       {loadStatus === 'idle' && syncStatus !== 'syncing' && sorted.length > 0 && (
         <TabellaCandidates
           items={sorted}
+          selectedSourceIds={selectedSourceIds}
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={handleSort}
           onOpenQuickConfig={openQuickConfig}
+          onToggleSelected={(sourceCandidateId) => {
+            setSelectedSourceIds((prev) => (
+              prev.includes(sourceCandidateId)
+                ? prev.filter((id) => id !== sourceCandidateId)
+                : [...prev, sourceCandidateId]
+            ))
+          }}
+          onToggleSelectAll={(selectAll) => {
+            setSelectedSourceIds((prev) => {
+              const visibleIds = sorted.map((item) => item.source_candidate_id)
+              if (selectAll) {
+                return Array.from(new Set([...prev, ...visibleIds]))
+              }
+              return prev.filter((id) => !visibleIds.includes(id))
+            })
+          }}
         />
       )}
 

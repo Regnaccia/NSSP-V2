@@ -35,6 +35,12 @@ from nssp_v2.core.stock_policy import (
     get_stock_logic_config,
     set_stock_logic_config,
 )
+from nssp_v2.core.production_proposals import (
+    KNOWN_PROPOSAL_LOGICS,
+    ProposalLogicConfig,
+    get_proposal_logic_config,
+    set_proposal_logic_config,
+)
 from nssp_v2.core.warnings import (
     KNOWN_WARNING_TYPES,
     WarningTypeConfigItem,
@@ -244,6 +250,15 @@ class SetStockLogicConfigRequest(BaseModel):
     capacity_logic_params: dict
 
 
+class ProposalLogicConfigResponse(ProposalLogicConfig):
+    known_logics: list[str]
+
+
+class SetProposalLogicConfigRequest(BaseModel):
+    default_logic_key: str
+    logic_params_by_key: dict[str, dict]
+
+
 @router.get("/stock-logic/config", response_model=StockLogicConfigResponse)
 def get_stock_logic_config_endpoint(
     _: dict = Depends(require_admin),
@@ -281,4 +296,36 @@ def put_stock_logic_config(
     return StockLogicConfigResponse(
         **config.model_dump(),
         known_strategies=KNOWN_MONTHLY_BASE_STRATEGIES,
+    )
+
+
+@router.get("/proposal-logic/config", response_model=ProposalLogicConfigResponse)
+def get_proposal_logic_config_endpoint(
+    _: dict = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    config = get_proposal_logic_config(session)
+    return ProposalLogicConfigResponse(
+        **config.model_dump(),
+        known_logics=KNOWN_PROPOSAL_LOGICS,
+    )
+
+
+@router.put("/proposal-logic/config", response_model=ProposalLogicConfigResponse)
+def put_proposal_logic_config(
+    body: SetProposalLogicConfigRequest,
+    _: dict = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    try:
+        config = set_proposal_logic_config(
+            session,
+            default_logic_key=body.default_logic_key,
+            logic_params_by_key=body.logic_params_by_key,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    return ProposalLogicConfigResponse(
+        **config.model_dump(),
+        known_logics=KNOWN_PROPOSAL_LOGICS,
     )

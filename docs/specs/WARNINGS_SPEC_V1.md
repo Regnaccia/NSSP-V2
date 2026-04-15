@@ -53,6 +53,7 @@ Regola:
 - introduce un oggetto warning persistente o comunque canonico
 - supporta il primo tipo di warning:
   - `NEGATIVE_STOCK`
+- supporta warning di configurazione articolo/famiglia quando un dato richiesto non e presente
 - separa il warning dalla logica di `Planning Candidates`
 - consente di dichiarare chi puo vedere il warning
 
@@ -79,6 +80,7 @@ Rappresenta:
 Primo warning in scope:
 
 - `NEGATIVE_STOCK`
+- `MISSING_RAW_BAR_LENGTH`
 
 Definizione:
 
@@ -89,6 +91,24 @@ Nota:
 - questo warning non genera automaticamente una produzione
 - non e un need produttivo
 - puo pero essere rilevante per magazzino, produzione e altri ruoli futuri
+
+### `MISSING_RAW_BAR_LENGTH`
+
+Definizione:
+
+- articolo con famiglia che richiede il dato `raw_bar_length_mm`
+- ma `raw_bar_length_mm` articolo assente o `<= 0`
+
+Condizione attiva minima:
+
+- `raw_bar_length_mm_enabled = true` sulla famiglia
+- `raw_bar_length_mm is null` oppure `raw_bar_length_mm <= 0` sull'articolo
+
+Nota:
+
+- il warning nasce nel modulo `Warnings`, non nella logica proposal
+- non seleziona automaticamente `proposal_full_bar_v1`
+- segnala una configurazione articolo incompleta rispetto al contratto della famiglia
 
 ## 7. Visibilita e audience
 
@@ -117,6 +137,10 @@ Esempio:
   - visibile a:
     - `magazzino`
     - `produzione`
+- `MISSING_RAW_BAR_LENGTH`
+  - visibile a:
+    - `produzione`
+    - `admin`
 
 La surface `Warnings` deve essere accessibile di default come punto unico di consultazione trasversale.
 
@@ -161,6 +185,13 @@ Campi specifici per `NEGATIVE_STOCK`:
 - `stock_calculated`
 - `anomaly_qty`
 
+Campi specifici per `MISSING_RAW_BAR_LENGTH`:
+
+- `article_code`
+- `famiglia_code`
+- `raw_bar_length_mm_enabled`
+- `raw_bar_length_mm`
+
 ## 9. Regole di ownership
 
 Il warning appartiene al modulo `Warnings`, non al modulo che lo visualizza.
@@ -185,6 +216,10 @@ Questo implica:
 ### Articoli
 
 - puo essere una surface naturale per visualizzare warning relativi all'articolo
+
+Nel caso `MISSING_RAW_BAR_LENGTH`:
+
+- `articoli` e una surface naturale per vedere e correggere rapidamente la configurazione mancante
 
 ### Admin
 

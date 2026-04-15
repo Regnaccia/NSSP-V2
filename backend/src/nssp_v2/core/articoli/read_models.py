@@ -11,7 +11,7 @@ Regole:
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from nssp_v2.core.planning_mode import PlanningMode
 
@@ -155,6 +155,15 @@ class ArticoloDetail(BaseModel):
     stock_computed_at: datetime | None = None
     stock_strategy_key: str | None = None
 
+    # Proposal logic articolo-specifica (V1).
+    effective_proposal_logic_key: str | None = None
+    proposal_logic_key: str | None = None
+    proposal_logic_article_params: dict = Field(default_factory=dict)
+
+    # Lunghezza barra grezza articolo-specifica (TASK-V2-118, DL-ARCH-V2-035).
+    # None se non configurata. Esposta indipendentemente dal flag famiglia.
+    raw_bar_length_mm: Decimal | None = None
+
 
 class FamigliaItem(BaseModel):
     """Voce del catalogo famiglie articolo.
@@ -167,6 +176,8 @@ class FamigliaItem(BaseModel):
     code: str
     label: str
     sort_order: int | None
+    # Flag abilitazione configurazione campo barra (TASK-V2-123, DL-ARCH-V2-035)
+    raw_bar_length_mm_enabled: bool = False
 
 
 class FamigliaRow(BaseModel):
@@ -191,3 +202,6 @@ class FamigliaRow(BaseModel):
 
     # Flag esplicito di applicabilita stock policy (TASK-V2-096)
     gestione_scorte_attiva: bool = False
+
+    # Flag abilitazione configurazione lunghezza barra grezza (TASK-V2-118, DL-ARCH-V2-035)
+    raw_bar_length_mm_enabled: bool = False

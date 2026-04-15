@@ -15,13 +15,32 @@ Tutti gli endpoint richiedono autenticazione Bearer.
 Il Core non espone mai i target sync_* grezzi.
 """
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from starlette.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from nssp_v2.app.deps.auth import get_current_user
 from nssp_v2.core.criticita import CriticitaItem, list_criticita_v1
 from nssp_v2.core.planning_candidates import PlanningCandidateItem, list_planning_candidates_v1
+from nssp_v2.core.production_proposals import (
+    KNOWN_PROPOSAL_LOGICS,
+    ProductionProposalDetail,
+    ProductionProposalItem,
+    ProductionProposalReconcileResult,
+    ProposalWorkspaceDetail,
+    ProposalWorkspaceGenerateResult,
+    abandon_proposal_workspace,
+    export_proposal_workspace_csv,
+    generate_proposal_workspace,
+    get_production_proposal_detail,
+    get_proposal_workspace_detail,
+    list_production_proposals,
+    reconcile_production_proposals,
+    set_proposal_workspace_row_override,
+)
 from nssp_v2.core.warnings import WarningItem, list_warnings_v1, filter_warnings_by_areas
 from nssp_v2.core.warnings.config import KNOWN_AREAS
 from nssp_v2.core.produzioni import ProduzioneItem, ProduzioniPaginata, list_produzioni, set_forza_completata
@@ -37,6 +56,8 @@ from nssp_v2.core.articoli import (
     list_famiglie_catalog,
     set_articolo_gestione_scorte_override,
     set_articolo_policy_override,
+    set_articolo_proposal_logic_config,
+    set_articolo_raw_bar_length_mm,
     set_articolo_stock_policy_override,
     set_famiglia_articolo,
     set_famiglia_stock_policy,
@@ -44,6 +65,7 @@ from nssp_v2.core.articoli import (
     toggle_famiglia_aggrega_codice_produzione,
     toggle_famiglia_considera_produzione,
     toggle_famiglia_gestione_scorte,
+    toggle_famiglia_raw_bar_length_mm_enabled,
 )
 from nssp_v2.shared.db import get_session
 
@@ -107,6 +129,38 @@ class SetGestioneScorteOverrideRequest(BaseModel):
     - False = sovrascrive con False
     """
     override_gestione_scorte_attiva: bool | None
+
+
+class SetRawBarLengthMmRequest(BaseModel):
+    """Corpo PATCH raw-bar-length-mm articolo (TASK-V2-118).
+
+    - None = rimuove il valore (nessun default famiglia)
+    - valore numerico = imposta la lunghezza barra in mm
+    """
+    raw_bar_length_mm: float | None
+
+
+class SetProposalLogicArticleConfigRequest(BaseModel):
+    proposal_logic_key: str | None
+    proposal_logic_article_params: dict | None = None
+
+
+class GenerateProposalWorkspaceRequest(BaseModel):
+    source_candidate_ids: list[str]
+
+
+class SetProposalWorkspaceRowOverrideRequest(BaseModel):
+    override_qty: float | None
+    override_reason: str | None = None
+
+
+class ReconcileProductionProposalsRequest(BaseModel):
+    proposal_ids: list[int] | None = None
+
+
+class ProposalLogicCatalogResponse(BaseModel):
+    known_logics: list[str]
+    default_logic_key: str
 
 
 @router.get("/articoli", response_model=list[ArticoloItem])
@@ -249,6 +303,25 @@ def patch_famiglia_gestione_scorte(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
+@router.patch("/famiglie/{code}/raw-bar-length-enabled", response_model=FamigliaRow)
+def patch_famiglia_raw_bar_length_enabled(
+    code: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Inverte il flag raw_bar_length_mm_enabled della famiglia (TASK-V2-118).
+
+    Abilita o disabilita la configurabilita del dato lunghezza barra per gli articoli.
+    404 se la famiglia non esiste.
+    """
+    try:
+        row = toggle_famiglia_raw_bar_length_mm_enabled(session, code)
+        session.commit()
+        return row
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
 @router.get("/famiglie", response_model=list[FamigliaItem])
 def get_famiglie(
     _: dict = Depends(get_current_user),
@@ -347,6 +420,28 @@ def get_planning_candidates(
         user_areas=user_areas,
         is_admin=is_admin,
     )
+
+
+@router.post("/planning-candidates/generate-proposals-workspace", response_model=ProposalWorkspaceGenerateResult)
+def post_generate_proposals_workspace(
+    body: GenerateProposalWorkspaceRequest,
+    payload: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    horizon_days: int = Query(default=30, ge=1, description="Orizzonte usato per leggere i candidate correnti prima del freeze."),
+):
+    roles: list[str] = payload.get("roles", [])
+    is_admin = "admin" in roles
+    user_areas = [r for r in roles if r in KNOWN_AREAS]
+    try:
+        return generate_proposal_workspace(
+            session,
+            source_candidate_ids=body.source_candidate_ids,
+            customer_horizon_days=horizon_days,
+            user_areas=user_areas,
+            is_admin=is_admin,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 
 @router.patch(
@@ -465,6 +560,73 @@ def patch_gestione_scorte_override(
     return detail
 
 
+@router.patch(
+    "/articoli/{codice_articolo:path}/proposal-logic",
+    response_model=ArticoloDetail,
+)
+def patch_articolo_proposal_logic(
+    codice_articolo: str,
+    body: SetProposalLogicArticleConfigRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    set_articolo_proposal_logic_config(
+        session,
+        codice_articolo,
+        proposal_logic_key=body.proposal_logic_key,
+        proposal_logic_article_params=body.proposal_logic_article_params or {},
+    )
+    session.commit()
+    detail = get_articolo_detail(session, codice_articolo)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Articolo '{codice_articolo}' non trovato")
+    return detail
+
+
+@router.patch(
+    "/articoli/{codice_articolo:path}/raw-bar-length-mm",
+    response_model=ArticoloDetail,
+)
+def patch_articolo_raw_bar_length_mm(
+    codice_articolo: str,
+    body: SetRawBarLengthMmRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Imposta o rimuove la lunghezza barra grezza per un articolo (TASK-V2-118).
+
+    body.raw_bar_length_mm: null = rimuove il valore, valore = imposta in mm.
+
+    Restituisce il dettaglio aggiornato dell'articolo.
+    404 se l'articolo non esiste in sync_articoli.
+    """
+    from decimal import Decimal
+    set_articolo_raw_bar_length_mm(
+        session,
+        codice_articolo,
+        raw_bar_length_mm=Decimal(str(body.raw_bar_length_mm)) if body.raw_bar_length_mm is not None else None,
+    )
+    session.commit()
+    detail = get_articolo_detail(session, codice_articolo)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Articolo '{codice_articolo}' non trovato")
+    return detail
+
+
+@router.get("/proposal-logic/catalog", response_model=ProposalLogicCatalogResponse)
+def get_proposal_logic_catalog(
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    from nssp_v2.core.production_proposals import get_proposal_logic_config
+
+    config = get_proposal_logic_config(session)
+    return ProposalLogicCatalogResponse(
+        known_logics=KNOWN_PROPOSAL_LOGICS,
+        default_logic_key=config.default_logic_key,
+    )
+
+
 # ─── Warnings surface (TASK-V2-078, TASK-V2-081, TASK-V2-082) ────────────────
 
 @router.get("/warnings", response_model=list[WarningItem])
@@ -485,3 +647,128 @@ def get_warnings(
     user_areas = [r for r in roles if r in KNOWN_AREAS]
     all_warnings = list_warnings_v1(session)
     return filter_warnings_by_areas(all_warnings, user_areas, is_admin)
+
+
+@router.get("/proposals", response_model=list[ProductionProposalItem])
+def get_proposals(
+    workflow_status: str | None = Query(default=None),
+    proposal_ids: list[int] | None = Query(default=None),
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    return list_production_proposals(session, workflow_status=workflow_status, proposal_ids=proposal_ids)
+
+
+@router.get("/proposals/exported", response_model=list[ProductionProposalItem])
+def get_exported_proposals(
+    workflow_status: str | None = Query(default=None),
+    proposal_ids: list[int] | None = Query(default=None),
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    return list_production_proposals(session, workflow_status=workflow_status, proposal_ids=proposal_ids)
+
+
+@router.get("/proposals/{proposal_id}", response_model=ProductionProposalDetail)
+def get_proposal(
+    proposal_id: int,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    detail = get_production_proposal_detail(session, proposal_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proposal esportata non trovata")
+    return detail
+
+
+@router.get("/proposals/exported/{proposal_id}", response_model=ProductionProposalDetail)
+def get_exported_proposal(
+    proposal_id: int,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    detail = get_production_proposal_detail(session, proposal_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proposal esportata non trovata")
+    return detail
+
+
+@router.get("/proposals/workspaces/{workspace_id}", response_model=ProposalWorkspaceDetail)
+def get_proposal_workspace(
+    workspace_id: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    detail = get_proposal_workspace_detail(session, workspace_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace non trovato")
+    return detail
+
+
+@router.patch("/proposals/workspaces/{workspace_id}/rows/{row_id}/override", response_model=ProposalWorkspaceDetail)
+def patch_proposal_workspace_row_override(
+    workspace_id: str,
+    row_id: int,
+    body: SetProposalWorkspaceRowOverrideRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        return set_proposal_workspace_row_override(
+            session,
+            workspace_id=workspace_id,
+            row_id=row_id,
+            override_qty=Decimal(str(body.override_qty)) if body.override_qty is not None else None,
+            override_reason=body.override_reason,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.post("/proposals/workspaces/{workspace_id}/export")
+def post_export_proposal_workspace(
+    workspace_id: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        result, csv_text = export_proposal_workspace_csv(session, workspace_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    headers = {
+        "Content-Disposition": f'attachment; filename="{result.filename}"',
+        "X-Export-Batch-Id": result.batch_id,
+        "X-Exported-Count": str(result.exported_count),
+        "X-Workspace-Id": result.workspace_id,
+    }
+    return StreamingResponse(iter([csv_text]), media_type="text/csv", headers=headers)
+
+
+@router.post("/proposals/workspaces/{workspace_id}/abandon", status_code=status.HTTP_204_NO_CONTENT)
+def post_abandon_proposal_workspace(
+    workspace_id: str,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    try:
+        abandon_proposal_workspace(session, workspace_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.post("/proposals/reconcile", response_model=ProductionProposalReconcileResult)
+def post_reconcile_proposals(
+    body: ReconcileProductionProposalsRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    return reconcile_production_proposals(session, proposal_ids=body.proposal_ids)
+
+
+@router.post("/proposals/exported/reconcile", response_model=ProductionProposalReconcileResult)
+def post_reconcile_exported_proposals(
+    body: ReconcileProductionProposalsRequest,
+    _: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    return reconcile_production_proposals(session, proposal_ids=body.proposal_ids)

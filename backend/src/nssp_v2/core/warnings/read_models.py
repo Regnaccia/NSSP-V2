@@ -28,6 +28,12 @@ Campi specifici INVALID_STOCK_CAPACITY (TASK-V2-091):
 - capacity_calculated_qty: capacity calcolata da contenitori (None se dati mancanti)
 - capacity_override_qty: override articolo-specifico (None se non impostato)
 - capacity_effective_qty: valore effettivo (None o <= 0 = warning attivo)
+
+Campi specifici MISSING_RAW_BAR_LENGTH (TASK-V2-122):
+- article_code: codice articolo canonico
+- famiglia_code: codice famiglia con raw_bar_length_mm_enabled=True
+- raw_bar_length_mm_enabled: True (trigger condition)
+- raw_bar_length_mm: valore corrente dell'articolo (None o <= 0 = warning attivo)
 """
 
 from datetime import datetime
@@ -37,7 +43,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class WarningItem(BaseModel):
-    """Warning canonico V1 — tipi: NEGATIVE_STOCK, INVALID_STOCK_CAPACITY.
+    """Warning canonico V1 — tipi: NEGATIVE_STOCK, INVALID_STOCK_CAPACITY, MISSING_RAW_BAR_LENGTH.
 
     warning_id e derivato come '{type}:{entity_key}' — unico per articolo.
     I campi specifici per tipo sono opzionali (None per i tipi che non li usano).
@@ -67,3 +73,8 @@ class WarningItem(BaseModel):
     capacity_calculated_qty: Decimal | None = None
     capacity_override_qty: Decimal | None = None
     capacity_effective_qty: Decimal | None = None
+
+    # ─── Campi specifici MISSING_RAW_BAR_LENGTH (TASK-V2-122) ────────────────
+    famiglia_code: str | None = None
+    raw_bar_length_mm_enabled: bool | None = None
+    raw_bar_length_mm: Decimal | None = None

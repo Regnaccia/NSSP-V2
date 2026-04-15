@@ -29,8 +29,8 @@ docs/
 | [specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Planning Candidates`, allineata al modello canonico attuale della V2 |
 | [specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md](specs/PLANNING_CANDIDATES_AGGREGATION_V2_REDUCED_SPEC.md) | Estensione ridotta della logica `Planning Candidates` con due modalita esplicite: `by_article` e `by_customer_order_line` |
 | [specs/STOCK_POLICY_V1_REDUCED_SPEC.md](specs/STOCK_POLICY_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della prima stock policy V1, limitata al ramo `by_article`, con `strategy selection` per `monthly_stock_base_qty`, capacity setup fissa e riuso di `future_availability_qty` |
-| [specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md](specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md) | Spec iniziale del modulo `Production Proposals`, separato da `Planning Candidates` e focalizzato su proposal persistenti, override, workflow, export e warnings |
-| [specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md](specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Production Proposals`, centrata su proposal persistenti, override, workflow minimo e riconciliazione con Easy |
+| [specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md](specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md) | Spec del modulo `Production Proposals` riallineata al flusso reale V2: selezione in planning, workspace temporaneo, persistenza solo all'export, export `xlsx` EasyJob, fallback proposal a pezzi e logica `full bar` V1 |
+| [specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md](specs/PRODUCTION_PROPOSALS_V1_REDUCED_SPEC.md) | Versione ridotta e implementabile della V1 di `Production Proposals`, centrata su workspace temporanei downstream di `Planning Candidates`, logiche proposal articolo-based, export `xlsx` e reconcile |
 | [specs/WARNINGS_SPEC_V1.md](specs/WARNINGS_SPEC_V1.md) | Spec iniziale del modulo trasversale `Warnings`, con warning canonici unici e visibilita differenziata per surface o ruolo |
 
 ## Reviews
@@ -90,6 +90,9 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-030.md](decisions/ARCH/DL-ARCH-V2-030.md) | Prima definizione della stock policy V1 come estensione minima del planning `by_article`, con strategy selection configurabile per `monthly_stock_base_qty` e capacity setup fissa |
 | [decisions/ARCH/DL-ARCH-V2-031.md](decisions/ARCH/DL-ARCH-V2-031.md) | Introduzione di `customer horizon`, `stock horizon` e separazione UI tra driver `fabbisogno cliente` e `scorta` senza duplicare il Core planning |
 | [decisions/ARCH/DL-ARCH-V2-032.md](decisions/ARCH/DL-ARCH-V2-032.md) | Modello descrittivo unificato di `Planning Candidates`, con `description_parts` e `display_description` comuni ai rami `by_article` e `by_customer_order_line` |
+| [decisions/ARCH/DL-ARCH-V2-033.md](decisions/ARCH/DL-ARCH-V2-033.md) | `Production Proposals` V1 rifinito come workspace temporaneo generato da `Planning Candidates`, con persistenza solo all'export e reconcile via `ODE_REF` |
+| [decisions/ARCH/DL-ARCH-V2-034.md](decisions/ARCH/DL-ARCH-V2-034.md) | Contratto di export `xlsx` EasyJob per `Production Proposals`, con mapping colonna-per-colonna, validazione bloccante su `ordine` e nota deterministica con `ODE_REF` |
+| [decisions/ARCH/DL-ARCH-V2-035.md](decisions/ARCH/DL-ARCH-V2-035.md) | Seconda logica proposal V1 `proposal_full_bar_v1`, con configurazione barra su articolo, flag famiglia per abilitare il campo e fallback obbligatorio a pezzi |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |

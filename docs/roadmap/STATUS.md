@@ -12,6 +12,7 @@ La V2 ha completato il bootstrap architetturale principale e ha chiuso i primi s
 - `produzioni`
 - `planning candidates`
 - `warnings` V1
+- `production proposals` V1
 
 Sono oggi disponibili:
 
@@ -73,12 +74,18 @@ Sono oggi disponibili:
     - `INVALID_STOCK_CAPACITY`
   - prima surface dedicata `Warnings`
   - prima configurazione admin della visibilita
+- primo slice `Production Proposals` V1 con:
+  - workspace temporaneo generato da `Planning Candidates`
+  - persistenza solo all'export
+  - export CSV batch
+  - reconcile via `ODE_REF`
+  - governance proposal logic tra `admin` e `articoli`
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-032`
+- `ARCH/` fino a `DL-ARCH-V2-033`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -107,12 +114,25 @@ Punti ormai stabili:
   - `min_movements`
   - `rounding_scale`
   - perimetro esplicito `by_article`
+- `Production Proposals` come workspace temporaneo downstream di `Planning Candidates`, con storico persistente solo all'export
 
 ## Task completati
 
 Completati:
 
 - `TASK-V2-001` -> `TASK-V2-114`
+
+## Task aperti
+
+- `TASK-V2-115` contratti Core/API per preview export EasyJob in `Production Proposals`
+- `TASK-V2-116` tabella UI `Production Proposals` allineata alla preview export EasyJob
+- `TASK-V2-117` prima logica proposal V1 `proposal_target_pieces_v1`
+- `TASK-V2-118` modello/config `raw_bar_length_mm_enabled` e `raw_bar_length_mm`
+- `TASK-V2-119` UI `famiglie` per `raw_bar_length_mm_enabled`
+- `TASK-V2-120` UI `articoli` per `raw_bar_length_mm` e `proposal_full_bar_v1`
+- `TASK-V2-121` Core `proposal_full_bar_v1`
+- `TASK-V2-122` warning `MISSING_RAW_BAR_LENGTH`
+- `TASK-V2-123` fix UI `articoli` per visibilita condizionata di `raw_bar_length_mm`
 
 Ultimi task chiusi rilevanti:
 
@@ -168,14 +188,15 @@ Ultimi task chiusi rilevanti:
 ## Prossima sequenza consigliata
 
 I prossimi stream naturali sono:
-- aprire `Production Proposals` sopra un planning ormai coerente anche su:
-  - `customer horizon`
-  - `stock horizon`
-  - `primary_driver`
-  - `required_qty_minimum` dei casi `stock-only`
-  - data richiesta in tabella
-  - modello descrittivo unificato
-  - warning articolo e quick edit contestuale
+- raffinare `Production Proposals` su:
+  - preview export EasyJob in Core/API e UI
+  - prima logica proposal minima `proposal_target_pieces_v1`
+  - seconda logica proposal `proposal_full_bar_v1`
+  - warning configurativo `MISSING_RAW_BAR_LENGTH`
+  - logiche proposal piu ricche
+  - eventuali regole di riapertura / nuovo ciclo proposal
+  - possibili blocchi o segnali operativi legati ai warning
+  - eventuale export audit piu ricco
 - valutare piu avanti badge warning in:
   - `articoli`
   - `Planning Candidates` extra rispetto alla colonna warning gia introdotta
@@ -188,7 +209,7 @@ Non sono prioritari adesso:
 
 - nuovo scaffolding sync
 - nuovo refactor planning di base
-- scoring o scheduling avanzato prima di aprire `Production Proposals`
+- scoring o scheduling avanzato prima di raffinare `Production Proposals`
 
 ## Notes
 

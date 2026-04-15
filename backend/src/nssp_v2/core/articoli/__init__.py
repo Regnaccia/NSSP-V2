@@ -25,6 +25,8 @@ from nssp_v2.core.articoli.queries import (
     list_famiglie_catalog,
     set_articolo_gestione_scorte_override,
     set_articolo_policy_override,
+    set_articolo_proposal_logic_config,
+    set_articolo_raw_bar_length_mm,
     set_articolo_stock_policy_override,
     set_famiglia_articolo,
     set_famiglia_stock_policy,
@@ -32,6 +34,7 @@ from nssp_v2.core.articoli.queries import (
     toggle_famiglia_aggrega_codice_produzione,
     toggle_famiglia_considera_produzione,
     toggle_famiglia_gestione_scorte,
+    toggle_famiglia_raw_bar_length_mm_enabled,
 )
 
 __all__ = [
@@ -50,7 +53,10 @@ __all__ = [
     "set_famiglia_articolo",
     "set_famiglia_stock_policy",
     "toggle_famiglia_gestione_scorte",
+    "toggle_famiglia_raw_bar_length_mm_enabled",
     "set_articolo_gestione_scorte_override",
     "set_articolo_policy_override",
+    "set_articolo_proposal_logic_config",
+    "set_articolo_raw_bar_length_mm",
     "set_articolo_stock_policy_override",
 ]

@@ -2,282 +2,296 @@
 
 ## Purpose
 
-This document defines the first implementable slice of `Production Proposals`.
-
-It is intentionally narrower than [PRODUCTION_PROPOSALS_SPEC_V1_0.md](PRODUCTION_PROPOSALS_SPEC_V1_0.md):
-
-- proposal created from an already identified need
-- no scoring in the first slice
-- no scheduling
-- no advanced effort model
-- no drawing archive
-- warnings kept separate from proposal lifecycle
-
-Its purpose is to give a clean base for the first `DL` and the first implementation tasks.
-
-## Context
-
-The current V2 already provides:
-
-- canonical quantitative facts:
-  - `inventory`
-  - `commitments`
-  - `customer_set_aside`
-  - `availability`
-- `Planning Candidates`
-- planning policy values resolved at article level
-- production browsing and active production sync
-
-What is still missing is the decision layer that transforms a detected need into an operational object with its own lifecycle.
+This document defines the first implementable slice of `Production Proposals` after the refactor that moved human triage back into `Planning Candidates`.
 
 ## V1 Goal
 
 `Production Proposals V1` must:
 
-- take an already detected need from `Planning Candidates`
-- turn it into a persistent operational proposal
-- allow manual override
-- support validation before export
-- prepare robust reconciliation with Easy
+- start only from explicitly selected planning candidates
+- create a temporary server-side workspace
+- freeze candidate snapshots into that workspace
+- allow quantity override before export
+- export the workspace as EasyJob-compatible `xlsx`
+- persist only exported proposal snapshots
+- reconcile exported snapshots through `ODE_REF`
 
-It does not yet answer:
+## In Scope
 
+- `POST /produzione/planning-candidates/generate-proposals-workspace`
+- temporary `ProposalWorkspace`
+- workspace row override
+- workspace export `xlsx`
+- workspace abandon
+- exported proposal history
+- reconcile on exported history
+- global proposal logic config in `admin`
+- article-specific proposal logic assignment and params
+
+## Out of Scope
+
+- persistent pre-export drafts
+- persistent ready queue in planning
+- auto-generation from all planning candidates
+- auto-refresh / auto-cancel of proposals from planning drift
 - scheduling
-- machine assignment
-- final prioritization via score
-- effort optimization
-
-## Scope
-
-### In scope
-
-- persistent `Production Proposal` object
-- proposal created from `Planning Candidates`
-- proposal quantity separated from override quantity
-- minimal workflow:
-  - `draft`
-  - `validated`
-  - `exported`
-  - `reconciled`
-- correlation key for Easy export
-- negative stock handled through operational clamp
-- warnings separated from proposal lifecycle
-
-### Out of scope
-
 - scoring
-- scheduling
-- resource assignment
-- cycle-time logic
-- drawing archive
-- predictive logic
-- advanced stock-policy logic
-- warning workflow beyond simple exposure
+- machine or resource assignment
 
-## Upstream Dependency
+## Boundary
 
-V1 proposals are downstream of `Planning Candidates`.
+### Planning Candidates
 
-Rule:
+- remains the only live inbox of need
+- supports selection
+- triggers workspace generation
 
-- `Planning Candidates` detects the need
-- `Production Proposals` takes that need and turns it into an operational decision object
+### Production Proposals
 
-For V1:
+- `workspace` mode: temporary execution-prep surface
+- `history` mode: exported persistent audit trail
 
-- `required_qty` is derived from the upstream planning candidate
-- proposal logic does not recompute the need from scratch
+## Canonical Input
 
-## Central Entity
+Workspace generation consumes selected planning candidates with at least:
 
-### Production Proposal
-
-`Production Proposal` is the main operational object.
-
-It is not a transient view.
-
-It is a persistent projection with:
-
-- source need snapshot
-- proposal decision
-- override data
-- workflow state
-
-## Canonical Inputs
-
-V1 uses names aligned with the current V2 model.
-
+- `source_candidate_id`
+- `planning_mode`
 - `article_code`
-- `required_qty`
-- `stock_calculated`
-- `commitments`
-
-### required_qty
-
-Derived from the upstream planning candidate.
-
-For V1 it represents the minimum shortage or need already computed upstream.
-
-### stock_calculated
-
-Operationally useful but not always trustworthy for proposal logic when negative.
-
-Therefore V1 introduces:
-
-```text
-stock_effective = max(stock_calculated, 0)
-```
-
-Rule:
-
-- `stock_calculated` is preserved for audit/debug
-- `stock_effective` is used for operational reasoning
-
-## Proposal Decision Fields
-
-Suggested V1 decision fields:
-
-- `proposed_qty`
-- `lot_applied`
-- `multiple_applied`
+- `primary_driver`
+- `required_qty_minimum`
+- `required_qty_total`
+- `customer_shortage_qty`
 - `stock_replenishment_qty`
-- `policy_snapshot`
+- `display_description`
+- `requested_delivery_date`
+- `requested_destination_display`
+- `active_warning_codes`
 
-V1 principle:
+## Quantity Rule
 
-- proposal logic starts from `required_qty`
-- proposal may expand that quantity according to business policy
-- final production quantity is still not a scheduling result
+Base quantity:
 
-## Override
+- `required_qty_total`
 
-V1 must support explicit operator override.
+Compatibility fallback:
 
-Suggested fields:
+- `required_qty_minimum` if `required_qty_total` is absent in a legacy slice
 
-- `override_qty`
-- `override_reason`
-- `override_by`
-- `override_at`
+First V1 logic:
+
+- `proposal_target_pieces_v1`
 
 Resolution rule:
 
 ```text
+proposed_qty = base_qty
 final_qty = override_qty if present, otherwise proposed_qty
 ```
 
-## Workflow
+First-logic semantics:
 
-V1 uses a minimal lifecycle:
+- it proposes exactly the missing target pieces
+- `proposed_qty = required_qty_total`
+- `note_fragment = null`
 
-- `draft`
-- `validated`
+This first logic is also the default fallback logic for future richer proposal scenarios.
+
+Second V1 logic:
+
+- `proposal_full_bar_v1`
+
+Second-logic semantics:
+
+- it works on full raw-material bars
+- family flag `raw_bar_length_mm_enabled` only enables configurability of the bar-length field
+- article field `raw_bar_length_mm` provides the actual bar length
+- formula:
+  - `usable_mm_per_piece = quantita_materiale_grezzo_occorrente + quantita_materiale_grezzo_scarto`
+  - `pieces_per_bar = floor(raw_bar_length_mm / usable_mm_per_piece)`
+  - `bars_required = ceil(required_qty_total / pieces_per_bar)`
+  - `proposed_qty = bars_required * pieces_per_bar`
+  - `note_fragment = "BAR xN"`
+- capacity rule:
+  - `availability_qty + proposed_qty <= capacity_effective_qty`
+
+Mandatory fallback to `proposal_target_pieces_v1` if:
+
+- `raw_bar_length_mm` is missing
+- `usable_mm_per_piece <= 0`
+- `pieces_per_bar <= 0`
+- full-bar proposal would overflow `capacity_effective_qty`
+- full-bar proposal would under-cover `customer_shortage_qty`
+
+Guardrail:
+
+- `proposal_full_bar_v1` must never return a proposal lower than `customer_shortage_qty`
+
+## Workspace Semantics
+
+Workspace entity:
+
+- `workspace_id`
+- `status`:
+  - `open`
+  - `exported`
+  - `abandoned`
+- `created_at`
+- `expires_at`
+- `updated_at`
+
+Key rule:
+
+- once generated, the workspace is frozen
+- later planning refreshes do not mutate workspace rows
+
+## Export Boundary
+
+Persistence starts at export time.
+
+After export:
+
+- an `xlsx` file is produced
+- `ODE_REF` is assigned
+- exported proposal snapshots are persisted
+- workspace becomes `exported`
+
+## EasyJob XLSX Mapping
+
+V1 target columns:
+
+- `cliente`
+- `codice`
+- `descrizione`
+- `immagine`
+- `misura`
+- `quantità`
+- `materiale`
+- `mm_materiale`
+- `ordine`
+- `note`
+- `user`
+
+Mapping:
+
+- `cliente`
+  - `requested_destination_display` when the candidate contains customer demand
+  - otherwise `MAGAZZINO`
+- `codice`
+  - `article_code`
+- `descrizione`
+  - `description_parts` serialized as Python-list literal
+- `immagine`
+  - article image code
+- `misura`
+  - article measure
+- `quantità`
+  - `final_qty`
+- `materiale`
+  - raw material article code
+- `mm_materiale`
+  - raw material required quantity
+- `ordine`
+  - `order_reference/line_reference`
+  - mandatory for customer-driven rows
+  - empty for stock-only rows
+- `note`
+  - deterministic business note + `ODE_REF`
+- `user`
+  - export operator username, optional
+
+For `proposal_full_bar_v1`, the production-logic note fragment is:
+
+- `BAR xN`
+
+Blocking validation:
+
+- if the row contains customer demand and `ordine` cannot be built because `line_reference` is missing, export fails
+
+## Persistent History
+
+Persistent exported snapshots keep:
+
+- frozen proposal quantities
+- warning context
+- `ode_ref`
+- `export_batch_id`
+- reconcile status
+
+Exported-history lifecycle:
+
 - `exported`
 - `reconciled`
+- `cancelled` only for future audit use
+
+## Warnings
+
+Proposal/workspace may consume canonical warning codes from `Warnings`.
+
+Relevant warning introduced by the full-bar domain:
+
+- `MISSING_RAW_BAR_LENGTH`
 
 Meaning:
 
-- `draft`: proposal exists but is still editable
-- `validated`: accepted for export pipeline
-- `exported`: sent to Easy
-- `reconciled`: matched back to the real Easy production
+- family requires `raw_bar_length_mm`
+- article configuration is missing or invalid
 
-## Warning Separation
+The warning remains owned by `Warnings`; proposal logic does not own the warning lifecycle.
 
-Warnings are not part of the proposal lifecycle.
+## Reconcile
 
-V1 warning type in scope:
-
-- `NEGATIVE_STOCK`
-
-A proposal may expose warning presence, but:
-
-- warning state is separate
-- warning existence does not automatically create production
-
-## Easy Integration
-
-Easy IDs are not suitable as proposal identity.
-
-V1 uses a correlation key:
+Reconcile works only on exported history:
 
 ```text
-[ODE_REF=PP000123]
+exported snapshot
+-> Easy execution
+-> sync produzioni
+-> match via ODE_REF
 ```
 
-It is written into Easy notes and used for reconciliation:
-
-```text
-ODE export
--> Easy creates production
--> ODE sync productions
--> reconciliation by ODE_REF
-```
-
-Expected mapping:
-
-- `proposal_id <-> easy_production_id`
-
-## Output Shape
-
-A first V1 proposal model should be minimal and explainable.
-
-Suggested fields:
-
-- `proposal_id`
-- `article_code`
-- `required_qty`
-- `stock_calculated`
-- `stock_effective`
-- `proposed_qty`
-- `override_qty`
-- `final_qty`
-- `workflow_status`
-- `warning_count` or `has_warning`
-- `ode_ref`
-- `computed_at`
-
-Optional descriptive fields for UI:
-
-- `article_description`
-- `family_name`
-
-## Interaction With Existing Modules
+## UI
 
 ### Planning Candidates
 
-- upstream detector of need
+- checkbox selection
+- `Genera proposte`
 
-### Warnings
+### Production Proposals
 
-- parallel anomaly module
-- proposal may show warning badges, but does not own warning lifecycle
+If opened with `workspace_id`:
 
-### Produzioni
+- show workspace rows as export preview
+- allow override
+- `Esporta`
+- `Chiudi senza esportare`
 
-- downstream reconciliation target after export
+If opened without `workspace_id`:
 
-## Explicit V1 Tradeoffs
+- show exported history
+- allow reconcile
 
-Accepted limitations:
+Workspace preview table should expose, as main columns:
 
-- no scoring yet
-- no operational effort model yet
-- no scheduling semantics
-- no predictive logic
-- no advanced anomaly workflow
+- `cliente`
+- `codice`
+- `descrizione`
+- `immagine`
+- `misura`
+- `quantità`
+- `materiale`
+- `mm_materiale`
+- `ordine`
+- `note`
+- `user`
+- `warnings`
 
-These are future expansions, not blockers for V1.
+UI rendering rule for `descrizione`:
 
-## Future Expansion Path
+- export keeps the Python-list literal
+- UI renders the same underlying `description_parts` as a multiline field
+- each item is displayed on its own visual line
 
-The design intentionally leaves room for:
+## Final Principle
 
-- scoring
-- effort estimation
-- richer warning lifecycle
-- export audit trail
-- drawing archive integration
-- historical or predictive proposal refinement
-
-V1 must stay small enough to validate the proposal lifecycle before those expansions.
+`Planning Candidates` detects and triages live need. `Production Proposals` prepares export from a temporary frozen workspace. Only exported rows become persistent business history.

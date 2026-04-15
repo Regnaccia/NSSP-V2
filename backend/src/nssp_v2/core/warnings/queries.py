@@ -19,14 +19,16 @@ Filtro per area (TASK-V2-082):
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
 from nssp_v2.core.availability.models import CoreAvailability
 from nssp_v2.core.warnings.config import get_visible_to_areas
-from nssp_v2.core.warnings.logic import is_invalid_stock_capacity, is_negative_stock
+from nssp_v2.core.warnings.logic import is_invalid_stock_capacity, is_missing_raw_bar_length, is_negative_stock
 from nssp_v2.core.warnings.read_models import WarningItem
 from nssp_v2.sync.articoli.models import SyncArticolo
 
 _NEGATIVE_STOCK_TYPE = "NEGATIVE_STOCK"
 _INVALID_STOCK_CAPACITY_TYPE = "INVALID_STOCK_CAPACITY"
+_MISSING_RAW_BAR_LENGTH_TYPE = "MISSING_RAW_BAR_LENGTH"
 _WARNING_SEVERITY = "warning"
 _ENTITY_TYPE_ARTICLE = "article"
 _SOURCE_MODULE = "warnings"
@@ -38,11 +40,14 @@ def list_warnings_v1(session: Session) -> list[WarningItem]:
     Genera:
     - NEGATIVE_STOCK: articoli attivi con inventory_qty < 0
     - INVALID_STOCK_CAPACITY: articoli attivi by_article con capacity_effective_qty None o <= 0
+    - MISSING_RAW_BAR_LENGTH: articoli in famiglia con raw_bar_length_mm_enabled=True
+      ma raw_bar_length_mm assente o <= 0
 
     visible_to_areas e risolto dalla config DB; default dal tipo se non configurato.
     Perimetro articoli: INNER JOIN su sync_articoli con attivo=True.
     Ordinamento NEGATIVE_STOCK: inventory_qty crescente (anomalie piu gravi sopra).
     Ordinamento INVALID_STOCK_CAPACITY: article_code alfabetico.
+    Ordinamento MISSING_RAW_BAR_LENGTH: article_code alfabetico.
     """
     result: list[WarningItem] = []
 
@@ -110,6 +115,45 @@ def list_warnings_v1(session: Session) -> list[WarningItem]:
             capacity_calculated_qty=m.capacity_calculated_qty,
             capacity_override_qty=m.capacity_override_qty,
             capacity_effective_qty=m.capacity_effective_qty,
+        ))
+
+    # ─── MISSING_RAW_BAR_LENGTH (TASK-V2-122) ─────────────────────────────────
+    areas_bar = get_visible_to_areas(session, _MISSING_RAW_BAR_LENGTH_TYPE)
+
+    bar_rows = (
+        session.query(CoreArticoloConfig, ArticoloFamiglia, SyncArticolo)
+        .join(ArticoloFamiglia, CoreArticoloConfig.famiglia_code == ArticoloFamiglia.code)
+        .join(
+            SyncArticolo,
+            func.upper(SyncArticolo.codice_articolo) == func.upper(CoreArticoloConfig.codice_articolo),
+        )
+        .filter(ArticoloFamiglia.raw_bar_length_mm_enabled == True)  # noqa: E712
+        .filter(SyncArticolo.attivo == True)  # noqa: E712
+        .order_by(func.upper(CoreArticoloConfig.codice_articolo))
+        .all()
+    )
+
+    for cfg, famiglia, art in bar_rows:
+        if not is_missing_raw_bar_length(cfg.raw_bar_length_mm):
+            continue
+        article_key = cfg.codice_articolo.strip().upper()
+        result.append(WarningItem(
+            warning_id=f"{_MISSING_RAW_BAR_LENGTH_TYPE}:{article_key}",
+            type=_MISSING_RAW_BAR_LENGTH_TYPE,
+            severity=_WARNING_SEVERITY,
+            entity_type=_ENTITY_TYPE_ARTICLE,
+            entity_key=article_key,
+            message=(
+                f"Lunghezza barra grezza mancante o non valida per {article_key} "
+                f"(famiglia {famiglia.code} ha raw_bar_length_mm_enabled=True)"
+            ),
+            source_module=_SOURCE_MODULE,
+            visible_to_areas=areas_bar,
+            created_at=art.synced_at,
+            article_code=article_key,
+            famiglia_code=famiglia.code,
+            raw_bar_length_mm_enabled=True,
+            raw_bar_length_mm=cfg.raw_bar_length_mm,
         ))
 
     return result

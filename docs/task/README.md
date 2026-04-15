@@ -138,3 +138,12 @@ Task registrati:
 - `TASK-V2-112-ui-planning-candidates-warnings-column.md` - completato
 - `TASK-V2-113-ui-planning-candidates-article-quick-config-modal.md` - completato
 - `TASK-V2-114-core-articoli-case-insensitive-code-bridge.md` - completato
+- `TASK-V2-115-core-proposal-export-preview-contracts.md` - todo
+- `TASK-V2-116-ui-production-proposals-export-preview-table.md` - todo
+- `TASK-V2-117-core-proposal-target-pieces-v1-logic.md` - todo
+- `TASK-V2-118-model-raw-bar-length-enable-and-article-config.md` - todo
+- `TASK-V2-119-ui-famiglie-raw-bar-length-enable.md` - todo
+- `TASK-V2-120-ui-articoli-raw-bar-length-mm-and-proposal-logic.md` - todo
+- `TASK-V2-121-core-proposal-full-bar-v1-logic.md` - todo
+- `TASK-V2-122-warning-missing-raw-bar-length.md` - todo
+- `TASK-V2-123-ui-articoli-hide-raw-bar-length-when-family-disabled.md` - todo
