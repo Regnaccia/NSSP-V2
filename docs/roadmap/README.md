@@ -11,6 +11,7 @@ Documenti attivi:
 
 - `STATUS.md`
 - `TASK_LOG.md`
+- `REBASE_V2_BACKLOG_2026-04-15.md`
 
 Nota:
 

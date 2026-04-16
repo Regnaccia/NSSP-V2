@@ -63,6 +63,15 @@ function proposalLogicLabel(logicKey: string): string {
   return logicKey
 }
 
+function fallbackReasonLabel(reason: string): string {
+  if (reason === 'missing_raw_bar_length') return 'barra non configurata'
+  if (reason === 'invalid_usable_mm_per_piece') return 'mm/pezzo non validi'
+  if (reason === 'pieces_per_bar_le_zero') return 'barra troppo corta'
+  if (reason === 'customer_undercoverage') return 'sotto copertura cliente'
+  if (reason === 'capacity_overflow') return 'superamento capacità'
+  return reason
+}
+
 function downloadCsv(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -386,6 +395,15 @@ function WorkspaceView({
                   <div className="text-[10px] text-muted-foreground font-normal">{proposalLogicLabel(row.proposal_logic_key)}</div>
                   {row.override_qty != null && (
                     <div className="text-[10px] text-amber-600 font-normal">ov. {fmtQty(row.override_qty)}</div>
+                  )}
+                  {row.requested_proposal_logic_key != null &&
+                    row.requested_proposal_logic_key !== row.effective_proposal_logic_key && (
+                    <div className="text-[10px] text-orange-600 font-normal leading-tight mt-0.5">
+                      ↓ {proposalLogicLabel(row.requested_proposal_logic_key)}
+                      {row.proposal_fallback_reason && (
+                        <span className="block text-orange-500">({fallbackReasonLabel(row.proposal_fallback_reason)})</span>
+                      )}
+                    </div>
                   )}
                 </td>
                 <td className="px-3 py-2 align-top text-xs whitespace-nowrap">

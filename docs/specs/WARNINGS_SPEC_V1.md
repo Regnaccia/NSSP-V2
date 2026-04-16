@@ -96,19 +96,19 @@ Nota:
 
 Definizione:
 
-- articolo con famiglia che richiede il dato `raw_bar_length_mm`
-- ma `raw_bar_length_mm` articolo assente o `<= 0`
+- articolo materiale grezzo con famiglia che richiede il dato `raw_bar_length_mm`
+- ma `raw_bar_length_mm` del materiale grezzo assente o `<= 0`
 
 Condizione attiva minima:
 
 - `raw_bar_length_mm_enabled = true` sulla famiglia
-- `raw_bar_length_mm is null` oppure `raw_bar_length_mm <= 0` sull'articolo
+- `raw_bar_length_mm is null` oppure `raw_bar_length_mm <= 0` sull'articolo materiale grezzo
 
 Nota:
 
 - il warning nasce nel modulo `Warnings`, non nella logica proposal
 - non seleziona automaticamente `proposal_full_bar_v1`
-- segnala una configurazione articolo incompleta rispetto al contratto della famiglia
+- segnala una configurazione incompleta del materiale grezzo rispetto al contratto della famiglia
 
 ## 7. Visibilita e audience
 
@@ -191,6 +191,7 @@ Campi specifici per `MISSING_RAW_BAR_LENGTH`:
 - `famiglia_code`
 - `raw_bar_length_mm_enabled`
 - `raw_bar_length_mm`
+- `is_raw_material_article`
 
 ## 9. Regole di ownership
 

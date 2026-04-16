@@ -25,6 +25,8 @@ Easy facts
 -> ODE reconcile via ODE_REF
 ```
 
+Nel baseline architetturale post-rebase, `Production Proposals` resta downstream del planning e non ridefinisce da solo la fattibilita di rilascio.
+
 ## 2. Obiettivo del modulo
 
 `Production Proposals` non e piu una seconda inbox persistente del need.
@@ -47,6 +49,9 @@ Resta:
 - inbox live del bisogno
 - superficie di triage
 - punto di selezione dei candidate
+- luogo corretto in cui distinguere:
+  - bisogno eventuale
+  - quantita lanciabile ora
 
 Aggiunge:
 
@@ -64,6 +69,13 @@ Diventa:
 
 - `workspace` temporaneo quando aperto da planning
 - storico persistente degli export quando aperto senza `workspace_id`
+
+Regola di confine:
+
+- `Planning Candidates` risponde a `is there a need?`
+- `Production Proposals` risponde a `what do we release/export?`
+
+La semantica `release now` non deve nascere solo come side effect di una proposal logic.
 
 ## 4. Workspace temporaneo
 
@@ -146,6 +158,46 @@ Campi articolo:
 - `proposal_logic_key`
 - `proposal_logic_article_params`
 
+### Rebase concettuale delle logiche proposal
+
+Il modello target del rebase non e un elenco aperto di `proposal_logic_key` monolitiche.
+
+Le logiche proposal devono essere ragionate come bundle di policy su assi distinti:
+
+- `proposal_base_qty_policy`
+- `proposal_lot_policy`
+- `proposal_capacity_policy`
+- `proposal_customer_guardrail_policy`
+- `proposal_note_policy`
+
+Compatibilita a breve termine:
+
+- `proposal_logic_key` resta la compatibility surface reale in V2
+- le key esistenti vanno reinterpretate come bundle impliciti
+
+Mapping concettuale iniziale:
+
+- `proposal_target_pieces_v1`
+  - base qty: `required_qty_total`
+  - lot: `pieces`
+  - capacity: `none`
+  - customer guardrail: `cover_customer_shortage`
+  - note: `none`
+- `proposal_full_bar_v1`
+  - base qty: `required_qty_total`
+  - lot: `full_bar`
+  - capacity: `strict_capacity`
+  - customer guardrail: `never_undercover_customer`
+  - note: `bar_count`
+- `proposal_full_bar_v2_capacity_floor`
+  - base qty: `required_qty_total`
+  - lot: `full_bar`
+  - capacity: `capacity_floor`
+  - customer guardrail: `never_undercover_customer`
+  - note: `bar_count`
+
+Nuovi task proposal non devono piu introdurre una nuova `proposal_*_vN` senza dichiarare esplicitamente su quale asse di policy intervengono.
+
 Prima logica V1:
 
 - `proposal_target_pieces_v1`
@@ -168,7 +220,8 @@ Seconda logica V1:
 Semantica della seconda logica:
 
 - lavora a barre intere di materiale
-- usa la configurazione articolo `raw_bar_length_mm`
+- risolve il `materiale_grezzo_codice` dell'articolo finito
+- legge `raw_bar_length_mm` sull'articolo materiale grezzo associato
 - usa i dati materiale:
   - `quantita_materiale_grezzo_occorrente`
   - `quantita_materiale_grezzo_scarto`
@@ -179,9 +232,9 @@ Configurazione collegata:
 
 - famiglia:
   - `raw_bar_length_mm_enabled`
-  - abilita la configurabilita del campo barra, non la scelta della logica
+  - abilita la configurabilita del campo barra sulle famiglie di materiale grezzo, non la scelta della logica
 - articolo:
-  - `raw_bar_length_mm`
+  - `raw_bar_length_mm` sull'articolo materiale grezzo
   - `proposal_logic_key`
 
 Formula canonica:
@@ -202,7 +255,8 @@ availability_qty + proposed_qty <= capacity_effective_qty
 
 Fallback obbligatorio a `proposal_target_pieces_v1` se:
 
-- `raw_bar_length_mm` manca
+- l'articolo finito non risolve un `materiale_grezzo_codice` valido
+- `raw_bar_length_mm` manca sul materiale grezzo associato
 - `usable_mm_per_piece <= 0`
 - `pieces_per_bar <= 0`
 - la proposta a barre sfora `capacity_effective_qty`
@@ -212,7 +266,77 @@ Regola esplicita:
 
 - `proposal_full_bar_v1` non deve mai proporre meno di `customer_shortage_qty`
 - in V1 non e ammesso overflow di capienza
-- in V1 non si blocca la proposta per config barra mancante: si fa fallback a pezzi
+- in V1 non si blocca la proposta per config barra mancante sul materiale grezzo: si fa fallback a pezzi
+
+Terza logica proposal:
+
+- `proposal_full_bar_v2_capacity_floor`
+
+Semantica della terza logica:
+
+- mantiene lo stesso modello dati della `proposal_full_bar_v1`
+- prova prima l'arrotondamento `ceil`
+- se `ceil` sfora la capienza, prova una riduzione `floor`
+- usa `floor` solo se resta sotto capienza e non sotto-copre il cliente
+
+Formula:
+
+```text
+usable_mm_per_piece = quantita_materiale_grezzo_occorrente + quantita_materiale_grezzo_scarto
+pieces_per_bar = floor(raw_bar_length_mm / usable_mm_per_piece)
+bars_ceil = ceil(required_qty_total / pieces_per_bar)
+qty_ceil = bars_ceil * pieces_per_bar
+bars_floor = floor(required_qty_total / pieces_per_bar)
+qty_floor = bars_floor * pieces_per_bar
+```
+
+Policy:
+
+- se `availability_qty + qty_ceil <= capacity_effective_qty`, usare `qty_ceil`
+- altrimenti tentare `qty_floor`
+- `qty_floor` e ammesso solo se:
+  - `bars_floor > 0`
+  - `availability_qty + qty_floor <= capacity_effective_qty`
+  - se esiste `customer_shortage_qty`, allora `qty_floor >= customer_shortage_qty`
+- se anche `floor` non e ammissibile, fallback a `proposal_target_pieces_v1`
+
+Nota:
+
+- il frammento note resta `BAR xN`, dove `N` e il numero di barre effettivamente usato
+- questa logica e distinta dalla `proposal_full_bar_v1`, non ne cambia la semantica
+
+## 7B. Diagnostica locale della logica proposal
+
+Il workspace proposal deve distinguere tra:
+
+- logica richiesta sull'articolo
+- logica effettivamente applicata alla riga
+- eventuale motivo di fallback
+
+Campi minimi locali al modulo `Production Proposals`:
+
+- `requested_proposal_logic_key`
+- `effective_proposal_logic_key`
+- `proposal_fallback_reason`
+
+Questa diagnostica:
+
+- non appartiene al modulo `Warnings`
+- non introduce warning canonici cross-module
+- serve a spiegare perche una riga proposal e stata calcolata con una logica diversa da quella richiesta
+
+Esempi iniziali di `proposal_fallback_reason`:
+
+- `missing_raw_bar_length`
+- `invalid_usable_mm_per_piece`
+- `pieces_per_bar_le_zero`
+- `capacity_overflow`
+- `customer_undercoverage`
+
+Regola:
+
+- se `requested_proposal_logic_key != effective_proposal_logic_key`, `proposal_fallback_reason` deve essere valorizzato
+- se non c'e fallback, `proposal_fallback_reason = null`
 
 ## 8. Chiusura senza export
 

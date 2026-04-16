@@ -468,3 +468,102 @@ def test_export_preview_propagates_through_export(monkeypatch, session: Session)
     proposals = list_production_proposals(session)
     assert proposals[0].description_parts == ["Parte 1", "Parte 2"]
     assert proposals[0].export_description == repr(["Parte 1", "Parte 2"])
+
+
+# ─── Test diagnostica logica proposal (TASK-V2-124) ───────────────────────────
+
+
+def test_diagnostics_no_bar_logic_requested_equals_effective(monkeypatch, session: Session):
+    """Per logica non-bar, requested == effective e fallback_reason e None."""
+    monkeypatch.setattr(
+        "nssp_v2.core.production_proposals.queries.list_planning_candidates_v1",
+        lambda *args, **kwargs: [_candidate()],
+    )
+    result = generate_proposal_workspace(session, ["by_article::ART001"])
+    detail = get_proposal_workspace_detail(session, result.workspace_id)
+    assert detail is not None
+    row = detail.rows[0]
+    # Con logica globale default (proposal_target_pieces_v1), non c'e fallback
+    assert row.requested_proposal_logic_key == row.effective_proposal_logic_key
+    assert row.proposal_fallback_reason is None
+
+
+def test_diagnostics_full_bar_fallback_missing_raw_bar_length(monkeypatch, session: Session):
+    """proposal_full_bar_v1 senza raw_bar_length_mm → fallback con reason missing_raw_bar_length."""
+    session.add(
+        CoreArticoloConfig(
+            codice_articolo="ART001",
+            updated_at=_NOW,
+            proposal_logic_key="proposal_full_bar_v1",
+            proposal_logic_article_params_json={},
+        )
+    )
+    session.commit()
+    monkeypatch.setattr(
+        "nssp_v2.core.production_proposals.queries.list_planning_candidates_v1",
+        lambda *args, **kwargs: [_candidate()],
+    )
+    result = generate_proposal_workspace(session, ["by_article::ART001"])
+    detail = get_proposal_workspace_detail(session, result.workspace_id)
+    assert detail is not None
+    row = detail.rows[0]
+    assert row.requested_proposal_logic_key == "proposal_full_bar_v1"
+    assert row.effective_proposal_logic_key == "proposal_target_pieces_v1"
+    assert row.proposal_fallback_reason == "missing_raw_bar_length"
+
+
+def test_diagnostics_full_bar_success_no_fallback(monkeypatch, session: Session):
+    """proposal_full_bar_v1 con dati completi → no fallback, diagnostics coerenti.
+
+    raw_bar_length_mm risiede sul materiale grezzo (TASK-V2-126):
+    - ART001 (finito): materiale_grezzo_codice="MAT001", occorrente=50, scarto=2
+    - MAT001 (materia prima): raw_bar_length_mm=3000
+    """
+    # Config finito: logica full_bar, senza raw_bar_length_mm (sta sul grezzo)
+    session.add(
+        CoreArticoloConfig(
+            codice_articolo="ART001",
+            updated_at=_NOW,
+            proposal_logic_key="proposal_full_bar_v1",
+            proposal_logic_article_params_json={},
+        )
+    )
+    # SyncArticolo finito con puntamento al materiale grezzo e dati di lavorazione
+    session.add(
+        SyncArticolo(
+            codice_articolo="ART001",
+            attivo=True,
+            synced_at=_NOW,
+            materiale_grezzo_codice="MAT001",
+            quantita_materiale_grezzo_occorrente=Decimal("50"),
+            quantita_materiale_grezzo_scarto=Decimal("2"),
+        )
+    )
+    # CoreArticoloConfig del materiale grezzo con raw_bar_length_mm
+    session.add(
+        CoreArticoloConfig(
+            codice_articolo="MAT001",
+            updated_at=_NOW,
+            raw_bar_length_mm=Decimal("3000"),
+        )
+    )
+    session.commit()
+
+    # capacity_effective_qty None → no overflow check
+    monkeypatch.setattr(
+        "nssp_v2.core.stock_policy.list_stock_metrics_v1",
+        lambda session: [],
+    )
+    monkeypatch.setattr(
+        "nssp_v2.core.production_proposals.queries.list_planning_candidates_v1",
+        lambda *args, **kwargs: [_candidate(required_qty_total=Decimal("10"))],
+    )
+    result = generate_proposal_workspace(session, ["by_article::ART001"])
+    detail = get_proposal_workspace_detail(session, result.workspace_id)
+    assert detail is not None
+    row = detail.rows[0]
+    assert row.requested_proposal_logic_key == "proposal_full_bar_v1"
+    assert row.effective_proposal_logic_key == "proposal_full_bar_v1"
+    assert row.proposal_fallback_reason is None
+    # La logica ha arrotondato: pieces_per_bar = floor(3000/52) = 57, bars = ceil(10/57) = 1
+    assert row.proposed_qty == Decimal("57")

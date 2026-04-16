@@ -130,12 +130,18 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-112` | Completed | Colonna `Warnings` nella tabella `Planning Candidates` con badge sintetici |
 | `TASK-V2-113` | Completed | Quick config modal articolo dalla vista `Planning Candidates` |
 | `TASK-V2-114` | Completed | Bridge case-insensitive planning -> articoli per lookup e write config articolo |
-| `TASK-V2-115` | Todo | Contratti Core/API per preview export EasyJob in `Production Proposals` |
-| `TASK-V2-116` | Todo | Tabella UI `Production Proposals` allineata alla preview export EasyJob |
-| `TASK-V2-117` | Todo | Prima logica proposal V1 `proposal_target_pieces_v1` con qty = target pieces mancanti e `note_fragment = null` |
-| `TASK-V2-118` | Todo | Modello/config per `raw_bar_length_mm_enabled` su famiglia e `raw_bar_length_mm` su articolo |
-| `TASK-V2-119` | Todo | UI `famiglie` per il flag `raw_bar_length_mm_enabled` |
-| `TASK-V2-120` | Todo | UI `articoli` per `raw_bar_length_mm` e scelta `proposal_full_bar_v1` |
-| `TASK-V2-121` | Todo | Core `proposal_full_bar_v1` con formula a barre intere, `BAR xN` e fallback a pezzi |
-| `TASK-V2-122` | Todo | Warning `MISSING_RAW_BAR_LENGTH` per famiglie che richiedono il dato barra e articoli non configurati |
-| `TASK-V2-123` | Todo | Fix UI `articoli`: nascondere `raw_bar_length_mm` quando la famiglia non abilita il campo |
+| `TASK-V2-115` | Completed | Contratti Core/API per preview export EasyJob in `Production Proposals` |
+| `TASK-V2-116` | Completed | Tabella UI `Production Proposals` allineata alla preview export EasyJob |
+| `TASK-V2-117` | Completed | Prima logica proposal V1 `proposal_target_pieces_v1` con qty = target pieces mancanti e `note_fragment = null` |
+| `TASK-V2-118` | Completed | Modello/config per `raw_bar_length_mm_enabled` su famiglia e `raw_bar_length_mm` su articolo |
+| `TASK-V2-119` | Completed | UI `famiglie` per il flag `raw_bar_length_mm_enabled` |
+| `TASK-V2-120` | Completed | UI `articoli` per `raw_bar_length_mm` e scelta `proposal_full_bar_v1` |
+| `TASK-V2-121` | Completed | Core `proposal_full_bar_v1` con formula a barre intere, `BAR xN` e fallback a pezzi |
+| `TASK-V2-122` | Completed | Warning `MISSING_RAW_BAR_LENGTH` per famiglie che richiedono il dato barra e articoli non configurati |
+| `TASK-V2-123` | Completed | Fix UI `articoli`: nascondere `raw_bar_length_mm` quando la famiglia non abilita il campo |
+| `TASK-V2-124` | Completed | Diagnostica Core/API proposal per logica richiesta, logica effettiva e motivo del fallback |
+| `TASK-V2-125` | Completed | Diagnostica UI `Production Proposals` per rendere leggibile il fallback delle logiche proposal |
+| `TASK-V2-126` | Completed | Riallineare `raw_bar_length_mm` al materiale grezzo associato per proposal full bar e warning correlati |
+| `TASK-V2-127` | Completed | Nuova logica `proposal_full_bar_v2_capacity_floor` con tentativo `ceil`, poi `floor`, poi fallback a pezzi |
+| `TASK-V2-128` | Todo | Contratto Core planning per distinguere `required_qty_eventual` da `release_qty_now_max` nel ramo `by_article` |
+| `TASK-V2-129` | Todo | Visibilita UI planning del nuovo split `need vs release now` con `release_status` |

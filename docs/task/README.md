@@ -22,6 +22,11 @@ Regole operative:
   - refresh semantico backend introdotto o modificato
 - di default Claude aggiorna solo il task chiuso; il riallineamento di roadmap, overview, indici e guide trasversali viene fatto successivamente da Codex o da un revisore documentale
 
+Nota di rebase:
+
+- dal baseline `DL-ARCH-V2-039` il cluster proposal `TASK-V2-115` -> `TASK-V2-127` non va piu letto come roadmap lineare
+- la rilettura corretta del backlog e documentata in `docs/roadmap/REBASE_V2_BACKLOG_2026-04-15.md`
+
 Task registrati:
 
 - `TASK-V2-001-bootstrap-backend.md` - completato
@@ -138,12 +143,18 @@ Task registrati:
 - `TASK-V2-112-ui-planning-candidates-warnings-column.md` - completato
 - `TASK-V2-113-ui-planning-candidates-article-quick-config-modal.md` - completato
 - `TASK-V2-114-core-articoli-case-insensitive-code-bridge.md` - completato
-- `TASK-V2-115-core-proposal-export-preview-contracts.md` - todo
-- `TASK-V2-116-ui-production-proposals-export-preview-table.md` - todo
-- `TASK-V2-117-core-proposal-target-pieces-v1-logic.md` - todo
-- `TASK-V2-118-model-raw-bar-length-enable-and-article-config.md` - todo
-- `TASK-V2-119-ui-famiglie-raw-bar-length-enable.md` - todo
-- `TASK-V2-120-ui-articoli-raw-bar-length-mm-and-proposal-logic.md` - todo
-- `TASK-V2-121-core-proposal-full-bar-v1-logic.md` - todo
-- `TASK-V2-122-warning-missing-raw-bar-length.md` - todo
-- `TASK-V2-123-ui-articoli-hide-raw-bar-length-when-family-disabled.md` - todo
+- `TASK-V2-115-core-proposal-export-preview-contracts.md` - completato
+- `TASK-V2-116-ui-production-proposals-export-preview-table.md` - completato
+- `TASK-V2-117-core-proposal-target-pieces-v1-logic.md` - completato
+- `TASK-V2-118-model-raw-bar-length-enable-and-article-config.md` - completato
+- `TASK-V2-119-ui-famiglie-raw-bar-length-enable.md` - completato
+- `TASK-V2-120-ui-articoli-raw-bar-length-mm-and-proposal-logic.md` - completato
+- `TASK-V2-121-core-proposal-full-bar-v1-logic.md` - completato
+- `TASK-V2-122-warning-missing-raw-bar-length.md` - completato
+- `TASK-V2-123-ui-articoli-hide-raw-bar-length-when-family-disabled.md` - completato
+- `TASK-V2-124-core-proposal-logic-diagnostics.md` - completato
+- `TASK-V2-125-ui-production-proposals-logic-diagnostics.md` - completato
+- `TASK-V2-126-realign-raw-bar-length-to-raw-material-articles.md` - completato
+- `TASK-V2-127-core-proposal-full-bar-v2-capacity-floor-logic.md` - completato
+- `TASK-V2-128-core-planning-need-vs-release-now-contract.md` - todo
+- `TASK-V2-129-ui-planning-need-vs-release-now-visibility.md` - todo

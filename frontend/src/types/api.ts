@@ -410,6 +410,10 @@ export interface ProposalWorkspaceRowItem {
   ordine_linea_mancante: boolean
   note_preview: string
   user_preview: string
+  // ─── Diagnostica logica proposal (TASK-V2-124) ────────────────────────────
+  requested_proposal_logic_key: string | null
+  effective_proposal_logic_key: string | null
+  proposal_fallback_reason: string | null
 }
 
 export interface ProposalWorkspaceDetail {

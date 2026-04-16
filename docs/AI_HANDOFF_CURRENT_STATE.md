@@ -31,6 +31,26 @@ At the current stage it already supports:
 
 It is not yet a scheduler, MRP engine, or production planner.
 
+## Active Architectural Guidance
+
+The project is now under an explicit in-place `architectural rebase` baseline:
+
+- keep `V2`, do not start a `V3`
+- use legacy `V4` as operational knowledge, not as a code structure to copy
+- keep the current layer model
+- separate:
+  - planning need detection
+  - release-now feasibility
+  - proposal release/export logic
+  - canonical warnings
+  - local diagnostics
+
+Authoritative reference:
+
+- `docs/decisions/ARCH/DL-ARCH-V2-039.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-040.md`
+- `docs/roadmap/REBASE_V2_BACKLOG_2026-04-15.md`
+
 ## Core Product Idea
 
 The system reads raw operational data from Easy, mirrors it internally, then builds canonical Core facts and operational views on top of them.
@@ -179,6 +199,14 @@ Current behavior:
   - `is_within_customer_horizon`
   - stock-driven cap on commitments within stock horizon, separato dal filtro customer
 
+Rebase note:
+
+- the current implementation still exposes one dominant planning quantity surface
+- next planning work must split:
+  - `required_qty_eventual`
+  - `release_qty_now_max`
+  - `release_status`
+
 ### 7. Produzione - Warnings
 
 Purpose:
@@ -217,6 +245,16 @@ Current behavior:
 - proposal logic governance is split between:
   - `admin` global suite config
   - article-specific logic assignment/params
+
+Rebase note:
+
+- current `proposal_logic_key` remains valid as compatibility surface
+- future proposal design must reason in policy axes:
+  - base qty
+  - lot
+  - capacity
+  - customer guardrail
+  - note
 
 ### 9. Produzione - Criticita Articoli
 

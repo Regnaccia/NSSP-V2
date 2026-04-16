@@ -497,7 +497,9 @@ def test_is_missing_raw_bar_length_piccolo_positivo():
     assert is_missing_raw_bar_length(Decimal("0.001")) is False
 
 
-# ─── Helpers per MISSING_RAW_BAR_LENGTH integration tests ─────────────────────
+# ─── Helpers per MISSING_RAW_BAR_LENGTH integration tests (TASK-V2-126) ───────
+# Il warning e sul materiale grezzo, non sul finito.
+# Setup: finito (in famiglia con raw_bar_length_mm_enabled=True) + materiale grezzo associato.
 
 def _famiglia_bar(session, code="BARRE", raw_bar_length_mm_enabled=True):
     session.add(ArticoloFamiglia(
@@ -512,41 +514,54 @@ def _famiglia_bar(session, code="BARRE", raw_bar_length_mm_enabled=True):
     session.flush()
 
 
-def _art_bar(session, codice="ART001"):
+def _art_finito_bar(session, codice="FINITO001", famiglia_code="BARRE", materiale_grezzo_codice="MAT001"):
+    """Crea SyncArticolo (finito) con materiale_grezzo_codice e CoreArticoloConfig nella famiglia barre."""
+    session.add(SyncArticolo(
+        codice_articolo=codice,
+        attivo=True,
+        synced_at=_NOW,
+        materiale_grezzo_codice=materiale_grezzo_codice,
+    ))
+    session.add(CoreArticoloConfig(
+        codice_articolo=codice,
+        famiglia_code=famiglia_code,
+        updated_at=_NOW,
+    ))
+    session.flush()
+
+
+def _art_grezzo_bar(session, codice="MAT001", raw_bar_length_mm=None):
+    """Crea SyncArticolo + CoreArticoloConfig per il materiale grezzo con raw_bar_length_mm."""
     session.add(SyncArticolo(
         codice_articolo=codice,
         attivo=True,
         synced_at=_NOW,
     ))
-    session.flush()
-
-
-def _config_bar(session, codice="ART001", famiglia_code="BARRE", raw_bar_length_mm=None):
-    session.add(CoreArticoloConfig(
-        codice_articolo=codice,
-        famiglia_code=famiglia_code,
-        raw_bar_length_mm=raw_bar_length_mm,
-        updated_at=_NOW,
-    ))
+    if raw_bar_length_mm is not None or True:  # crea sempre la config
+        session.add(CoreArticoloConfig(
+            codice_articolo=codice,
+            updated_at=_NOW,
+            raw_bar_length_mm=raw_bar_length_mm,
+        ))
     session.flush()
 
 
 # ─── Query: MISSING_RAW_BAR_LENGTH generato ──────────────────────────────────
 
 def test_missing_bar_genera_warning_quando_valore_assente(session):
-    """Famiglia con raw_bar_length_mm_enabled=True, articolo senza raw_bar_length_mm → warning."""
+    """Finito→materiale grezzo senza raw_bar_length_mm → warning sul materiale grezzo."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
     assert len(warnings) == 1
     w = warnings[0]
-    assert w.article_code == "ART001"
-    assert w.warning_id == "MISSING_RAW_BAR_LENGTH:ART001"
+    assert w.article_code == "MAT001"
+    assert w.warning_id == "MISSING_RAW_BAR_LENGTH:MAT001"
     assert w.entity_type == "article"
-    assert w.entity_key == "ART001"
+    assert w.entity_key == "MAT001"
     assert w.source_module == "warnings"
     assert w.severity == "warning"
     assert w.famiglia_code == "BARRE"
@@ -555,10 +570,10 @@ def test_missing_bar_genera_warning_quando_valore_assente(session):
 
 
 def test_missing_bar_genera_warning_quando_valore_zero(session):
-    """raw_bar_length_mm = 0 e non valido → warning."""
+    """raw_bar_length_mm = 0 sul materiale grezzo → warning."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _config_bar(session, "ART001", raw_bar_length_mm=Decimal("0"))
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=Decimal("0"))
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
@@ -567,10 +582,10 @@ def test_missing_bar_genera_warning_quando_valore_zero(session):
 
 
 def test_missing_bar_nessun_warning_quando_valore_valido(session):
-    """Articolo con raw_bar_length_mm > 0 → nessun warning."""
+    """Materiale grezzo con raw_bar_length_mm > 0 → nessun warning."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _config_bar(session, "ART001", raw_bar_length_mm=Decimal("3000"))
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=Decimal("3000"))
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
@@ -578,10 +593,20 @@ def test_missing_bar_nessun_warning_quando_valore_valido(session):
 
 
 def test_missing_bar_nessun_warning_quando_flag_disabilitato(session):
-    """Famiglia con raw_bar_length_mm_enabled=False → nessun warning anche senza valore."""
+    """Famiglia con raw_bar_length_mm_enabled=False → nessun warning."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=False)
-    _art_bar(session, "ART001")
-    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert warnings == []
+
+
+def test_missing_bar_nessun_warning_quando_materiale_grezzo_assente(session):
+    """Finito senza materiale_grezzo_codice → nessun controllo barra → nessun warning."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice=None)
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
@@ -591,8 +616,8 @@ def test_missing_bar_nessun_warning_quando_flag_disabilitato(session):
 def test_missing_bar_audience_corretta(session):
     """visible_to_areas default include produzione e admin."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
@@ -602,42 +627,55 @@ def test_missing_bar_audience_corretta(session):
     assert "admin" in areas
 
 
-def test_missing_bar_piu_articoli(session):
-    """Piu articoli nella stessa famiglia con flag abilitato → un warning per articolo."""
+def test_missing_bar_piu_finiti_materiali_distinti(session):
+    """Finiti con materiali diversi → un warning per materiale grezzo mancante."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _art_bar(session, "ART002")
-    _art_bar(session, "ART003")
-    _config_bar(session, "ART001", raw_bar_length_mm=None)       # → warning
-    _config_bar(session, "ART002", raw_bar_length_mm=Decimal("3000"))  # → nessun warning
-    _config_bar(session, "ART003", raw_bar_length_mm=Decimal("0"))     # → warning
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_finito_bar(session, "FINITO002", materiale_grezzo_codice="MAT002")
+    _art_finito_bar(session, "FINITO003", materiale_grezzo_codice="MAT003")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)        # → warning
+    _art_grezzo_bar(session, "MAT002", raw_bar_length_mm=Decimal("3000"))  # → nessun warning
+    _art_grezzo_bar(session, "MAT003", raw_bar_length_mm=Decimal("0"))     # → warning
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
     assert len(warnings) == 2
     codes = {w.article_code for w in warnings}
-    assert codes == {"ART001", "ART003"}
+    assert codes == {"MAT001", "MAT003"}
+
+
+def test_missing_bar_piu_finiti_stesso_materiale_deduplicato(session):
+    """Piu finiti che condividono lo stesso materiale grezzo → un solo warning."""
+    _famiglia_bar(session, raw_bar_length_mm_enabled=True)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_finito_bar(session, "FINITO002", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)
+    session.commit()
+
+    warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
+    assert len(warnings) == 1
+    assert warnings[0].article_code == "MAT001"
 
 
 def test_missing_bar_warning_id_unici(session):
-    """warning_id distinto per ogni articolo."""
+    """warning_id distinto per ogni materiale grezzo."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _art_bar(session, "ART002")
-    _config_bar(session, "ART001", raw_bar_length_mm=None)
-    _config_bar(session, "ART002", raw_bar_length_mm=None)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_finito_bar(session, "FINITO002", materiale_grezzo_codice="MAT002")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)
+    _art_grezzo_bar(session, "MAT002", raw_bar_length_mm=None)
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
     ids = {w.warning_id for w in warnings}
-    assert ids == {"MISSING_RAW_BAR_LENGTH:ART001", "MISSING_RAW_BAR_LENGTH:ART002"}
+    assert ids == {"MISSING_RAW_BAR_LENGTH:MAT001", "MISSING_RAW_BAR_LENGTH:MAT002"}
 
 
 def test_missing_bar_non_popola_campi_stock(session):
     """MISSING_RAW_BAR_LENGTH non popola stock_calculated/anomaly_qty/capacity_*."""
     _famiglia_bar(session, raw_bar_length_mm_enabled=True)
-    _art_bar(session, "ART001")
-    _config_bar(session, "ART001", raw_bar_length_mm=None)
+    _art_finito_bar(session, "FINITO001", materiale_grezzo_codice="MAT001")
+    _art_grezzo_bar(session, "MAT001", raw_bar_length_mm=None)
     session.commit()
 
     warnings = [w for w in list_warnings_v1(session) if w.type == "MISSING_RAW_BAR_LENGTH"]
@@ -657,9 +695,9 @@ def test_tutti_i_tipi_warning_coesistono(session):
     _art_w(session, codice="ART001", contenitori=None)
     _config_art_w(session, codice="ART001", famiglia_code="FAM1")
     _avail(session, "ART001", Decimal("-5"))
-    # ART002: barra mancante → MISSING_RAW_BAR_LENGTH
-    _art_bar(session, "ART002")
-    _config_bar(session, "ART002", famiglia_code="BARRE", raw_bar_length_mm=None)
+    # FINITO002 → MAT002: barra mancante → MISSING_RAW_BAR_LENGTH
+    _art_finito_bar(session, "FINITO002", famiglia_code="BARRE", materiale_grezzo_codice="MAT002")
+    _art_grezzo_bar(session, "MAT002", raw_bar_length_mm=None)
     session.commit()
 
     all_warnings = list_warnings_v1(session)

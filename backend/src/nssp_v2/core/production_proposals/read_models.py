@@ -61,6 +61,11 @@ class ProposalWorkspaceRowItem(BaseModel):
     note_preview: str = ""
     user_preview: str = "NSSP"
 
+    # ─── Diagnostica logica proposal (TASK-V2-124) ────────────────────────────
+    requested_proposal_logic_key: str | None = None
+    effective_proposal_logic_key: str | None = None
+    proposal_fallback_reason: str | None = None
+
 
 class ProposalWorkspaceDetail(BaseModel):
     model_config = ConfigDict(frozen=True)

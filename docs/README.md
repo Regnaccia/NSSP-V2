@@ -40,6 +40,7 @@ docs/
 | [reviews/README.md](reviews/README.md) | Indice delle review critiche trasversali sullo stato del progetto |
 | [reviews/KNOWN_BUGS.md](reviews/KNOWN_BUGS.md) | Registro dei bug e limiti noti che richiedono memoria operativa o architetturale oltre il singolo task |
 | [reviews/PROJECT_REVIEW_2026-04-08.md](reviews/PROJECT_REVIEW_2026-04-08.md) | Review architetturale e operativa del progetto V2, con finding, rischi potenziali e linea di risoluzione |
+| [reviews/PROJECT_REVIEW_2026-04-15_GENERAL.md](reviews/PROJECT_REVIEW_2026-04-15_GENERAL.md) | Review generale aggiornata della V2, con valutazione dei moduli, punti di frammentazione, debiti backbone e proposta di rebase architetturale leggero |
 
 ## Charter
 
@@ -93,6 +94,11 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-033.md](decisions/ARCH/DL-ARCH-V2-033.md) | `Production Proposals` V1 rifinito come workspace temporaneo generato da `Planning Candidates`, con persistenza solo all'export e reconcile via `ODE_REF` |
 | [decisions/ARCH/DL-ARCH-V2-034.md](decisions/ARCH/DL-ARCH-V2-034.md) | Contratto di export `xlsx` EasyJob per `Production Proposals`, con mapping colonna-per-colonna, validazione bloccante su `ordine` e nota deterministica con `ODE_REF` |
 | [decisions/ARCH/DL-ARCH-V2-035.md](decisions/ARCH/DL-ARCH-V2-035.md) | Seconda logica proposal V1 `proposal_full_bar_v1`, con configurazione barra su articolo, flag famiglia per abilitare il campo e fallback obbligatorio a pezzi |
+| [decisions/ARCH/DL-ARCH-V2-036.md](decisions/ARCH/DL-ARCH-V2-036.md) | Diagnostica locale di `Production Proposals` per distinguere logica richiesta, logica effettiva e motivo del fallback senza sporcare il modulo `Warnings` |
+| [decisions/ARCH/DL-ARCH-V2-037.md](decisions/ARCH/DL-ARCH-V2-037.md) | Correzione di modello: `raw_bar_length_mm` appartiene al materiale grezzo associato e `proposal_full_bar_v1` deve risolverlo via `materiale_grezzo_codice` |
+| [decisions/ARCH/DL-ARCH-V2-038.md](decisions/ARCH/DL-ARCH-V2-038.md) | Nuova logica `proposal_full_bar_v2_capacity_floor`: prova `ceil`, poi `floor` sotto capienza, poi fallback a pezzi |
+| [decisions/ARCH/DL-ARCH-V2-039.md](decisions/ARCH/DL-ARCH-V2-039.md) | Baseline del rebase architetturale V2: moduli congelati, split `need vs release now`, policy axes proposal, ownership dati e separazione tra domain rebase e backbone hardening |
+| [decisions/ARCH/DL-ARCH-V2-040.md](decisions/ARCH/DL-ARCH-V2-040.md) | Primo contratto di rebase di `Planning Candidates`: split `required_qty_eventual / release_qty_now_max / release_status` nel ramo `by_article` |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -136,6 +142,7 @@ La cartella `roadmap/` raccoglie stato e roadmap attiva della V2.
 |------|-----------|
 | [roadmap/STATUS.md](roadmap/STATUS.md) | Snapshot di stato del progetto: perimetro completato, task aperti e prossima sequenza consigliata |
 | [roadmap/TASK_LOG.md](roadmap/TASK_LOG.md) | Log minimale dei task V2 svolti, con una sintesi breve per task |
+| [roadmap/REBASE_V2_BACKLOG_2026-04-15.md](roadmap/REBASE_V2_BACKLOG_2026-04-15.md) | Backlog di rebase della V2 dopo la review generale: stream `Domain Rebase`, stream `Backbone Hardening` e rilettura del cluster proposal `115-127` |
 
 I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 

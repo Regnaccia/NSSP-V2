@@ -7,6 +7,14 @@
 
 Questo documento riassume lo stato reale della V2 senza dover partire subito dal codice.
 
+Nota di baseline:
+
+- la V2 resta il progetto attivo
+- il progetto e ora sotto `architectural rebase` in-place
+- la guida architetturale autoritativa per i prossimi slice e:
+  - `DL-ARCH-V2-039`
+  - `DL-ARCH-V2-040`
+
 ## Architettura attiva
 
 La V2 adotta quattro layer espliciti:
@@ -233,6 +241,14 @@ Non ancora disponibile:
 - scoring
 - policy di aggregazione avanzata
 
+Rebase target:
+
+- distinguere esplicitamente:
+  - `required_qty_eventual`
+  - `release_qty_now_max`
+  - `release_status`
+- non usare piu una sola quantita implicita per need e rilascio
+
 ### Warnings
 
 Disponibile:
@@ -266,11 +282,21 @@ Disponibile:
   - `reconciled`
   - `cancelled`
 - logica proposal V1 minima:
-  - `proposal_required_qty_total_v1`
+  - `proposal_target_pieces_v1`
 - configurazione globale logiche proposal in `admin`
 - assegnazione e parametri proposal specifici per articolo
-- export CSV batch del workspace
+- export `xlsx` del workspace
 - riconciliazione via `ODE_REF` sui mirror produzioni
+
+Rebase target:
+
+- `proposal_logic_key` resta surface di compatibilita
+- il modello concettuale futuro va letto come bundle di policy:
+  - `proposal_base_qty_policy`
+  - `proposal_lot_policy`
+  - `proposal_capacity_policy`
+  - `proposal_customer_guardrail_policy`
+  - `proposal_note_policy`
 
 ### Criticita Articoli
 

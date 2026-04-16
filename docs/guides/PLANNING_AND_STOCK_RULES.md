@@ -61,6 +61,34 @@ stock_replenishment_qty = max(target_stock_qty - max(stock_horizon_availability_
 required_qty_total = customer_shortage_qty + stock_replenishment_qty
 ```
 
+## 3.1 Need vs Release Now
+
+Nel rebase architetturale il ramo `by_article` distingue due semantiche quantitative diverse:
+
+- `required_qty_eventual`
+  - quanto manca rispetto al bisogno futuro
+- `release_qty_now_max`
+  - quanto e lanciabile ora senza violare la capienza attuale
+
+Primo profilo del rebase:
+
+```text
+required_qty_eventual = required_qty_total
+capacity_headroom_now_qty = max(capacity_effective_qty - inventory_qty, 0)
+release_qty_now_max = min(required_qty_eventual, capacity_headroom_now_qty)
+```
+
+Stati iniziali:
+
+- `launchable_now`
+- `launchable_partially`
+- `blocked_by_capacity_now`
+
+Regola fondamentale:
+
+- il need non sparisce se `release_qty_now_max = 0`
+- il candidate resta visibile come bisogno reale, ma non va trattato come rilascio immediato disponibile
+
 ## 4. Separazione Cliente / Scorta
 
 La separazione tra fabbisogno cliente e scorta avviene in UI, non nel Core.

@@ -285,3 +285,52 @@ def required_qty_minimum_by_order_line(line_future_coverage_qty: Decimal) -> Dec
     if line_future_coverage_qty >= Decimal("0"):
         return Decimal("0")
     return abs(line_future_coverage_qty)
+
+
+# ─── Release now contract (TASK-V2-128) ──────────────────────────────────────
+
+ReleaseStatus = Literal["launchable_now", "launchable_partially", "blocked_by_capacity_now"]
+
+
+def capacity_headroom_now_qty_v1(
+    capacity_effective_qty: Decimal,
+    inventory_qty: Decimal,
+) -> Decimal:
+    """Spazio fisico disponibile in magazzino ora (TASK-V2-128).
+
+    Formula: max(capacity_effective_qty - inventory_qty, 0)
+
+    inventory_qty e la giacenza fisica attuale (raw da CoreAvailability).
+    Un valore negativo della giacenza aumenta conservativamente lo spazio disponibile;
+    il clamp a 0 garantisce che la headroom non sia mai negativa.
+    """
+    return max(capacity_effective_qty - inventory_qty, Decimal("0"))
+
+
+def release_qty_now_max_v1(
+    required_qty_eventual: Decimal,
+    headroom: Decimal,
+) -> Decimal:
+    """Quantita massima lanciabile ora senza sforo capienza (TASK-V2-128).
+
+    Formula: min(required_qty_eventual, capacity_headroom_now_qty)
+    """
+    return min(required_qty_eventual, headroom)
+
+
+def release_status_v1(
+    release_qty_now_max: Decimal,
+    required_qty_eventual: Decimal,
+) -> ReleaseStatus:
+    """Classificazione lancio immediato (TASK-V2-128).
+
+    Vocabolario:
+    - launchable_now:         release_qty_now_max >= required_qty_eventual
+    - launchable_partially:   0 < release_qty_now_max < required_qty_eventual
+    - blocked_by_capacity_now: release_qty_now_max == 0 e required_qty_eventual > 0
+    """
+    if release_qty_now_max >= required_qty_eventual:
+        return "launchable_now"
+    if release_qty_now_max > Decimal("0"):
+        return "launchable_partially"
+    return "blocked_by_capacity_now"

@@ -12,7 +12,8 @@ from nssp_v2.core.production_proposals.models import CoreProposalLogicConfig
 KNOWN_PROPOSAL_LOGICS: list[str] = [
     "proposal_target_pieces_v1",
     "proposal_required_qty_total_v1",  # alias legacy compatibile
-    "proposal_full_bar_v1",  # logica barra grezza intera (stub — implementazione Core in backlog)
+    "proposal_full_bar_v1",
+    "proposal_full_bar_v2_capacity_floor",  # ceil → floor → fallback (TASK-V2-127)
 ]
 
 _DEFAULT_LOGIC_KEY = "proposal_target_pieces_v1"
@@ -20,6 +21,7 @@ _DEFAULT_PARAMS_BY_KEY: dict[str, dict] = {
     "proposal_target_pieces_v1": {},
     "proposal_required_qty_total_v1": {},
     "proposal_full_bar_v1": {},
+    "proposal_full_bar_v2_capacity_floor": {},
 }
 
 

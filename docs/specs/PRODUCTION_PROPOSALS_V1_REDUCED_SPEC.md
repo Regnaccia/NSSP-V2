@@ -45,11 +45,19 @@ This document defines the first implementable slice of `Production Proposals` af
 - remains the only live inbox of need
 - supports selection
 - triggers workspace generation
+- is also the right upstream place to distinguish:
+  - eventual need
+  - release-now feasibility
 
 ### Production Proposals
 
 - `workspace` mode: temporary execution-prep surface
 - `history` mode: exported persistent audit trail
+
+Boundary rule:
+
+- Planning answers `is there a need?`
+- Proposals answers `what do we release/export?`
 
 ## Canonical Input
 
@@ -67,6 +75,22 @@ Workspace generation consumes selected planning candidates with at least:
 - `requested_delivery_date`
 - `requested_destination_display`
 - `active_warning_codes`
+
+Workspace rows must also expose proposal-local diagnostics:
+
+- `requested_proposal_logic_key`
+- `effective_proposal_logic_key`
+- `proposal_fallback_reason`
+
+Architectural rebase note:
+
+- future proposal logic design must reason in policy axes
+  - `proposal_base_qty_policy`
+  - `proposal_lot_policy`
+  - `proposal_capacity_policy`
+  - `proposal_customer_guardrail_policy`
+  - `proposal_note_policy`
+- current `proposal_logic_key` remains the compatibility surface during transition
 
 ## Quantity Rule
 
@@ -97,6 +121,14 @@ First-logic semantics:
 
 This first logic is also the default fallback logic for future richer proposal scenarios.
 
+Conceptually, `proposal_target_pieces_v1` is the baseline bundle:
+
+- base qty = `required_qty_total`
+- lot policy = `pieces`
+- capacity policy = `none`
+- customer guardrail = `cover_customer_shortage`
+- note policy = `none`
+
 Second V1 logic:
 
 - `proposal_full_bar_v1`
@@ -104,8 +136,9 @@ Second V1 logic:
 Second-logic semantics:
 
 - it works on full raw-material bars
-- family flag `raw_bar_length_mm_enabled` only enables configurability of the bar-length field
-- article field `raw_bar_length_mm` provides the actual bar length
+- it resolves the finished article raw-material code
+- family flag `raw_bar_length_mm_enabled` only enables configurability of the bar-length field on raw-material families
+- article field `raw_bar_length_mm` is read from the associated raw-material article
 - formula:
   - `usable_mm_per_piece = quantita_materiale_grezzo_occorrente + quantita_materiale_grezzo_scarto`
   - `pieces_per_bar = floor(raw_bar_length_mm / usable_mm_per_piece)`
@@ -117,7 +150,8 @@ Second-logic semantics:
 
 Mandatory fallback to `proposal_target_pieces_v1` if:
 
-- `raw_bar_length_mm` is missing
+- the finished article does not resolve a valid `materiale_grezzo_codice`
+- `raw_bar_length_mm` is missing on the associated raw-material article
 - `usable_mm_per_piece <= 0`
 - `pieces_per_bar <= 0`
 - full-bar proposal would overflow `capacity_effective_qty`
@@ -126,6 +160,51 @@ Mandatory fallback to `proposal_target_pieces_v1` if:
 Guardrail:
 
 - `proposal_full_bar_v1` must never return a proposal lower than `customer_shortage_qty`
+
+Third proposal logic:
+
+- `proposal_full_bar_v2_capacity_floor`
+
+Third-logic semantics:
+
+- same raw-material resolution model as `proposal_full_bar_v1`
+- first try `ceil`
+- if `ceil` would overflow capacity, try `floor`
+- `floor` is allowed only if:
+  - it stays within `capacity_effective_qty`
+  - it remains `> 0`
+  - it does not under-cover `customer_shortage_qty`
+- otherwise fallback to `proposal_target_pieces_v1`
+
+Formula:
+
+- `pieces_per_bar = floor(raw_bar_length_mm / usable_mm_per_piece)`
+- `bars_ceil = ceil(required_qty_total / pieces_per_bar)`
+- `qty_ceil = bars_ceil * pieces_per_bar`
+- `bars_floor = floor(required_qty_total / pieces_per_bar)`
+- `qty_floor = bars_floor * pieces_per_bar`
+
+Note fragment:
+
+- `BAR xN`, where `N` is the number of bars effectively used
+
+Conceptually, `proposal_full_bar_v1` and `proposal_full_bar_v2_capacity_floor` are compatibility bundles over the same policy axes, not the long-term target model by themselves.
+
+Proposal-local diagnostics:
+
+- `requested_proposal_logic_key` is the logic configured on the article
+- `effective_proposal_logic_key` is the logic actually used to compute `proposed_qty`
+- `proposal_fallback_reason` explains why a richer requested logic fell back to a simpler one
+
+Initial fallback reasons:
+
+- `missing_raw_bar_length`
+- `invalid_usable_mm_per_piece`
+- `pieces_per_bar_le_zero`
+- `capacity_overflow`
+- `customer_undercoverage`
+
+These diagnostics are local to `Production Proposals` and must not be modeled as canonical `Warnings`.
 
 ## Workspace Semantics
 
@@ -234,8 +313,8 @@ Relevant warning introduced by the full-bar domain:
 
 Meaning:
 
-- family requires `raw_bar_length_mm`
-- article configuration is missing or invalid
+- raw-material family requires `raw_bar_length_mm`
+- raw-material article configuration is missing or invalid
 
 The warning remains owned by `Warnings`; proposal logic does not own the warning lifecycle.
 

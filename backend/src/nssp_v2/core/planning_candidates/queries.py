@@ -54,12 +54,15 @@ from nssp_v2.core.availability.models import CoreAvailability
 from nssp_v2.core.planning_candidates.logic import (
     PlanningContext,
     PlanningContextOrderLine,
+    capacity_headroom_now_qty_v1,
     customer_shortage_qty_v1,
     effective_stock,
     future_availability_v1,
     is_planning_candidate_with_stock_v1,
     is_planning_candidate_by_order_line,
     line_future_coverage_v2,
+    release_qty_now_max_v1,
+    release_status_v1,
     required_qty_minimum_by_order_line,
     required_qty_total_v1,
     stock_horizon_availability_qty_v1,
@@ -808,6 +811,17 @@ def _list_by_article_candidates(
             customer_horizon_days,
         )
 
+        # Release now contract (TASK-V2-128) — solo se capacity_effective_qty disponibile
+        capacity_effective_qty = metrics.capacity_effective_qty if metrics else None
+        if capacity_effective_qty is not None and req_total is not None:
+            headroom = capacity_headroom_now_qty_v1(capacity_effective_qty, avail.inventory_qty)
+            rel_max = release_qty_now_max_v1(req_total, headroom)
+            rel_status = release_status_v1(rel_max, req_total)
+        else:
+            headroom = None
+            rel_max = None
+            rel_status = None
+
         candidates.append((req, PlanningCandidateItem(
             source_candidate_id=f"by_article::{avail.article_code}",
             article_code=avail.article_code,
@@ -839,6 +853,11 @@ def _list_by_article_candidates(
             earliest_customer_delivery_date=earliest_customer_delivery,
             nearest_delivery_date=nearest_deliveries.get(avail.article_code),
             requested_destination_display=requested_destination_display,
+            # release now contract (TASK-V2-128)
+            required_qty_eventual=req_total,
+            capacity_headroom_now_qty=headroom,
+            release_qty_now_max=rel_max,
+            release_status=rel_status,
         )))
     return candidates
 

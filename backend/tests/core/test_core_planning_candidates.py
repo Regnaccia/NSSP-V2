@@ -26,10 +26,13 @@ from nssp_v2.core.availability.models import CoreAvailability
 from nssp_v2.core.planning_candidates.logic import (
     PlanningContext,
     PlanningContextOrderLine,
+    capacity_headroom_now_qty_v1,
     future_availability_v1,
     is_planning_candidate_v1,
     is_planning_candidate_by_order_line,
     line_future_coverage_v2,
+    release_qty_now_max_v1,
+    release_status_v1,
     required_qty_minimum_v1,
     required_qty_minimum_by_order_line,
 )
@@ -950,3 +953,144 @@ class TestByCustomerOrderLine:
         assert all(c.planning_mode == "by_customer_order_line" for c in result)
         line_refs = {c.line_reference for c in result}
         assert len(line_refs) == 2
+
+
+# ─── Test release-now contract (TASK-V2-128) ──────────────────────────────────
+
+class TestReleaseNowLogicaPura:
+    """Logica pura delle 3 funzioni del release-now contract."""
+
+    def test_headroom_piena_quando_magazzino_vuoto(self):
+        """capacity=100, inventory=0 → headroom=100."""
+        assert capacity_headroom_now_qty_v1(Decimal("100"), Decimal("0")) == Decimal("100")
+
+    def test_headroom_parziale(self):
+        """capacity=100, inventory=80 → headroom=20."""
+        assert capacity_headroom_now_qty_v1(Decimal("100"), Decimal("80")) == Decimal("20")
+
+    def test_headroom_zero_se_magazzino_pieno(self):
+        """capacity=100, inventory=100 → headroom=0."""
+        assert capacity_headroom_now_qty_v1(Decimal("100"), Decimal("100")) == Decimal("0")
+
+    def test_headroom_clampato_se_overflow_inventario(self):
+        """capacity=100, inventory=120 → headroom=max(−20,0)=0."""
+        assert capacity_headroom_now_qty_v1(Decimal("100"), Decimal("120")) == Decimal("0")
+
+    def test_release_max_uguale_required_se_headroom_sufficiente(self):
+        """required=10, headroom=50 → release_max=10."""
+        assert release_qty_now_max_v1(Decimal("10"), Decimal("50")) == Decimal("10")
+
+    def test_release_max_uguale_headroom_se_insufficiente(self):
+        """required=20, headroom=8 → release_max=8."""
+        assert release_qty_now_max_v1(Decimal("20"), Decimal("8")) == Decimal("8")
+
+    def test_release_max_zero_se_headroom_zero(self):
+        """required=10, headroom=0 → release_max=0."""
+        assert release_qty_now_max_v1(Decimal("10"), Decimal("0")) == Decimal("0")
+
+    def test_status_launchable_now_quando_headroom_uguale_required(self):
+        assert release_status_v1(Decimal("10"), Decimal("10")) == "launchable_now"
+
+    def test_status_launchable_now_quando_headroom_eccede_required(self):
+        assert release_status_v1(Decimal("15"), Decimal("10")) == "launchable_now"
+
+    def test_status_launchable_partially_quando_headroom_parziale(self):
+        assert release_status_v1(Decimal("8"), Decimal("20")) == "launchable_partially"
+
+    def test_status_blocked_quando_headroom_zero(self):
+        assert release_status_v1(Decimal("0"), Decimal("10")) == "blocked_by_capacity_now"
+
+
+class TestReleaseNowIntegrazione:
+    """Integrazione: release-now contract nel read model del planning candidate (TASK-V2-128)."""
+
+    def _setup_stock_policy(self, session, article_code, capacity_override_qty):
+        """Setup minimo: famiglia con gestione_scorte_attiva + config con capacity override."""
+        session.add(ArticoloFamiglia(
+            code=f"FAM_{article_code}",
+            label=f"Famiglia {article_code}",
+            is_active=True,
+            considera_in_produzione=False,
+            aggrega_codice_in_produzione=True,
+            gestione_scorte_attiva=True,
+        ))
+        session.add(CoreArticoloConfig(
+            codice_articolo=article_code,
+            famiglia_code=f"FAM_{article_code}",
+            updated_at=_NOW,
+            capacity_override_qty=capacity_override_qty,
+        ))
+        session.flush()
+
+    def test_launchable_now_quando_headroom_sufficiente(self, session):
+        """inventory=0, capacity=100, shortage=5 → launchable_now."""
+        # stock_eff=0, avail_eff=0-0-5=-5, fav=-5, shortage=5
+        _avail(session, "ART001", Decimal("-5"),
+               inventory_qty=Decimal("0"),
+               committed_qty=Decimal("5"))
+        _art(session, "ART001")
+        self._setup_stock_policy(session, "ART001", capacity_override_qty=Decimal("100"))
+
+        result = list_planning_candidates_v1(session)
+        assert len(result) == 1
+        c = result[0]
+
+        assert c.required_qty_eventual == c.required_qty_total
+        assert c.capacity_headroom_now_qty == Decimal("100")   # max(100-0, 0)
+        assert c.release_qty_now_max == c.required_qty_eventual
+        assert c.release_status == "launchable_now"
+
+    def test_launchable_partially_quando_headroom_insufficiente(self, session):
+        """inventory=90, capacity=100, shortage=20 → headroom=10 → launchable_partially."""
+        # stock_eff=90, avail_eff=90-0-110=-20, fav=-20, shortage=20
+        _avail(session, "ART001", Decimal("-20"),
+               inventory_qty=Decimal("90"),
+               committed_qty=Decimal("110"))
+        _art(session, "ART001")
+        self._setup_stock_policy(session, "ART001", capacity_override_qty=Decimal("100"))
+
+        result = list_planning_candidates_v1(session)
+        assert len(result) == 1
+        c = result[0]
+
+        assert c.capacity_headroom_now_qty == Decimal("10")    # max(100-90, 0)
+        assert c.release_qty_now_max == Decimal("10")          # min(20, 10)
+        assert c.release_status == "launchable_partially"
+
+    def test_blocked_quando_magazzino_pieno(self, session):
+        """inventory=100, capacity=100, shortage=5 → headroom=0 → blocked_by_capacity_now."""
+        # stock_eff=100, avail_eff=100-0-105=-5, fav=-5, shortage=5
+        _avail(session, "ART001", Decimal("-5"),
+               inventory_qty=Decimal("100"),
+               committed_qty=Decimal("105"))
+        _art(session, "ART001")
+        self._setup_stock_policy(session, "ART001", capacity_override_qty=Decimal("100"))
+
+        result = list_planning_candidates_v1(session)
+        assert len(result) == 1
+        c = result[0]
+
+        assert c.capacity_headroom_now_qty == Decimal("0")     # max(100-100, 0)
+        assert c.release_qty_now_max == Decimal("0")           # min(5, 0)
+        assert c.release_status == "blocked_by_capacity_now"
+
+    def test_release_fields_none_senza_capacity_configurata(self, session):
+        """Articolo by_article senza capacity configurata: headroom/max/status = None.
+
+        required_qty_eventual e sempre valorizzato (= req_total);
+        i campi headroom/max/status sono None solo se capacity_effective_qty e assente.
+        """
+        _avail(session, "ART001", Decimal("-5"))
+        _art(session, "ART001")
+        # nessuna ArticoloFamiglia / CoreArticoloConfig → metrics = None → no capacity
+
+        result = list_planning_candidates_v1(session)
+        assert len(result) == 1
+        c = result[0]
+
+        # required_qty_eventual e sempre il totale del fabbisogno (shortage + replenishment)
+        assert c.required_qty_eventual == c.required_qty_total
+        # headroom/max/status sono None perche non c'e capacity configurata
+        assert c.capacity_headroom_now_qty is None
+        assert c.release_qty_now_max is None
+        assert c.release_status is None

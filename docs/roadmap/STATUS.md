@@ -1,7 +1,7 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-14
+2026-04-15
 
 ## Stato generale
 
@@ -13,6 +13,7 @@ La V2 ha completato il bootstrap architetturale principale e ha chiuso i primi s
 - `planning candidates`
 - `warnings` V1
 - `production proposals` V1
+- review generale di progetto e baseline di `architectural rebase` in-place
 
 Sono oggi disponibili:
 
@@ -77,15 +78,21 @@ Sono oggi disponibili:
 - primo slice `Production Proposals` V1 con:
   - workspace temporaneo generato da `Planning Candidates`
   - persistenza solo all'export
-  - export CSV batch
+  - export `xlsx` EasyJob
   - reconcile via `ODE_REF`
   - governance proposal logic tra `admin` e `articoli`
+- baseline architetturale di rebase fissata con:
+  - moduli principali congelati
+  - split concettuale `need vs release now`
+  - logiche proposal reinterpretate come bundle di policy
+  - ownership dati stabile tra finito, materiale grezzo, famiglia e admin
+  - separazione esplicita tra `Domain Rebase` e `Backbone Hardening`
 
 ## Decision log attivi
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-033`
+- `ARCH/` fino a `DL-ARCH-V2-039`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -115,24 +122,27 @@ Punti ormai stabili:
   - `rounding_scale`
   - perimetro esplicito `by_article`
 - `Production Proposals` come workspace temporaneo downstream di `Planning Candidates`, con storico persistente solo all'export
+- `architectural rebase` della V2 come linea guida attiva per i prossimi stream
 
 ## Task completati
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-114`
+- `TASK-V2-001` -> `TASK-V2-127`
 
 ## Task aperti
 
-- `TASK-V2-115` contratti Core/API per preview export EasyJob in `Production Proposals`
-- `TASK-V2-116` tabella UI `Production Proposals` allineata alla preview export EasyJob
-- `TASK-V2-117` prima logica proposal V1 `proposal_target_pieces_v1`
-- `TASK-V2-118` modello/config `raw_bar_length_mm_enabled` e `raw_bar_length_mm`
-- `TASK-V2-119` UI `famiglie` per `raw_bar_length_mm_enabled`
-- `TASK-V2-120` UI `articoli` per `raw_bar_length_mm` e `proposal_full_bar_v1`
-- `TASK-V2-121` Core `proposal_full_bar_v1`
-- `TASK-V2-122` warning `MISSING_RAW_BAR_LENGTH`
-- `TASK-V2-123` fix UI `articoli` per visibilita condizionata di `raw_bar_length_mm`
+- `TASK-V2-128` contratto Core planning `need vs release now` nel ramo `by_article`
+- `TASK-V2-129` visibilita UI planning del nuovo split `need vs release now`
+
+La backlog attiva non e piu una semplice sequenza di task proposal, ma e organizzata nei due stream:
+
+- `Domain Rebase`
+- `Backbone Hardening`
+
+Documento guida:
+
+- [REBASE_V2_BACKLOG_2026-04-15.md](/c:/Users/Alberto.REGNANI/Desktop/NSSP/NSSP/V2/docs/roadmap/REBASE_V2_BACKLOG_2026-04-15.md#L1)
 
 Ultimi task chiusi rilevanti:
 
@@ -187,19 +197,24 @@ Ultimi task chiusi rilevanti:
 
 ## Prossima sequenza consigliata
 
-I prossimi stream naturali sono:
-- raffinare `Production Proposals` su:
-  - preview export EasyJob in Core/API e UI
-  - prima logica proposal minima `proposal_target_pieces_v1`
-  - seconda logica proposal `proposal_full_bar_v1`
-  - warning configurativo `MISSING_RAW_BAR_LENGTH`
-  - logiche proposal piu ricche
-  - eventuali regole di riapertura / nuovo ciclo proposal
-  - possibili blocchi o segnali operativi legati ai warning
-  - eventuale export audit piu ricco
-- valutare piu avanti badge warning in:
-  - `articoli`
-  - `Planning Candidates` extra rispetto alla colonna warning gia introdotta
+I prossimi stream corretti sono:
+
+1. `Domain Rebase`
+   - eseguire `TASK-V2-128`
+   - eseguire `TASK-V2-129`
+   - fissare il contratto `Production Proposals` in termini di policy bundle:
+     - `proposal_base_qty_policy`
+     - `proposal_lot_policy`
+     - `proposal_capacity_policy`
+     - `proposal_customer_guardrail_policy`
+     - `proposal_note_policy`
+   - rileggere ogni nuovo task planning/proposal contro il baseline di [DL-ARCH-V2-039.md](/c:/Users/Alberto.REGNANI/Desktop/NSSP/NSSP/V2/docs/decisions/ARCH/DL-ARCH-V2-039.md#L1)
+2. `Backbone Hardening`
+   - strategia strutturale `MAG_REALE`
+   - refresh fail-fast e freshness
+   - gestione orfani `core_articolo_config`
+
+Il cluster proposal `115-127` e stato gia implementato e va ora letto come compatibility slice, non come roadmap lineare.
 
 Valutazioni rinviate:
 
@@ -207,9 +222,9 @@ Valutazioni rinviate:
 
 Non sono prioritari adesso:
 
-- nuovo scaffolding sync
-- nuovo refactor planning di base
-- scoring o scheduling avanzato prima di raffinare `Production Proposals`
+- nuove micro-logiche proposal isolate senza rebase contrattuale
+- scoring o scheduling avanzato prima del rebase di dominio
+- riscrittura `V3`
 
 ## Notes
 

@@ -74,6 +74,10 @@ class CoreProposalWorkspaceRow(Base):
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Diagnostica logica proposal (TASK-V2-124)
+    requested_proposal_logic_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    effective_proposal_logic_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    proposal_fallback_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class CoreProductionProposalExportBatch(Base):

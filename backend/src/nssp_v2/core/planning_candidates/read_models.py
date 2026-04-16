@@ -137,6 +137,17 @@ class PlanningCandidateItem(BaseModel):
     # Esposta per consentire alla UI di applicare un orizzonte configurabile (TASK-V2-102).
     nearest_delivery_date: date | None = None
 
+    # ─── Release now contract — by_article only (TASK-V2-128) ────────────────
+    # None per by_customer_order_line; None per by_article senza capacity configurata.
+    # required_qty_eventual = required_qty_total (alias esplicito del contratto release)
+    # capacity_headroom_now_qty = max(capacity_effective_qty - inventory_qty, 0)
+    # release_qty_now_max = min(required_qty_eventual, capacity_headroom_now_qty)
+    # release_status: launchable_now | launchable_partially | blocked_by_capacity_now
+    required_qty_eventual: Decimal | None = None
+    capacity_headroom_now_qty: Decimal | None = None
+    release_qty_now_max: Decimal | None = None
+    release_status: Literal["launchable_now", "launchable_partially", "blocked_by_capacity_now"] | None = None
+
     # ─── by_customer_order_line (None per by_article) ─────────────────────────
     order_reference: str | None = None
     line_reference: int | None = None

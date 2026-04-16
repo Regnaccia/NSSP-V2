@@ -22,6 +22,11 @@ Il modulo `Planning Candidates` ha lo scopo di:
 
 > identificare e rappresentare i fabbisogni produttivi che meritano attenzione, tenendo conto di domanda, stock operativo e copertura gia in essere.
 
+Nel baseline architetturale post-rebase il modulo deve anche distinguere in modo esplicito:
+
+- esistenza del bisogno
+- fattibilita del rilascio immediato
+
 Produce una lista:
 
 - spiegabile
@@ -36,6 +41,7 @@ Produce una lista:
 - integra domanda cliente, stock operativo e produzioni attive
 - distingue aggregazione e non aggregazione
 - espone una reason esplicita per cui il candidate compare
+- separa il bisogno eventuale dalla quantita lanciabile ora
 - prepara il passaggio verso `Production Proposals`
 
 ### Il modulo NON FA
@@ -45,6 +51,7 @@ Produce una lista:
 - non schedula produzione
 - non assegna risorse o macchine
 - non gestisce ancora anomalie inventariali come modulo dedicato
+- non decide da solo l'export o il rilascio proposal downstream
 
 ## 4. Posizionamento architetturale
 
@@ -144,6 +151,24 @@ La gestione dell'anomalia verra trattata in futuro nel modulo separato `Warnings
 
 Il candidate puo esporre livelli quantitativi diversi secondo il planning mode.
 
+Nel modello post-rebase la quantita planning non deve piu avere un solo significato implicito.
+
+Il modulo deve distinguere almeno:
+
+- `required_qty_eventual`
+- `release_qty_now_max`
+- `release_status`
+
+Nel primo slice implementativo del rebase questa distinzione viene resa pienamente nel solo ramo:
+
+- `by_article`
+
+Per il ramo:
+
+- `by_customer_order_line`
+
+il rebase quantitativo di `release now` resta esplicitamente rinviato per evitare duplicazione ambigua della stessa capienza articolo su piu righe cliente.
+
 ### Ramo by_article
 
 Campi principali:
@@ -161,6 +186,86 @@ future_availability_qty = availability_qty + incoming_supply_qty
 
 Il candidate esiste quando la copertura futura resta negativa.
 
+#### Distinzione `need vs release now`
+
+Nel ramo `by_article` la V2 mantiene il breakdown oggi gia presente:
+
+- `customer_shortage_qty`
+- `stock_replenishment_qty`
+- `required_qty_total`
+- `primary_driver`
+
+Ma il rebase architetturale introduce un secondo asse semantico, distinto dal solo need:
+
+- `required_qty_eventual`
+  - quanto manca rispetto al need/target futuro
+- `release_qty_now_max`
+  - quanta quantita e lanciabile ora senza violare la policy di capienza attuale
+- `release_status`
+  - `launchable_now`
+  - `launchable_partially`
+  - `blocked_by_capacity_now`
+
+Regola concettuale:
+
+```text
+required_qty_eventual != release_qty_now_max
+```
+
+nei casi in cui il magazzino sia gia prossimo alla saturazione pur in presenza di un bisogno futuro reale.
+
+La V4 legacy giustifica esplicitamente questa separazione con la logica:
+
+```text
+da_produrre = min(cap_residua, prod_a_scorta)
+```
+
+Quindi un candidate puo:
+
+- esistere come bisogno reale
+- ma risultare non lanciabile ora
+
+senza che questo invalidi il candidate stesso.
+
+#### Formula iniziale del rebase
+
+Nuovi campi del ramo `by_article`:
+
+- `required_qty_eventual`
+- `capacity_headroom_now_qty`
+- `release_qty_now_max`
+- `release_status`
+
+Formule iniziali:
+
+```text
+required_qty_eventual = required_qty_total
+capacity_headroom_now_qty = max(capacity_effective_qty - inventory_qty, 0)
+release_qty_now_max = min(required_qty_eventual, capacity_headroom_now_qty)
+```
+
+Regola importante:
+
+- il confronto `release now` usa la giacenza fisica attuale (`inventory_qty`)
+- non la sola `availability_qty`
+
+per evitare che articoli gia quasi a capienza risultino lanciabili solo perche esistono impegni futuri.
+
+Vocabolario iniziale di `release_status`:
+
+- `launchable_now`
+- `launchable_partially`
+- `blocked_by_capacity_now`
+
+Regole:
+
+- `launchable_now`
+  - `release_qty_now_max >= required_qty_eventual`
+- `launchable_partially`
+  - `0 < release_qty_now_max < required_qty_eventual`
+- `blocked_by_capacity_now`
+  - `release_qty_now_max = 0` e `required_qty_eventual > 0`
+
 ### Ramo by_customer_order_line
 
 Campi principali:
@@ -171,6 +276,29 @@ Campi principali:
 - `required_qty_minimum`
 
 La supply e cercata solo sulle produzioni collegate alla stessa riga ordine cliente.
+
+Nel ramo `by_customer_order_line` il rebase non elimina la semantica cliente-driven, ma richiede che la fattibilita di rilascio immediato resti distinta dal bisogno cliente netto, soprattutto nei casi di saturazione della capienza.
+
+Nel primo slice implementativo:
+
+- il ramo per-riga mantiene i campi attuali
+- i nuovi campi `release now` possono restare assenti o `null`
+- il modello quantitativo completo del per-riga verra trattato in uno slice dedicato
+
+## 8B. Compatibilita di transizione
+
+I campi attuali della V2 restano validi durante la transizione:
+
+- `required_qty_minimum`
+- `required_qty_total`
+- `customer_shortage_qty`
+- `stock_replenishment_qty`
+
+Ma ogni nuovo sviluppo planning deve dichiarare esplicitamente se sta intervenendo su:
+
+- `need detection`
+- `release feasibility`
+- oppure solo sul read model di presentazione
 
 ## 9. Regole di generazione
 

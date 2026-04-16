@@ -16,7 +16,7 @@ Filtro per area (TASK-V2-082):
 - ruoli operativi (produzione, magazzino, logistica) vedono solo i warning della propria area
 """
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from nssp_v2.core.articoli.models import ArticoloFamiglia, CoreArticoloConfig
@@ -117,7 +117,12 @@ def list_warnings_v1(session: Session) -> list[WarningItem]:
             capacity_effective_qty=m.capacity_effective_qty,
         ))
 
-    # ─── MISSING_RAW_BAR_LENGTH (TASK-V2-122) ─────────────────────────────────
+    # ─── MISSING_RAW_BAR_LENGTH (TASK-V2-126) ─────────────────────────────────
+    # Logica riallineata: raw_bar_length_mm e sul materiale grezzo, non sul finito.
+    # Per ogni finito in famiglia con raw_bar_length_mm_enabled=True:
+    #   1. Risolve materiale_grezzo_codice da SyncArticolo del finito.
+    #   2. Controlla raw_bar_length_mm su CoreArticoloConfig del materiale grezzo.
+    #   3. Se mancante/invalido, genera warning sull'articolo materiale grezzo (deduplicato).
     areas_bar = get_visible_to_areas(session, _MISSING_RAW_BAR_LENGTH_TYPE)
 
     bar_rows = (
@@ -129,31 +134,52 @@ def list_warnings_v1(session: Session) -> list[WarningItem]:
         )
         .filter(ArticoloFamiglia.raw_bar_length_mm_enabled == True)  # noqa: E712
         .filter(SyncArticolo.attivo == True)  # noqa: E712
-        .order_by(func.upper(CoreArticoloConfig.codice_articolo))
         .all()
     )
 
-    for cfg, famiglia, art in bar_rows:
-        if not is_missing_raw_bar_length(cfg.raw_bar_length_mm):
+    seen_raw_material_keys: set[str] = set()
+    for _cfg, famiglia, art in sorted(bar_rows, key=lambda r: r[0].codice_articolo.strip().upper()):
+        raw_mat_code = (art.materiale_grezzo_codice or "").strip()
+        if not raw_mat_code:
+            continue  # nessun materiale grezzo → nessun controllo barra
+        raw_mat_key = raw_mat_code.upper()
+        if raw_mat_key in seen_raw_material_keys:
             continue
-        article_key = cfg.codice_articolo.strip().upper()
+        seen_raw_material_keys.add(raw_mat_key)
+
+        raw_mat_cfg = session.scalar(
+            select(CoreArticoloConfig).where(
+                func.upper(CoreArticoloConfig.codice_articolo) == raw_mat_key
+            )
+        )
+        raw_bar_length_mm_val = raw_mat_cfg.raw_bar_length_mm if raw_mat_cfg is not None else None
+        if not is_missing_raw_bar_length(raw_bar_length_mm_val):
+            continue
+
+        raw_mat_art = session.scalar(
+            select(SyncArticolo).where(
+                func.upper(SyncArticolo.codice_articolo) == raw_mat_key
+            )
+        )
+        created_at_val = raw_mat_art.synced_at if raw_mat_art else art.synced_at
+
         result.append(WarningItem(
-            warning_id=f"{_MISSING_RAW_BAR_LENGTH_TYPE}:{article_key}",
+            warning_id=f"{_MISSING_RAW_BAR_LENGTH_TYPE}:{raw_mat_key}",
             type=_MISSING_RAW_BAR_LENGTH_TYPE,
             severity=_WARNING_SEVERITY,
             entity_type=_ENTITY_TYPE_ARTICLE,
-            entity_key=article_key,
+            entity_key=raw_mat_key,
             message=(
-                f"Lunghezza barra grezza mancante o non valida per {article_key} "
-                f"(famiglia {famiglia.code} ha raw_bar_length_mm_enabled=True)"
+                f"Lunghezza barra grezza mancante o non valida per materiale {raw_mat_key} "
+                f"(famiglia finito {famiglia.code} ha raw_bar_length_mm_enabled=True)"
             ),
             source_module=_SOURCE_MODULE,
             visible_to_areas=areas_bar,
-            created_at=art.synced_at,
-            article_code=article_key,
+            created_at=created_at_val,
+            article_code=raw_mat_key,
             famiglia_code=famiglia.code,
             raw_bar_length_mm_enabled=True,
-            raw_bar_length_mm=cfg.raw_bar_length_mm,
+            raw_bar_length_mm=raw_bar_length_mm_val,
         ))
 
     return result

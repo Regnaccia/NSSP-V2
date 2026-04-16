@@ -15,6 +15,7 @@ from nssp_v2.core.production_proposals.config import KNOWN_PROPOSAL_LOGICS
 from nssp_v2.core.production_proposals.logic import (
     FullBarResult,
     compute_full_bar_qty,
+    compute_full_bar_qty_v2_capacity_floor,
     compute_note_fragment,
 )
 
@@ -281,3 +282,145 @@ def test_no_fallback_shortage_none():
         scarto=None,
     )
     assert result.used_fallback is False
+
+
+# ─── proposal_full_bar_v2_capacity_floor (TASK-V2-127) ───────────────────────
+
+
+def test_v2_in_known_logics():
+    assert "proposal_full_bar_v2_capacity_floor" in KNOWN_PROPOSAL_LOGICS
+
+
+def test_v2_ceil_admitted_no_overflow():
+    """qty_ceil entra in capienza → usa ceil, stesso risultato di v1."""
+    # pieces_per_bar = floor(3000/100) = 30
+    # bars_ceil = ceil(50/30) = 2, qty_ceil = 60
+    # availability=0, capacity=100 → 0+60 <= 100 → ceil ammesso
+    result = compute_full_bar_qty_v2_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=Decimal("30"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("100"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+    )
+    assert result.used_fallback is False
+    assert result.bars_required == 2
+    assert result.proposed_qty == Decimal("60")
+
+
+def test_v2_ceil_overflow_floor_admitted():
+    """qty_ceil sfora capienza, qty_floor sta sotto e copre il cliente → usa floor.
+
+    Setup:
+        pieces_per_bar = floor(3000/100) = 30
+        required = 50 → bars_ceil=2, qty_ceil=60
+        availability=0, capacity=55 → 0+60 > 55 (overflow)
+        bars_floor = floor(50/30) = 1, qty_floor = 30
+        customer_shortage = 20 → 30 >= 20 (ok)
+        0 + 30 <= 55 (ok)
+    """
+    result = compute_full_bar_qty_v2_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=Decimal("20"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("55"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+    )
+    assert result.used_fallback is False
+    assert result.bars_required == 1
+    assert result.proposed_qty == Decimal("30")
+
+
+def test_v2_floor_not_admitted_customer_undercoverage():
+    """qty_ceil sfora, qty_floor sotto-copre il cliente → fallback customer_undercoverage.
+
+    Setup:
+        pieces_per_bar = 30
+        required = 50 → bars_ceil=2, qty_ceil=60
+        capacity=55 → ceil overflow
+        bars_floor=1, qty_floor=30
+        customer_shortage=35 → 30 < 35 → fallback
+    """
+    result = compute_full_bar_qty_v2_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=Decimal("35"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("55"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "customer_undercoverage"
+    assert result.proposed_qty == Decimal("50")
+
+
+def test_v2_floor_not_admitted_also_overflows_capacity():
+    """qty_ceil sfora, qty_floor sfora anch'essa → fallback capacity_overflow.
+
+    Setup:
+        pieces_per_bar = 30
+        required = 60 → bars_ceil=ceil(60/30)=2, qty_ceil=60
+        availability=0, capacity=55 → ceil overflow
+        bars_floor=floor(60/30)=2, qty_floor=60 (divisione esatta → floor==ceil)
+        0+60 > 55 → floor overflow → fallback
+    """
+    result = compute_full_bar_qty_v2_capacity_floor(
+        required_qty_total=Decimal("60"),
+        customer_shortage_qty=Decimal("20"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("55"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "capacity_overflow"
+    assert result.proposed_qty == Decimal("60")
+
+
+def test_v2_no_capacity_configured_uses_ceil():
+    """capacity_effective_qty=None → nessun controllo overflow → usa ceil."""
+    result = compute_full_bar_qty_v2_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=None,
+        availability_qty=None,
+        capacity_effective_qty=None,
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+    )
+    assert result.used_fallback is False
+    assert result.bars_required == 2
+    assert result.proposed_qty == Decimal("60")
+
+
+def test_v2_note_fragment_uses_bars_required():
+    """note_fragment per v2 e BAR xN con il numero di barre effettivamente usate."""
+    fragment = compute_note_fragment("proposal_full_bar_v2_capacity_floor", {"_bars_required": 1})
+    assert fragment == "BAR x1"
+
+
+def test_v2_note_fragment_none_on_fallback():
+    """Se fallback (nessun _bars_required), il fragment e None."""
+    fragment = compute_note_fragment("proposal_full_bar_v2_capacity_floor", {})
+    assert fragment is None
+
+
+def test_v2_pre_guards_missing_raw_bar_length():
+    """Pre-guardia missing_raw_bar_length ereditate da v2."""
+    result = compute_full_bar_qty_v2_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=None,
+        availability_qty=None,
+        capacity_effective_qty=None,
+        raw_bar_length_mm=None,
+        occorrente=Decimal("100"),
+        scarto=None,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "missing_raw_bar_length"

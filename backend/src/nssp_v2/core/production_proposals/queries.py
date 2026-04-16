@@ -18,6 +18,7 @@ from nssp_v2.core.planning_candidates import PlanningCandidateItem, list_plannin
 from nssp_v2.core.production_proposals.config import get_proposal_logic_config
 from nssp_v2.core.production_proposals.logic import (
     compute_full_bar_qty,
+    compute_full_bar_qty_v2_capacity_floor,
     compute_note_fragment,
     compute_proposed_qty,
     merge_logic_params,
@@ -158,22 +159,41 @@ def _resolve_full_bar_proposed_qty(
     item: PlanningCandidateItem,
     required_qty_total: Decimal,
     params_snapshot: dict,
-) -> tuple[Decimal, dict, bool]:
-    """Calcola proposed_qty per proposal_full_bar_v1 e arricchisce params_snapshot con _bars_required.
+    logic_key: str = "proposal_full_bar_v1",
+) -> tuple[Decimal, dict, bool, str | None]:
+    """Calcola proposed_qty per le logiche full-bar e arricchisce params_snapshot con _bars_required.
 
-    Restituisce (proposed_qty, params_snapshot_aggiornato).
-    In caso di fallback, proposed_qty = required_qty_total, _bars_required e assente,
-    e l'ultimo boolean indica che la logica effettiva e ricaduta su target-pieces.
+    Gestisce: proposal_full_bar_v1, proposal_full_bar_v2_capacity_floor.
+    Restituisce (proposed_qty, params_snapshot_aggiornato, used_fallback, fallback_reason).
+    In caso di fallback: used_fallback=True, fallback_reason e il codice motivo.
+    In caso di successo: used_fallback=False, fallback_reason=None.
+
+    raw_bar_length_mm e letto sul materiale grezzo associato al finito (TASK-V2-126):
+      1. sync_art.materiale_grezzo_codice  → codice del materiale grezzo
+      2. CoreArticoloConfig del materiale  → raw_bar_length_mm
+    occorrente/scarto restano sul finito.
     """
     resolved_code = _resolve_sync_articolo_code(session, item.article_code) or item.article_code
-    cfg = session.get(CoreArticoloConfig, resolved_code)
-    raw_bar_length_mm = cfg.raw_bar_length_mm if cfg is not None else None
 
     sync_art = session.scalar(
         select(SyncArticolo).where(SyncArticolo.codice_articolo == resolved_code)
     )
     occorrente = sync_art.quantita_materiale_grezzo_occorrente if sync_art else None
     scarto = sync_art.quantita_materiale_grezzo_scarto if sync_art else None
+
+    # raw_bar_length_mm risiede sul materiale grezzo, non sul finito (TASK-V2-126)
+    raw_material_code = (sync_art.materiale_grezzo_codice or "").strip() if sync_art else ""
+    raw_bar_length_mm = None
+    if raw_material_code:
+        resolved_raw_code = _resolve_sync_articolo_code(session, raw_material_code) or raw_material_code
+        raw_cfg = session.get(CoreArticoloConfig, resolved_raw_code)
+        if raw_cfg is None:
+            raw_cfg = session.scalar(
+                select(CoreArticoloConfig).where(
+                    func.upper(CoreArticoloConfig.codice_articolo) == resolved_raw_code.upper()
+                )
+            )
+        raw_bar_length_mm = raw_cfg.raw_bar_length_mm if raw_cfg is not None else None
 
     # capacity_effective_qty da stock metrics (lazy import per evitare circular)
     from nssp_v2.core.stock_policy import list_stock_metrics_v1  # noqa: PLC0415
@@ -184,7 +204,12 @@ def _resolve_full_bar_proposed_qty(
     )
     capacity_effective_qty = stock_metric.capacity_effective_qty if stock_metric else None
 
-    result = compute_full_bar_qty(
+    _bar_fn = (
+        compute_full_bar_qty_v2_capacity_floor
+        if logic_key == "proposal_full_bar_v2_capacity_floor"
+        else compute_full_bar_qty
+    )
+    result = _bar_fn(
         required_qty_total=required_qty_total,
         customer_shortage_qty=item.customer_shortage_qty,
         availability_qty=item.availability_qty,
@@ -195,10 +220,10 @@ def _resolve_full_bar_proposed_qty(
     )
 
     if result.used_fallback:
-        return result.proposed_qty, params_snapshot, True
+        return result.proposed_qty, params_snapshot, True, result.fallback_reason
 
     updated_snapshot = {**params_snapshot, "_bars_required": result.bars_required}
-    return result.proposed_qty, updated_snapshot, False
+    return result.proposed_qty, updated_snapshot, False, None
 
 
 def _workspace_row_from_candidate(
@@ -216,14 +241,17 @@ def _workspace_row_from_candidate(
     params_snapshot = merge_logic_params(global_params, article_params)
     required_qty_total = _canonical_required_qty_total(item)
 
-    if requested_logic_key == "proposal_full_bar_v1":
-        proposed_qty, params_snapshot, used_fallback = _resolve_full_bar_proposed_qty(
-            session, item, required_qty_total, params_snapshot
+    fallback_reason: str | None = None
+    if requested_logic_key in ("proposal_full_bar_v1", "proposal_full_bar_v2_capacity_floor"):
+        proposed_qty, params_snapshot, used_fallback, fallback_reason = _resolve_full_bar_proposed_qty(
+            session, item, required_qty_total, params_snapshot, logic_key=requested_logic_key
         )
         if used_fallback:
             logic_key = "proposal_target_pieces_v1"
     else:
         proposed_qty = compute_proposed_qty(logic_key, required_qty_total, params_snapshot)
+
+    effective_logic_key = logic_key
 
     return CoreProposalWorkspaceRow(
         workspace_id=workspace_id,
@@ -256,6 +284,10 @@ def _workspace_row_from_candidate(
         computed_at=item.computed_at.replace(tzinfo=timezone.utc) if item.computed_at.tzinfo is None else item.computed_at,
         created_at=now,
         updated_at=now,
+        # Diagnostica logica proposal (TASK-V2-124)
+        requested_proposal_logic_key=requested_logic_key,
+        effective_proposal_logic_key=effective_logic_key,
+        proposal_fallback_reason=fallback_reason,
     )
 
 
@@ -324,6 +356,10 @@ def _workspace_row_to_item(
             dict(row.proposal_logic_params_snapshot_json or {}),
         ),
         user_preview=_USER_PREVIEW,
+        # Diagnostica logica proposal (TASK-V2-124)
+        requested_proposal_logic_key=row.requested_proposal_logic_key,
+        effective_proposal_logic_key=row.effective_proposal_logic_key,
+        proposal_fallback_reason=row.proposal_fallback_reason,
     )
 
 
