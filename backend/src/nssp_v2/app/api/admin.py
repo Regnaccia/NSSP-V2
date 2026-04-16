@@ -257,6 +257,7 @@ class ProposalLogicConfigResponse(ProposalLogicConfig):
 class SetProposalLogicConfigRequest(BaseModel):
     default_logic_key: str
     logic_params_by_key: dict[str, dict]
+    disabled_logic_keys: list[str] = []
 
 
 @router.get("/stock-logic/config", response_model=StockLogicConfigResponse)
@@ -322,6 +323,7 @@ def put_proposal_logic_config(
             session,
             default_logic_key=body.default_logic_key,
             logic_params_by_key=body.logic_params_by_key,
+            disabled_logic_keys=body.disabled_logic_keys,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))

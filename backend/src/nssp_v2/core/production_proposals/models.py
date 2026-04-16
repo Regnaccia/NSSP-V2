@@ -17,6 +17,9 @@ class CoreProposalLogicConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     default_logic_key: Mapped[str] = mapped_column(String(64), nullable=False)
     logic_params_by_key_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Liste di logic key esplicitamente disabilitate (TASK-V2-130).
+    # Una logica in questa lista resta nel registro ma non e assegnabile agli articoli.
+    disabled_logic_keys_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

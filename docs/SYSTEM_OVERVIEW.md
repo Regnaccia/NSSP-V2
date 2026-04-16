@@ -1,7 +1,7 @@
 # ODE V2 - System Overview
 
 ## Date
-2026-04-14
+2026-04-16
 
 ## Scopo
 
@@ -67,7 +67,7 @@ Disponibile:
 
 - sync `articoli`
 - Core `articoli`
-- UI browser a 2 colonne
+- UI browser a 3 colonne
 - sync on demand backend-controlled
 - catalogo interno `famiglie articolo`
 - associazione articolo -> famiglia
@@ -109,6 +109,9 @@ Disponibile:
   - `proposal_logic_article_params`
 - valore effettivo proposal esposto:
   - `effective_proposal_logic_key`
+- selettori proposal logic con:
+  - label human-friendly
+  - template JSON params guidato quando la logica richiede parametri
 - refresh semantico backend-controlled `refresh_articoli()` con chain interna completa
 
 ### Produzioni
@@ -224,6 +227,11 @@ Disponibile:
   - quick config modal articolo
 - la vista planning consuma anche warning articolo attivi filtrati per area
 - quick edit planning -> articoli usa bridge case-insensitive tra codice canonical e codice raw
+- primo split `need vs release now` gia introdotto per il ramo `by_article`:
+  - `required_qty_eventual`
+  - `capacity_headroom_now_qty`
+  - `release_qty_now_max`
+  - `release_status`
 - surface UI dedicata con:
   - ricerca `codice`
   - ricerca `descrizione`
@@ -243,10 +251,7 @@ Non ancora disponibile:
 
 Rebase target:
 
-- distinguere esplicitamente:
-  - `required_qty_eventual`
-  - `release_qty_now_max`
-  - `release_status`
+- estendere il contratto `need vs release now` oltre il primo slice `by_article`
 - non usare piu una sola quantita implicita per need e rilascio
 
 ### Warnings
@@ -283,6 +288,10 @@ Disponibile:
   - `cancelled`
 - logica proposal V1 minima:
   - `proposal_target_pieces_v1`
+- logiche proposal aggiuntive:
+  - `proposal_full_bar_v1`
+  - `proposal_full_bar_v2_capacity_floor`
+  - `proposal_multi_bar_v1_capacity_floor`
 - configurazione globale logiche proposal in `admin`
 - assegnazione e parametri proposal specifici per articolo
 - export `xlsx` del workspace
@@ -372,8 +381,7 @@ Il perimetro quantitativo e planning V1/V2 di base e operativo:
 
 Task aperti correnti:
 
-- `TASK-V2-115` contratti Core/API per preview export EasyJob in `Production Proposals`
-- `TASK-V2-116` tabella UI `Production Proposals` allineata alla preview export EasyJob
+- `TASK-V2-134` `note_fragment` dedicato `FASCI xN` per la logica proposal multi-bar
 
 Task deferred:
 

@@ -621,8 +621,10 @@ def get_proposal_logic_catalog(
     from nssp_v2.core.production_proposals import get_proposal_logic_config
 
     config = get_proposal_logic_config(session)
+    # Catalogo visibile agli articoli: solo logiche abilitate (TASK-V2-130)
+    enabled_logics = [k for k in KNOWN_PROPOSAL_LOGICS if k not in config.disabled_logic_keys]
     return ProposalLogicCatalogResponse(
-        known_logics=KNOWN_PROPOSAL_LOGICS,
+        known_logics=enabled_logics,
         default_logic_key=config.default_logic_key,
     )
 

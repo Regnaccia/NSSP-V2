@@ -297,6 +297,16 @@ export interface PlanningCandidateItem {
   /** Data_consegna più vicina (ISO date string) tra le righe ordine. Null se nessuna data o by_customer_order_line */
   nearest_delivery_date: string | null
 
+  // ─── Release now contract (TASK-V2-128) — by_article only ───────────────
+  /** Alias esplicito di required_qty_total — null se no capacity o by_customer_order_line */
+  required_qty_eventual: string | null
+  /** max(capacity_effective_qty - inventory_qty, 0) — null se no capacity o by_customer_order_line */
+  capacity_headroom_now_qty: string | null
+  /** min(required_qty_eventual, capacity_headroom_now_qty) — null se no capacity o by_customer_order_line */
+  release_qty_now_max: string | null
+  /** Stato di rilascio immediato — null se no capacity o by_customer_order_line */
+  release_status: 'launchable_now' | 'launchable_partially' | 'blocked_by_capacity_now' | null
+
   // ─── by_customer_order_line (null per by_article) ────────────────────────
   /** Numero ordine cliente — null per by_article */
   order_reference: string | null
@@ -493,4 +503,6 @@ export interface ProposalLogicConfigResponse {
   is_default: boolean
   updated_at: string | null
   known_logics: string[]
+  /** Logiche esplicitamente disabilitate dalla governance admin (TASK-V2-130) */
+  disabled_logic_keys: string[]
 }

@@ -27,7 +27,7 @@ At the current stage it already supports:
 - a transversal `Warnings` module with first dedicated surface
 - first stock-policy governance with dedicated `admin` page and explicit stock-enabled flag
 - final planning readability slice with unified descriptions, warning visibility and quick article config
-- a first persistent `Production Proposals` module with dedicated surface, export and reconcile
+- a `Production Proposals` workspace/export module with dedicated surface, export and reconcile
 
 It is not yet a scheduler, MRP engine, or production planner.
 
@@ -201,9 +201,9 @@ Current behavior:
 
 Rebase note:
 
-- the current implementation still exposes one dominant planning quantity surface
-- next planning work must split:
+- first `need vs release now` split is already active in the `by_article` branch:
   - `required_qty_eventual`
+  - `capacity_headroom_now_qty`
   - `release_qty_now_max`
   - `release_status`
 
@@ -240,7 +240,7 @@ Current behavior:
 - proposal granularity follows the source candidate
 - workspace rows are frozen snapshots and do not drift from planning refresh
 - closing without export abandons the workspace
-- export is CSV batch only
+- export is `xlsx`
 - reconcile is based on `ODE_REF`
 - proposal logic governance is split between:
   - `admin` global suite config
@@ -339,7 +339,7 @@ Current shape:
   - `exported`
   - `reconciled`
   - `cancelled`
-- CSV export batch from workspace
+- `xlsx` export batch from workspace
 - reconcile by `ODE_REF`
 - article-level proposal logic assignment
 - admin-level global proposal logic config
@@ -465,7 +465,7 @@ Not implemented yet:
 
 Currently open in the active roadmap:
 
-- none
+- `TASK-V2-134` multi-bar note fragment `FASCI xN`
 
 Deferred in the active roadmap:
 
@@ -478,12 +478,7 @@ Operational note:
 
 ## What Is The Next Logical Reasoning Area
 
-The immediate next reasoning area is evolving `Production Proposals` beyond the first slice, starting from:
-
-- `TASK-V2-115` Core/API export-preview contracts
-- `TASK-V2-116` UI export-preview table
-
-on top of a planning + stock slice that is now coherent also on:
+The immediate next reasoning area is evolving `Production Proposals` and the rebase backlog beyond the first slices, on top of a planning + stock slice that is now coherent also on:
 
 - distinct `customer horizon` / `stock horizon`
 - primary-driver classification
@@ -495,13 +490,13 @@ on top of a planning + stock slice that is now coherent also on:
 - active article warnings in planning
 - quick edit path to article configuration
 
-The first proposal slice already covers:
+The current proposal slice already covers:
 
-- persistent proposals
-- workflow
-- CSV export batch
+- temporary workspace generated from planning
+- `xlsx` export batch
 - `ODE_REF` reconcile
 - admin + article proposal logic config
+- local diagnostics for requested / effective logic and fallback reason
 
 Explicitly deferred for now:
 

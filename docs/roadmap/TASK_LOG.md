@@ -143,5 +143,10 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-125` | Completed | Diagnostica UI `Production Proposals` per rendere leggibile il fallback delle logiche proposal |
 | `TASK-V2-126` | Completed | Riallineare `raw_bar_length_mm` al materiale grezzo associato per proposal full bar e warning correlati |
 | `TASK-V2-127` | Completed | Nuova logica `proposal_full_bar_v2_capacity_floor` con tentativo `ceil`, poi `floor`, poi fallback a pezzi |
-| `TASK-V2-128` | Todo | Contratto Core planning per distinguere `required_qty_eventual` da `release_qty_now_max` nel ramo `by_article` |
-| `TASK-V2-129` | Todo | Visibilita UI planning del nuovo split `need vs release now` con `release_status` |
+| `TASK-V2-128` | Completed | Contratto Core planning per distinguere `required_qty_eventual` da `release_qty_now_max` nel ramo `by_article` |
+| `TASK-V2-129` | Completed | Visibilita UI planning del nuovo split `need vs release now` con `release_status` |
+| `TASK-V2-130` | Completed | Governance UI admin delle logiche proposal con schema a 2 colonne, flag `enabled` e `delete` |
+| `TASK-V2-131` | Completed | Nuova logica proposal con resa per barra moltiplicata da `multiplo` e policy `capacity_floor` |
+| `TASK-V2-132` | Completed | Label human-friendly e template JSON guidato delle proposal logic nella schermata articoli |
+| `TASK-V2-133` | Completed | Refactor UI `articoli` a 3 colonne con centro read-only e destra configurazione |
+| `TASK-V2-134` | Todo | Note fragment dedicato `FASCI xN` per la logica proposal multi-bar |

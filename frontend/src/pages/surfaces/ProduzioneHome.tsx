@@ -1,11 +1,11 @@
 /**
- * Surface Produzione — browser articoli (TASK-V2-020).
+ * Surface Produzione — browser articoli (TASK-V2-020, TASK-V2-133).
  *
- * Layout a 2 colonne (UIX_SPEC_ARTICOLI.md):
+ * Layout a 3 colonne (UIX_SPEC_ARTICOLI.md):
  *   1. sinistra  → lista articoli con ricerca normalizzata (DL-UIX-V2-004)
- *   2. destra    → dettaglio articolo read-only
+ *   2. centrale  → stato articolo read-only (anagrafica, giacenza, metriche, proposal context)
+ *   3. destra    → configurazione articolo (planning, scorte, proposal)
  *
- * Tutti i dati sono read-only nel primo slice.
  * Consuma solo i read model Core articoli (mai sync_* diretti).
  */
 
@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import type { ArticoloDetail, ArticoloItem, FamigliaItem, FreshnessResponse, SyncSurfaceResponse } from '@/types/api'
+import { proposalLogicMeta, proposalLogicParamsTemplate } from '@/lib/proposalLogicMeta'
 
 // ─── Normalizzazione ricerca articolo (DL-UIX-V2-004) ────────────────────────
 //
@@ -458,57 +459,191 @@ function ColonnaDettaglio({
     )
   }
 
+  const uom = detail.unita_misura_codice ?? ''
+
+  function fmtQty(v: string | null | undefined, decimals = 3) {
+    if (v === null || v === undefined) return '—'
+    return Number(v).toLocaleString('it-IT', { maximumFractionDigits: decimals })
+  }
+
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
-      <div className="max-w-lg space-y-6">
-        {/* Intestazione */}
-        <div>
-          <h2 className="text-lg font-semibold">{detail.display_label}</h2>
-          <p className="text-sm font-mono text-muted-foreground">{detail.codice_articolo}</p>
-        </div>
+    <div className="flex-1 flex overflow-hidden">
 
-        {/* Famiglia articolo — dato interno V2 (DL-ARCH-V2-014) */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Classificazione interna
-          </h3>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Famiglia articolo</label>
-            <select
-              value={detail.famiglia_code ?? ''}
-              onChange={handleFamigliaSelect}
-              disabled={saveStatus === 'saving'}
-              className={inputCls}
-            >
-              <option value="">— nessuna —</option>
-              {famiglie.map((f) => (
-                <option key={f.code} value={f.code}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-            {saveStatus === 'saving' && (
-              <p className="text-xs text-muted-foreground">Salvataggio…</p>
-            )}
-            {saveStatus === 'saved' && (
-              <p className="text-xs text-green-600">Salvato</p>
-            )}
-            {saveStatus === 'error' && (
-              <p className="text-xs text-red-600">Errore durante il salvataggio</p>
-            )}
+      {/* ── Colonna centrale — stato articolo (read-only) ─────────────────── */}
+      <div className="w-80 shrink-0 border-r overflow-y-auto">
+        <div className="p-4 space-y-5">
+
+          {/* Header */}
+          <div>
+            <h2 className="text-base font-semibold leading-tight">{detail.display_label}</h2>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">{detail.codice_articolo}</p>
           </div>
-        </section>
 
-        {/* Planning policy — override articolo + valori effettivi (DL-ARCH-V2-026, TASK-V2-067) */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Planning policy
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Override puntuale per l'articolo. "Eredita" usa il default della famiglia assegnata.
-          </p>
-          <div className="space-y-3">
-            {/* Considera in produzione */}
+          {/* Anagrafica — dati Easy read-only */}
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+              Anagrafica
+            </h3>
+            <dl className="space-y-1.5">
+              <RigaInfo label="Descrizione 1" value={detail.descrizione_1} />
+              <RigaInfo label="Descrizione 2" value={detail.descrizione_2} />
+              <RigaInfo label="Unità di misura" value={detail.unita_misura_codice} />
+              <RigaInfo label="Misura" value={detail.misura_articolo} />
+              <RigaInfo label="Categoria" value={detail.categoria_articolo_1} />
+              <RigaInfo label="Codice immagine" value={detail.codice_immagine} />
+              <RigaInfo label="Contenitori magazzino" value={detail.contenitori_magazzino} />
+              <RigaInfo label="Materiale grezzo" value={detail.materiale_grezzo_codice} />
+              <RigaInfo label="Qtà materiale grezzo" value={detail.quantita_materiale_grezzo_occorrente} />
+              <RigaInfo label="Qtà scarto materiale" value={detail.quantita_materiale_grezzo_scarto} />
+              <RigaInfo label="Peso (g)" value={detail.peso_grammi} />
+              <RigaInfo label="Ultima modifica Easy" value={formatDate(detail.source_modified_at)} />
+            </dl>
+          </section>
+
+          {/* Giacenza / Impegni / Disponibilità */}
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+              Giacenza / Impegni / Disponibilità
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded border p-2 bg-muted/20">
+                <p className="text-xs text-muted-foreground">Giacenza {uom}</p>
+                <p className="text-sm font-semibold tabular-nums">{fmtQty(detail.on_hand_qty)}</p>
+              </div>
+              <div className="rounded border p-2 bg-muted/20">
+                <p className="text-xs text-muted-foreground">Appartata {uom}</p>
+                <p className="text-sm font-semibold tabular-nums">{fmtQty(detail.customer_set_aside_qty)}</p>
+              </div>
+              <div className="rounded border p-2 bg-muted/20">
+                <p className="text-xs text-muted-foreground">Impegni {uom}</p>
+                <p className="text-sm font-semibold tabular-nums">{fmtQty(detail.committed_qty)}</p>
+              </div>
+              <div className="rounded border p-2 bg-muted/20">
+                <p className="text-xs text-muted-foreground">Disponibilità {uom}</p>
+                <p className={`text-sm font-semibold tabular-nums ${Number(detail.availability_qty) < 0 ? 'text-red-600' : ''}`}>
+                  {fmtQty(detail.availability_qty)}
+                </p>
+              </div>
+            </div>
+            {detail.availability_computed_at && (
+              <p className="text-[11px] text-muted-foreground">
+                Calc. {formatDate(detail.availability_computed_at)}
+              </p>
+            )}
+          </section>
+
+          {/* Scorte / Capacity / Target — solo by_article */}
+          {detail.planning_mode === 'by_article' && (
+            <section className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+                Scorte / Capacity / Target
+              </h3>
+              {detail.monthly_stock_base_qty !== null ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded border p-2 bg-muted/20">
+                    <p className="text-xs text-muted-foreground">Base mensile</p>
+                    <p className="text-sm font-medium tabular-nums">{fmtQty(detail.monthly_stock_base_qty, 2)}</p>
+                  </div>
+                  <div className="rounded border p-2 bg-muted/20">
+                    <p className="text-xs text-muted-foreground">Capacity effettiva</p>
+                    <p className="text-sm font-medium tabular-nums">{fmtQty(detail.capacity_effective_qty, 2)}</p>
+                  </div>
+                  <div className="rounded border p-2 bg-blue-50">
+                    <p className="text-xs text-muted-foreground">Target scorta</p>
+                    <p className="text-sm font-medium tabular-nums text-blue-700">{fmtQty(detail.target_stock_qty, 2)}</p>
+                  </div>
+                  <div className="rounded border p-2 bg-amber-50">
+                    <p className="text-xs text-muted-foreground">Trigger scorta</p>
+                    <p className="text-sm font-medium tabular-nums text-amber-700">{fmtQty(detail.trigger_stock_qty, 2)}</p>
+                  </div>
+                  {detail.effective_stock_months !== null && (
+                    <div className="rounded border p-2 bg-muted/20">
+                      <p className="text-xs text-muted-foreground">Mesi scorta</p>
+                      <p className="text-sm font-medium tabular-nums">{detail.effective_stock_months}</p>
+                    </div>
+                  )}
+                  {detail.effective_stock_trigger_months !== null && (
+                    <div className="rounded border p-2 bg-muted/20">
+                      <p className="text-xs text-muted-foreground">Mesi trigger</p>
+                      <p className="text-sm font-medium tabular-nums">{detail.effective_stock_trigger_months}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Metriche non disponibili.</p>
+              )}
+              {detail.stock_computed_at && (
+                <p className="text-[11px] text-muted-foreground">
+                  Calc. {formatDate(detail.stock_computed_at)}
+                  {detail.stock_strategy_key && ` · ${detail.stock_strategy_key}`}
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* Proposal context */}
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+              Proposal
+            </h3>
+            <div className="rounded border p-2 bg-muted/20 space-y-1">
+              <p className="text-xs text-muted-foreground">Logica effettiva</p>
+              {detail.effective_proposal_logic_key ? (
+                <>
+                  <p className="text-xs font-medium text-foreground">
+                    {proposalLogicMeta(detail.effective_proposal_logic_key).label}
+                  </p>
+                  <p className="text-[11px] font-mono text-muted-foreground">
+                    {detail.effective_proposal_logic_key}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">—</p>
+              )}
+              {detail.raw_bar_length_mm != null && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  Barra: <span className="font-mono text-foreground">{detail.raw_bar_length_mm} mm</span>
+                </p>
+              )}
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      {/* ── Colonna destra — configurazione ───────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-5 max-w-lg">
+
+          {/* Planning */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+              Planning
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Override puntuale per l'articolo. "Eredita" usa il default della famiglia assegnata.
+            </p>
+
+            {/* Famiglia articolo */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Famiglia articolo</label>
+              <select
+                value={detail.famiglia_code ?? ''}
+                onChange={handleFamigliaSelect}
+                disabled={saveStatus === 'saving'}
+                className={inputCls}
+              >
+                <option value="">— nessuna —</option>
+                {famiglie.map((f) => (
+                  <option key={f.code} value={f.code}>{f.label}</option>
+                ))}
+              </select>
+              {saveStatus === 'saving' && <p className="text-xs text-muted-foreground">Salvataggio…</p>}
+              {saveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+              {saveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+            </div>
+
+            {/* Nel perimetro produzione */}
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Nel perimetro produzione</label>
               <select
@@ -538,7 +673,7 @@ function ColonnaDettaglio({
               </p>
             </div>
 
-            {/* Modalità planning (aggrega_codice_in_produzione → planning_mode) */}
+            {/* Modalità planning */}
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Modalità planning</label>
               <select
@@ -568,17 +703,11 @@ function ColonnaDettaglio({
               </p>
             </div>
 
-            {policySaveStatus === 'saving' && (
-              <p className="text-xs text-muted-foreground">Salvataggio…</p>
-            )}
-            {policySaveStatus === 'saved' && (
-              <p className="text-xs text-green-600">Policy salvata</p>
-            )}
-            {policySaveStatus === 'error' && (
-              <p className="text-xs text-red-600">Errore durante il salvataggio</p>
-            )}
+            {policySaveStatus === 'saving' && <p className="text-xs text-muted-foreground">Salvataggio…</p>}
+            {policySaveStatus === 'saved' && <p className="text-xs text-green-600">Policy salvata</p>}
+            {policySaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
 
-            {/* Gestione scorte attiva — prerequisito stock policy (TASK-V2-098) */}
+            {/* Gestione scorte */}
             <div className="space-y-1 pt-2 border-t">
               <label className="text-xs text-muted-foreground">Gestione scorte attiva</label>
               <select
@@ -606,409 +735,165 @@ function ColonnaDettaglio({
               {gestiSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
               {gestiSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
             </div>
-          </div>
-        </section>
-
-        {/* Giacenza canonica — computed fact ODE (DL-ARCH-V2-016) */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Giacenza — sola lettura (ODE)
-          </h3>
-          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
-            {detail.on_hand_qty !== null ? (
-              <>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold tabular-nums">
-                    {Number(detail.on_hand_qty).toLocaleString('it-IT', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 3,
-                    })}
-                  </span>
-                  {detail.unita_misura_codice && (
-                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Stock netto fisico calcolato dai movimenti di magazzino sincronizzati.
-                  Non include disponibilità prospettica o allocazioni.
-                </p>
-                {detail.giacenza_computed_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Calcolato il {formatDate(detail.giacenza_computed_at)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nessun movimento registrato per questo articolo.
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* Quota appartata per cliente — computed fact ODE (DL-ARCH-V2-019) */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Quota appartata — sola lettura (ODE)
-          </h3>
-          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
-            {detail.customer_set_aside_qty !== null ? (
-              <>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold tabular-nums">
-                    {Number(detail.customer_set_aside_qty).toLocaleString('it-IT', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 3,
-                    })}
-                  </span>
-                  {detail.unita_misura_codice && (
-                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Quota gia inscatolata o appartata per cliente (DOC_QTAP).
-                  Non e ancora evasa e non e piu giacenza libera.
-                </p>
-                {detail.set_aside_computed_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Calcolato il {formatDate(detail.set_aside_computed_at)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nessuna quota appartata per questo articolo.
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* Impegni totali — computed fact ODE (DL-ARCH-V2-017) */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Impegni — sola lettura (ODE)
-          </h3>
-          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
-            {detail.committed_qty !== null ? (
-              <>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold tabular-nums">
-                    {Number(detail.committed_qty).toLocaleString('it-IT', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 3,
-                    })}
-                  </span>
-                  {detail.unita_misura_codice && (
-                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Quantita impegnata da ordini cliente e ordini di produzione ancora aperti.
-                  Separato dalla quota appartata e dalla giacenza fisica.
-                </p>
-                {detail.commitments_computed_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Calcolato il {formatDate(detail.commitments_computed_at)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nessun impegno attivo per questo articolo.
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* Disponibilita canonica — computed fact ODE (DL-ARCH-V2-021) */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Disponibilita — sola lettura (ODE)
-          </h3>
-          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
-            {detail.availability_qty !== null ? (
-              <>
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl font-semibold tabular-nums ${
-                    Number(detail.availability_qty) < 0 ? 'text-red-600' : ''
-                  }`}>
-                    {Number(detail.availability_qty).toLocaleString('it-IT', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 3,
-                    })}
-                  </span>
-                  {detail.unita_misura_codice && (
-                    <span className="text-sm text-muted-foreground">{detail.unita_misura_codice}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Giacenza - quota appartata - impegni. Puo essere negativa se gli impegni superano lo stock disponibile.
-                </p>
-                {detail.availability_computed_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Calcolato il {formatDate(detail.availability_computed_at)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Disponibilita non ancora calcolata per questo articolo.
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* Stock policy — solo per planning_mode = by_article (TASK-V2-089) */}
-        {detail.planning_mode === 'by_article' && (
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-              Stock policy V1 — by_article
-            </h3>
-
-            {/* Metriche calcolate read-only */}
-            <div className="rounded-md border p-4 space-y-3 bg-muted/20">
-              <p className="text-xs font-medium text-muted-foreground">Metriche calcolate — sola lettura</p>
-              {detail.monthly_stock_base_qty !== null ? (
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Base mensile</dt>
-                    <dd className="font-medium tabular-nums">{Number(detail.monthly_stock_base_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Capacity calcolata</dt>
-                    <dd className="font-medium tabular-nums">
-                      {detail.capacity_calculated_qty !== null
-                        ? Number(detail.capacity_calculated_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
-                        : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Capacity effettiva</dt>
-                    <dd className="font-medium tabular-nums">
-                      {detail.capacity_effective_qty !== null
-                        ? Number(detail.capacity_effective_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
-                        : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Target scorta</dt>
-                    <dd className={`font-medium tabular-nums ${detail.target_stock_qty !== null ? 'text-blue-700' : ''}`}>
-                      {detail.target_stock_qty !== null
-                        ? Number(detail.target_stock_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
-                        : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Trigger scorta</dt>
-                    <dd className={`font-medium tabular-nums ${detail.trigger_stock_qty !== null ? 'text-amber-700' : ''}`}>
-                      {detail.trigger_stock_qty !== null
-                        ? Number(detail.trigger_stock_qty).toLocaleString('it-IT', { maximumFractionDigits: 2 })
-                        : '—'}
-                    </dd>
-                  </div>
-                  {detail.effective_stock_months !== null && (
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Mesi scorta effettivi</dt>
-                      <dd className="font-medium tabular-nums">{detail.effective_stock_months}</dd>
-                    </div>
-                  )}
-                  {detail.effective_stock_trigger_months !== null && (
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Mesi trigger effettivi</dt>
-                      <dd className="font-medium tabular-nums">{detail.effective_stock_trigger_months}</dd>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Metriche non disponibili — dati di vendita insufficienti o policy non configurata.
-                </p>
-              )}
-              {detail.stock_computed_at && (
-                <p className="text-xs text-muted-foreground">
-                  Calcolato il {formatDate(detail.stock_computed_at)}
-                  {detail.stock_strategy_key && ` · strategia: ${detail.stock_strategy_key}`}
-                </p>
-              )}
-            </div>
-
-            {/* Override articolo modificabili */}
-            <form onSubmit={handleStockPolicySubmit} className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Override articolo. Lascia vuoto per ereditare il default della famiglia.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Mesi scorta (override)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder={detail.effective_stock_months ?? 'eredita famiglia'}
-                    value={stockMonthsInput}
-                    onChange={(e) => setStockMonthsInput(e.target.value)}
-                    disabled={stockSaveStatus === 'saving'}
-                    className={inputCls}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Mesi trigger (override)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder={detail.effective_stock_trigger_months ?? 'eredita famiglia'}
-                    value={stockTriggerInput}
-                    onChange={(e) => setStockTriggerInput(e.target.value)}
-                    disabled={stockSaveStatus === 'saving'}
-                    className={inputCls}
-                  />
-                </div>
-                <div className="space-y-1 col-span-2">
-                  <label className="text-xs text-muted-foreground">Capacity override (qtà)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder={detail.capacity_calculated_qty ? `calcolata: ${Number(detail.capacity_calculated_qty).toLocaleString('it-IT')}` : 'nessuna calcolata'}
-                    value={capacityOverrideInput}
-                    onChange={(e) => setCapacityOverrideInput(e.target.value)}
-                    disabled={stockSaveStatus === 'saving'}
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={stockSaveStatus === 'saving'}
-                  className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  {stockSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva override stock'}
-                </button>
-                {stockSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
-                {stockSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
-              </div>
-            </form>
           </section>
-        )}
 
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Proposal logic V1
-          </h3>
-          <div className="rounded-md border p-4 space-y-2 bg-muted/20">
-            <p className="text-xs text-muted-foreground">
-              Effective logic: <span className="font-mono text-foreground">{detail.effective_proposal_logic_key ?? '—'}</span>
-            </p>
-          </div>
-          <form onSubmit={handleProposalLogicSubmit} className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Logic key articolo</label>
-              <select
-                value={proposalLogicKeyInput}
-                onChange={(e) => setProposalLogicKeyInput(e.target.value)}
-                className={inputCls}
-                disabled={proposalSaveStatus === 'saving'}
-              >
-                <option value="">Eredita default globale</option>
-                {proposalKnownLogics.map((logicKey) => (
-                  <option key={logicKey} value={logicKey}>
-                    {logicKey}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Params articolo-specifici (JSON)</label>
-              <textarea
-                value={proposalLogicParamsInput}
-                onChange={(e) => setProposalLogicParamsInput(e.target.value)}
-                className={`${inputCls} min-h-32 font-mono`}
-                disabled={proposalSaveStatus === 'saving'}
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={proposalSaveStatus === 'saving'}
-                className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {proposalSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva proposal logic'}
-              </button>
-              {proposalSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
-              {proposalSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
-            </div>
-          </form>
-
-          {famiglie.find((f) => f.code === detail.famiglia_code)?.raw_bar_length_mm_enabled && (
-            <div className="border-t pt-3 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Lunghezza barra grezza (mm)
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Dato articolo-specifico richiesto dalla logica <span className="font-mono">proposal_full_bar_v1</span>.
-                Lasciare vuoto per rimuovere il valore.
-              </p>
-              <form onSubmit={handleRawBarLengthSubmit} className="space-y-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">
-                    Valore corrente: <span className="font-mono text-foreground">{detail.raw_bar_length_mm != null ? `${detail.raw_bar_length_mm} mm` : '—'}</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="es. 3000.00"
-                    value={rawBarLengthInput}
-                    onChange={(e) => setRawBarLengthInput(e.target.value)}
-                    disabled={rawBarSaveStatus === 'saving'}
-                    className={inputCls}
-                  />
+          {/* Scorte — solo by_article */}
+          {detail.planning_mode === 'by_article' && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+                Scorte
+              </h3>
+              <form onSubmit={handleStockPolicySubmit} className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Override articolo. Lascia vuoto per ereditare il default della famiglia.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Mesi scorta (override)</label>
+                    <input
+                      type="number" step="0.1" min="0"
+                      placeholder={detail.effective_stock_months ?? 'eredita famiglia'}
+                      value={stockMonthsInput}
+                      onChange={(e) => setStockMonthsInput(e.target.value)}
+                      disabled={stockSaveStatus === 'saving'}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Mesi trigger (override)</label>
+                    <input
+                      type="number" step="0.1" min="0"
+                      placeholder={detail.effective_stock_trigger_months ?? 'eredita famiglia'}
+                      value={stockTriggerInput}
+                      onChange={(e) => setStockTriggerInput(e.target.value)}
+                      disabled={stockSaveStatus === 'saving'}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <label className="text-xs text-muted-foreground">Capacity override (qtà)</label>
+                    <input
+                      type="number" step="1" min="0"
+                      placeholder={detail.capacity_calculated_qty ? `calcolata: ${Number(detail.capacity_calculated_qty).toLocaleString('it-IT')}` : 'nessuna calcolata'}
+                      value={capacityOverrideInput}
+                      onChange={(e) => setCapacityOverrideInput(e.target.value)}
+                      disabled={stockSaveStatus === 'saving'}
+                      className={inputCls}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     type="submit"
-                    disabled={rawBarSaveStatus === 'saving'}
+                    disabled={stockSaveStatus === 'saving'}
                     className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
-                    {rawBarSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva lunghezza barra'}
+                    {stockSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva override stock'}
                   </button>
-                  {rawBarSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
-                  {rawBarSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+                  {stockSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+                  {stockSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
                 </div>
               </form>
-            </div>
+            </section>
           )}
-        </section>
 
-        {/* Dati Easy read-only */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
-            Dati anagrafici — sola lettura (Easy)
-          </h3>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-            <RigaInfo label="Descrizione 1" value={detail.descrizione_1} />
-            <RigaInfo label="Descrizione 2" value={detail.descrizione_2} />
-            <RigaInfo label="Unità di misura" value={detail.unita_misura_codice} />
-            <RigaInfo label="Misura" value={detail.misura_articolo} />
-            <RigaInfo label="Categoria 1" value={detail.categoria_articolo_1} />
-            <RigaInfo label="Codice immagine" value={detail.codice_immagine} />
-            <RigaInfo label="Contenitori magazzino" value={detail.contenitori_magazzino} />
-            <RigaInfo label="Materiale grezzo" value={detail.materiale_grezzo_codice} />
-            <RigaInfo
-              label="Qtà materiale grezzo"
-              value={detail.quantita_materiale_grezzo_occorrente}
-            />
-            <RigaInfo
-              label="Qtà scarto materiale"
-              value={detail.quantita_materiale_grezzo_scarto}
-            />
-            <RigaInfo label="Peso (g)" value={detail.peso_grammi} />
-            <RigaInfo label="Ultima modifica Easy" value={formatDate(detail.source_modified_at)} />
-          </dl>
-        </section>
+          {/* Proposal */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+              Proposal
+            </h3>
+            <form onSubmit={handleProposalLogicSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Logica proposal articolo</label>
+                <select
+                  value={proposalLogicKeyInput}
+                  onChange={(e) => {
+                    const newKey = e.target.value
+                    setProposalLogicKeyInput(newKey)
+                    if (newKey) {
+                      const tpl = proposalLogicParamsTemplate(newKey)
+                      const currentIsEmpty =
+                        proposalLogicParamsInput.trim() === '{}' ||
+                        proposalLogicParamsInput.trim() === ''
+                      if (tpl && currentIsEmpty) {
+                        setProposalLogicParamsInput(tpl)
+                      }
+                    }
+                  }}
+                  className={inputCls}
+                  disabled={proposalSaveStatus === 'saving'}
+                >
+                  <option value="">Eredita default globale</option>
+                  {proposalKnownLogics.map((logicKey) => (
+                    <option key={logicKey} value={logicKey}>
+                      {proposalLogicMeta(logicKey).label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Params articolo-specifici (JSON)</label>
+                <textarea
+                  value={proposalLogicParamsInput}
+                  onChange={(e) => setProposalLogicParamsInput(e.target.value)}
+                  className={`${inputCls} min-h-32 font-mono`}
+                  disabled={proposalSaveStatus === 'saving'}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={proposalSaveStatus === 'saving'}
+                  className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {proposalSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva proposal logic'}
+                </button>
+                {proposalSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+                {proposalSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+              </div>
+            </form>
+
+            {/* Materiale / Barra */}
+            {famiglie.find((f) => f.code === detail.famiglia_code)?.raw_bar_length_mm_enabled && (
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Lunghezza barra grezza (mm)</p>
+                <p className="text-xs text-muted-foreground">
+                  Dato articolo-specifico richiesto dalla logica <span className="font-mono">proposal_full_bar_v1</span>.
+                  Lasciare vuoto per rimuovere il valore.
+                </p>
+                <form onSubmit={handleRawBarLengthSubmit} className="space-y-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      Valore corrente: <span className="font-mono text-foreground">{detail.raw_bar_length_mm != null ? `${detail.raw_bar_length_mm} mm` : '—'}</span>
+                    </label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      placeholder="es. 3000.00"
+                      value={rawBarLengthInput}
+                      onChange={(e) => setRawBarLengthInput(e.target.value)}
+                      disabled={rawBarSaveStatus === 'saving'}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="submit"
+                      disabled={rawBarSaveStatus === 'saving'}
+                      className="py-1.5 px-3 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {rawBarSaveStatus === 'saving' ? 'Salvataggio…' : 'Salva lunghezza barra'}
+                    </button>
+                    {rawBarSaveStatus === 'saved' && <p className="text-xs text-green-600">Salvato</p>}
+                    {rawBarSaveStatus === 'error' && <p className="text-xs text-red-600">Errore durante il salvataggio</p>}
+                  </div>
+                </form>
+              </div>
+            )}
+          </section>
+
+        </div>
       </div>
+
     </div>
   )
 }

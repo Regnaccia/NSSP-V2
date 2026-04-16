@@ -1,6 +1,6 @@
 /**
  * Surface Produzione — Planning Candidates V2 (TASK-V2-065, TASK-V2-071, TASK-V2-072,
- * TASK-V2-075, DL-ARCH-V2-025, DL-ARCH-V2-026, DL-ARCH-V2-027, DL-ARCH-V2-028).
+ * TASK-V2-075, TASK-V2-129, DL-ARCH-V2-025, DL-ARCH-V2-026, DL-ARCH-V2-027, DL-ARCH-V2-028).
  *
  * Vista operativa con branching reale tra:
  * - planning_mode = by_article  → logica aggregata per articolo (V1)
@@ -21,6 +21,10 @@
  * - colonna misura dedicata
  * - descrizione unificata da description_parts / display_description (TASK-V2-110)
  * - colonna Warnings da active_warnings (TASK-V2-112)
+ *
+ * Colonna "Rilascio ora" (TASK-V2-129):
+ * - release_qty_now_max + release_status badge per by_article con capacity configurata
+ * - filtro release_status nella barra driver
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -41,6 +45,8 @@ type LoadStatus = 'loading' | 'idle' | 'error'
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error'
 /** Filtro driver: Tutti / Solo fabbisogno cliente / Solo scorta (TASK-V2-102) */
 type DriverFilter = 'tutti' | 'fabbisogno' | 'scorta'
+/** Filtro stato rilascio immediato (TASK-V2-129) — solo by_article con capacity configurata */
+type ReleaseStatusFilter = 'tutti' | 'launchable_now' | 'launchable_partially' | 'blocked_by_capacity_now'
 type TriState = 'null' | 'true' | 'false'
 
 /** Chiavi di ordinamento semantiche — indipendenti dallo shape del ramo */
@@ -455,6 +461,26 @@ function WarningBadges({ item }: { item: PlanningCandidateItem }) {
   )
 }
 
+// ─── Release status badge (TASK-V2-129) ──────────────────────────────────────
+
+type ReleaseStatus = 'launchable_now' | 'launchable_partially' | 'blocked_by_capacity_now'
+
+const RELEASE_STATUS_CONFIG: Record<ReleaseStatus, { label: string; cls: string }> = {
+  launchable_now:           { label: 'Lanciabile',  cls: 'bg-green-50 text-green-700 border border-green-200' },
+  launchable_partially:     { label: 'Parziale',    cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  blocked_by_capacity_now:  { label: 'Bloccato',    cls: 'bg-red-50 text-red-700 border border-red-200' },
+}
+
+function ReleaseStatusBadge({ status }: { status: ReleaseStatus | null }) {
+  if (!status) return <span className="text-muted-foreground/50 italic text-xs">—</span>
+  const cfg = RELEASE_STATUS_CONFIG[status]
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  )
+}
+
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 function PageHeader({
@@ -612,6 +638,13 @@ const driverOptions: { value: DriverFilter; label: string }[] = [
   { value: 'scorta', label: 'Solo scorta' },
 ]
 
+const releaseStatusOptions: { value: ReleaseStatusFilter; label: string }[] = [
+  { value: 'tutti',                  label: 'Tutti' },
+  { value: 'launchable_now',         label: 'Lanciabile' },
+  { value: 'launchable_partially',   label: 'Parziale' },
+  { value: 'blocked_by_capacity_now', label: 'Bloccato' },
+]
+
 function DriverFilterBar({
   driverFilter,
   onDriverFilterChange,
@@ -619,6 +652,8 @@ function DriverFilterBar({
   onSoloEntroHorizonChange,
   horizonDays,
   onHorizonDaysChange,
+  releaseStatusFilter,
+  onReleaseStatusFilterChange,
 }: {
   driverFilter: DriverFilter
   onDriverFilterChange: (v: DriverFilter) => void
@@ -626,6 +661,8 @@ function DriverFilterBar({
   onSoloEntroHorizonChange: (v: boolean) => void
   horizonDays: number
   onHorizonDaysChange: (v: number) => void
+  releaseStatusFilter: ReleaseStatusFilter
+  onReleaseStatusFilterChange: (v: ReleaseStatusFilter) => void
 }) {
   const horizonControlDisabled = driverFilter === 'scorta'
 
@@ -676,6 +713,26 @@ function DriverFilterBar({
       <span className={`text-xs ${horizonControlDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
         giorni
       </span>
+
+      <div className="h-4 border-l" />
+
+      {/* Filtro release status (TASK-V2-129) — solo by_article con capacity configurata */}
+      <span className="text-xs text-muted-foreground">Rilascio:</span>
+      <div className="flex items-center rounded-md border overflow-hidden text-xs font-medium">
+        {releaseStatusOptions.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onReleaseStatusFilterChange(opt.value)}
+            className={`px-2.5 py-1 transition-colors ${
+              releaseStatusFilter === opt.value
+                ? 'bg-foreground text-background'
+                : 'hover:bg-muted'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -850,6 +907,7 @@ function TabellaCandidates({
               onSort={onSort}
               align="right"
             />
+            <th className={thBase}>Rilascio ora</th>
           </tr>
         </thead>
         <tbody>
@@ -957,6 +1015,19 @@ function TabellaCandidates({
                 <td className={`${tdNumCls} font-semibold`}>
                   {fmtQty(item.required_qty_minimum)}
                 </td>
+                {/* Rilascio ora — solo by_article con capacity configurata (TASK-V2-129) */}
+                <td className={tdCls}>
+                  {!isByCol && item.release_status != null ? (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <ReleaseStatusBadge status={item.release_status} />
+                      <span className="font-mono tabular-nums text-xs text-muted-foreground">
+                        {fmtQty(item.release_qty_now_max)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground/50 italic text-xs">—</span>
+                  )}
+                </td>
               </tr>
             )
           })}
@@ -985,6 +1056,8 @@ export default function PlanningCandidatesPage() {
   const [driverFilter, setDriverFilter] = useState<DriverFilter>('tutti')
   const [soloEntroHorizon, setSoloEntroHorizon] = useState(false)
   const [horizonDays, setHorizonDays] = useState(30)
+  // Filtro release status (TASK-V2-129)
+  const [releaseStatusFilter, setReleaseStatusFilter] = useState<ReleaseStatusFilter>('tutti')
   const [famiglieConfig, setFamiglieConfig] = useState<FamigliaItem[]>([])
   const [quickConfigArticleCode, setQuickConfigArticleCode] = useState<string | null>(null)
   const [quickConfigDetail, setQuickConfigDetail] = useState<ArticoloDetail | null>(null)
@@ -1094,6 +1167,13 @@ export default function PlanningCandidatesPage() {
         return true
       })
       .filter((i) => {
+        // Filtro release status (TASK-V2-129): solo by_article con capacity configurata
+        if (releaseStatusFilter === 'tutti') return true
+        // by_customer_order_line non ha release_status: escludi dal filtro solo se filtro attivo
+        if (i.planning_mode === 'by_customer_order_line') return false
+        return i.release_status === releaseStatusFilter
+      })
+      .filter((i) => {
         // Filtro customer horizon: usa is_within_customer_horizon calcolato dal server con horizon_days
         if (driverFilter === 'scorta') return true
         if (!soloEntroHorizon) return true
@@ -1102,7 +1182,7 @@ export default function PlanningCandidatesPage() {
         }
         return i.is_within_customer_horizon === true
       })
-  }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter, driverFilter, soloEntroHorizon, horizonDays])
+  }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter, driverFilter, soloEntroHorizon, horizonDays, releaseStatusFilter])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => cmpItems(a, b, sortKey, sortDir))
@@ -1246,6 +1326,8 @@ export default function PlanningCandidatesPage() {
         onSoloEntroHorizonChange={setSoloEntroHorizon}
         horizonDays={horizonDays}
         onHorizonDaysChange={setHorizonDays}
+        releaseStatusFilter={releaseStatusFilter}
+        onReleaseStatusFilterChange={setReleaseStatusFilter}
       />
 
       {(loadStatus === 'loading' || syncStatus === 'syncing') && (

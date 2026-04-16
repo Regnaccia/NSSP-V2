@@ -156,5 +156,10 @@ Task registrati:
 - `TASK-V2-125-ui-production-proposals-logic-diagnostics.md` - completato
 - `TASK-V2-126-realign-raw-bar-length-to-raw-material-articles.md` - completato
 - `TASK-V2-127-core-proposal-full-bar-v2-capacity-floor-logic.md` - completato
-- `TASK-V2-128-core-planning-need-vs-release-now-contract.md` - todo
-- `TASK-V2-129-ui-planning-need-vs-release-now-visibility.md` - todo
+- `TASK-V2-128-core-planning-need-vs-release-now-contract.md` - completato
+- `TASK-V2-129-ui-planning-need-vs-release-now-visibility.md` - completato
+- `TASK-V2-130-ui-admin-proposal-logic-two-column-governance.md` - completato
+- `TASK-V2-131-core-proposal-multi-bar-v1-logic.md` - completato
+- `TASK-V2-132-ui-articoli-proposal-logic-friendly-labels.md` - completato
+- `TASK-V2-133-ui-articoli-three-column-restructure.md` - completato
+- `TASK-V2-134-core-proposal-multi-bar-note-fragment-fasci.md` - todo

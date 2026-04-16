@@ -16,6 +16,7 @@ from nssp_v2.core.production_proposals.logic import (
     FullBarResult,
     compute_full_bar_qty,
     compute_full_bar_qty_v2_capacity_floor,
+    compute_multi_bar_qty_v1_capacity_floor,
     compute_note_fragment,
 )
 
@@ -421,6 +422,164 @@ def test_v2_pre_guards_missing_raw_bar_length():
         raw_bar_length_mm=None,
         occorrente=Decimal("100"),
         scarto=None,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "missing_raw_bar_length"
+
+
+# ─── proposal_multi_bar_v1_capacity_floor (TASK-V2-131) ──────────────────────
+
+
+def test_multi_bar_in_known_logics():
+    assert "proposal_multi_bar_v1_capacity_floor" in KNOWN_PROPOSAL_LOGICS
+
+
+def test_multi_bar_formula_esempio_task():
+    """Esempio canonico dal task: raw=3900, occorrente=43, scarto=0, multiplo=10.
+
+    base_pieces_per_bar = floor(3900/43) = 90
+    pieces_per_bar = 90 * 10 = 900
+    required = 500 → bars_ceil = ceil(500/900) = 1, qty_ceil = 900
+    capacity = 1000, availability = 0 → 0+900 <= 1000 → usa ceil
+    """
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("500"),
+        customer_shortage_qty=Decimal("300"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("1000"),
+        raw_bar_length_mm=Decimal("3900"),
+        occorrente=Decimal("43"),
+        scarto=None,
+        bar_multiple=10,
+    )
+    assert result.used_fallback is False
+    assert result.bars_required == 1
+    assert result.proposed_qty == Decimal("900")
+
+
+def test_multi_bar_ceil_admitted():
+    """pieces_per_bar=30*3=90. required=50 → bars_ceil=1, qty_ceil=90. capacity=200 → ok."""
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=Decimal("20"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("200"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+        bar_multiple=3,
+    )
+    assert result.used_fallback is False
+    assert result.bars_required == 1
+    assert result.proposed_qty == Decimal("90")  # 30 * 3
+
+
+def test_multi_bar_ceil_overflow_floor_admitted():
+    """ceil sfora capienza, floor ammesso.
+
+    Setup:
+        base_pieces = floor(3000/100) = 30
+        pieces_per_bar = 30 * 3 = 90
+        required = 100 → bars_ceil=ceil(100/90)=2, qty_ceil=180
+        availability=0, capacity=150 → ceil overflow
+        bars_floor=floor(100/90)=1, qty_floor=90
+        customer_shortage=50 → 90 >= 50 (ok)
+        0+90 <= 150 (ok) → usa floor
+    """
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("100"),
+        customer_shortage_qty=Decimal("50"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("150"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+        bar_multiple=3,
+    )
+    assert result.used_fallback is False
+    assert result.bars_required == 1
+    assert result.proposed_qty == Decimal("90")
+
+
+def test_multi_bar_fallback_a_pezzi_capacity_overflow():
+    """Sia ceil che floor sforano capienza → fallback capacity_overflow.
+
+    Setup:
+        pieces_per_bar = 30 * 3 = 90
+        required = 90 → bars_ceil=1, qty_ceil=90
+        capacity=80 → ceil overflow
+        bars_floor=1 (floor(90/90)=1) → qty_floor=90 → ancora overflow
+    """
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("90"),
+        customer_shortage_qty=Decimal("50"),
+        availability_qty=Decimal("0"),
+        capacity_effective_qty=Decimal("80"),
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+        bar_multiple=3,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "capacity_overflow"
+    assert result.proposed_qty == Decimal("90")  # = required_qty_total (fallback)
+
+
+def test_multi_bar_missing_bar_multiple_none():
+    """bar_multiple=None → fallback missing_bar_multiple."""
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=None,
+        availability_qty=None,
+        capacity_effective_qty=None,
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+        bar_multiple=None,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "missing_bar_multiple"
+
+
+def test_multi_bar_missing_bar_multiple_zero():
+    """bar_multiple=0 → fallback missing_bar_multiple."""
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=None,
+        availability_qty=None,
+        capacity_effective_qty=None,
+        raw_bar_length_mm=Decimal("3000"),
+        occorrente=Decimal("100"),
+        scarto=None,
+        bar_multiple=0,
+    )
+    assert result.used_fallback is True
+    assert result.fallback_reason == "missing_bar_multiple"
+
+
+def test_multi_bar_note_fragment():
+    """note_fragment per multi_bar e BAR xN come per le altre logiche bar."""
+    fragment = compute_note_fragment("proposal_multi_bar_v1_capacity_floor", {"_bars_required": 3})
+    assert fragment == "BAR x3"
+
+
+def test_multi_bar_note_fragment_fallback():
+    """note_fragment senza _bars_required → None (fallback attivo)."""
+    fragment = compute_note_fragment("proposal_multi_bar_v1_capacity_floor", {})
+    assert fragment is None
+
+
+def test_multi_bar_pre_guard_missing_raw_bar_length():
+    """Pre-guardia missing_raw_bar_length: raw_bar_length_mm=None."""
+    result = compute_multi_bar_qty_v1_capacity_floor(
+        required_qty_total=Decimal("50"),
+        customer_shortage_qty=None,
+        availability_qty=None,
+        capacity_effective_qty=None,
+        raw_bar_length_mm=None,
+        occorrente=Decimal("100"),
+        scarto=None,
+        bar_multiple=5,
     )
     assert result.used_fallback is True
     assert result.fallback_reason == "missing_raw_bar_length"

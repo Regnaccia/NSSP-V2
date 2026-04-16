@@ -23,7 +23,11 @@ def propose_qty_v1(required_qty_total: Decimal, params_snapshot: dict) -> Decima
     return required_qty_total
 
 
-_FULL_BAR_LOGIC_KEYS = frozenset({"proposal_full_bar_v1", "proposal_full_bar_v2_capacity_floor"})
+_FULL_BAR_LOGIC_KEYS = frozenset({
+    "proposal_full_bar_v1",
+    "proposal_full_bar_v2_capacity_floor",
+    "proposal_multi_bar_v1_capacity_floor",
+})
 
 
 def compute_proposed_qty(logic_key: str, required_qty_total: Decimal, params_snapshot: dict) -> Decimal:
@@ -31,7 +35,8 @@ def compute_proposed_qty(logic_key: str, required_qty_total: Decimal, params_sna
 
     - proposal_target_pieces_v1: proposed_qty = required_qty_total
     - proposal_required_qty_total_v1: alias legacy, comportamento identico
-    - proposal_full_bar_v1 / proposal_full_bar_v2_capacity_floor: arrotondamento a barre intere —
+    - proposal_full_bar_v1 / proposal_full_bar_v2_capacity_floor /
+      proposal_multi_bar_v1_capacity_floor: arrotondamento a barre intere —
       il calcolo completo e gestito da _workspace_row_from_candidate; qui restituisce
       required_qty_total come base di fallback.
     """
@@ -209,6 +214,112 @@ def compute_full_bar_qty_v2_capacity_floor(
         return _fallback("invalid_usable_mm_per_piece")
 
     pieces_per_bar = int(floor(float(raw_bar_length_mm / usable_mm_per_piece)))
+
+    if pieces_per_bar <= 0:
+        return _fallback("pieces_per_bar_le_zero")
+
+    bars_ceil = int(ceil(float(required_qty_total / pieces_per_bar)))
+    qty_ceil = Decimal(bars_ceil * pieces_per_bar)
+
+    # Sotto-copertura cliente: qty_ceil non deve essere inferiore a customer_shortage_qty
+    if customer_shortage_qty is not None and qty_ceil < customer_shortage_qty:
+        return _fallback("customer_undercoverage")
+
+    effective_avail = availability_qty if availability_qty is not None else Decimal("0")
+
+    # Se qty_ceil entra in capienza (o capienza non configurata) → usa ceil
+    if capacity_effective_qty is None or effective_avail + qty_ceil <= capacity_effective_qty:
+        return FullBarResult(
+            proposed_qty=qty_ceil,
+            bars_required=bars_ceil,
+            used_fallback=False,
+            fallback_reason=None,
+        )
+
+    # qty_ceil sfora → tenta floor
+    bars_floor = int(floor(float(required_qty_total / pieces_per_bar)))
+
+    if bars_floor <= 0:
+        return _fallback("capacity_overflow")
+
+    qty_floor = Decimal(bars_floor * pieces_per_bar)
+
+    if customer_shortage_qty is not None and qty_floor < customer_shortage_qty:
+        return _fallback("customer_undercoverage")
+
+    if effective_avail + qty_floor > capacity_effective_qty:
+        return _fallback("capacity_overflow")
+
+    return FullBarResult(
+        proposed_qty=qty_floor,
+        bars_required=bars_floor,
+        used_fallback=False,
+        fallback_reason=None,
+    )
+
+
+# ─── Multi bar v1: capacity floor con moltiplicatore (TASK-V2-131) ────────────
+
+
+def compute_multi_bar_qty_v1_capacity_floor(
+    required_qty_total: Decimal,
+    customer_shortage_qty: Decimal | None,
+    availability_qty: Decimal | None,
+    capacity_effective_qty: Decimal | None,
+    raw_bar_length_mm: Decimal | None,
+    occorrente: Decimal | None,
+    scarto: Decimal | None,
+    bar_multiple: int | None,
+) -> FullBarResult:
+    """Calcola la quantita proposta con moltiplicatore per barra + policy capacity_floor.
+
+    Algoritmo:
+        usable_mm_per_piece = occorrente + (scarto or 0)
+        base_pieces_per_bar = floor(raw_bar_length_mm / usable_mm_per_piece)
+        pieces_per_bar      = base_pieces_per_bar * bar_multiple
+        bars_ceil           = ceil(required_qty_total / pieces_per_bar)
+        qty_ceil            = bars_ceil * pieces_per_bar
+
+        Se qty_ceil <= capacity → usa qty_ceil.
+        Se qty_ceil > capacity → tenta floor:
+            bars_floor = floor(required_qty_total / pieces_per_bar)
+            qty_floor  = bars_floor * pieces_per_bar
+            Ammesso solo se:
+              - bars_floor > 0
+              - qty_floor >= customer_shortage_qty
+              - availability_qty + qty_floor <= capacity_effective_qty
+
+    Pre-guardie aggiuntive rispetto a full_bar_v2:
+        missing_bar_multiple       — bar_multiple mancante o <= 0
+        pieces_per_bar_le_zero     — base_pieces_per_bar <= 0 (barra troppo corta)
+    """
+
+    def _fallback(reason: str) -> FullBarResult:
+        return FullBarResult(
+            proposed_qty=required_qty_total,
+            bars_required=None,
+            used_fallback=True,
+            fallback_reason=reason,
+        )
+
+    if raw_bar_length_mm is None or occorrente is None:
+        return _fallback("missing_raw_bar_length")
+
+    if bar_multiple is None or bar_multiple <= 0:
+        return _fallback("missing_bar_multiple")
+
+    scarto_val = scarto if scarto is not None else Decimal("0")
+    usable_mm_per_piece = occorrente + scarto_val
+
+    if usable_mm_per_piece <= Decimal("0"):
+        return _fallback("invalid_usable_mm_per_piece")
+
+    base_pieces_per_bar = int(floor(float(raw_bar_length_mm / usable_mm_per_piece)))
+
+    if base_pieces_per_bar <= 0:
+        return _fallback("pieces_per_bar_le_zero")
+
+    pieces_per_bar = base_pieces_per_bar * bar_multiple
 
     if pieces_per_bar <= 0:
         return _fallback("pieces_per_bar_le_zero")

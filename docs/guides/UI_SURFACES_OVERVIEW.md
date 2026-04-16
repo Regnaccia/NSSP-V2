@@ -104,6 +104,10 @@ Consultazione anagrafica articoli, configurazione minima di dominio e validazion
 - ricerca `codice`
 - ricerca `descrizione`
 - filtro famiglia
+- layout a 3 colonne:
+  - sinistra elenco articoli
+  - centro facts e anagrafica read-only
+  - destra configurazioni per sezioni
 - dati anagrafici Easy read-only
 - `famiglia articolo`
 - override tri-state:
@@ -138,6 +142,9 @@ Consultazione anagrafica articoli, configurazione minima di dominio e validazion
   - `proposal_logic_article_params`
 - valore effettivo proposal:
   - `effective_proposal_logic_key`
+- selettore proposal logic con label human-friendly
+- template JSON guidato per logiche che richiedono params, ad esempio:
+  - `{ "bar_multiple": null }`
 
 ### Azioni principali
 
@@ -150,6 +157,7 @@ Consultazione anagrafica articoli, configurazione minima di dominio e validazion
 ### Note
 
 - e la schermata piu trasversale tra anagrafica, stock e domanda
+- il layout a 3 colonne separa facts read-only da configurazione
 - usa `refresh_articoli()` come refresh semantico completo
 
 ## 4. Produzione - Catalogo Famiglie Articolo
@@ -243,6 +251,10 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
   - `customer_shortage_qty`
   - `stock_replenishment_qty`
   - `required_qty_total`
+  - `required_qty_eventual`
+  - `capacity_headroom_now_qty`
+  - `release_qty_now_max`
+  - `release_status`
   - `primary_driver`
   - `earliest_customer_delivery_date`
   - warning articolo attivi
@@ -283,6 +295,7 @@ Vista operativa planning customer-driven, capace di mostrare sia candidate aggre
 - la colonna `Warnings` consuma warning canonici dal modulo `Warnings`, filtrati per area
 - la quick action planning riusa i contract del dominio `articoli`
 - la vista puo separare operativamente i driver senza duplicare il candidate Core
+- il primo slice `need vs release now` e attivo sul ramo `by_article`
 
 ## 7. Produzione - Warnings
 
@@ -401,7 +414,7 @@ Vista proposal in due modalita:
 - il planning resta l'unica inbox live del bisogno
 - non esistono piu proposal persistenti `draft`
 - la persistenza inizia all'export
-- l'export V1 e solo CSV
+- l'export V1 e `xlsx`
 - la surface non ricalcola warning o planning: consuma i contratti Core
 
 ## 10. Relazione tra schermate e fact canonici

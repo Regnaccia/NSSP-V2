@@ -1,7 +1,7 @@
 # TASK-V2-129 - UI planning need vs release-now visibility
 
 ## Status
-Todo
+Completed
 
 ## Date
 2026-04-15
@@ -131,3 +131,35 @@ npm run build
 ```
 
 Atteso: exit code `0`.
+
+## Implementation Log
+
+### `frontend/src/types/api.ts`
+
+`PlanningCandidateItem` esteso con 4 campi del release-now contract:
+
+```typescript
+required_qty_eventual: string | null
+capacity_headroom_now_qty: string | null
+release_qty_now_max: string | null
+release_status: 'launchable_now' | 'launchable_partially' | 'blocked_by_capacity_now' | null
+```
+
+### `frontend/src/pages/surfaces/PlanningCandidatesPage.tsx`
+
+**Tipo locale:** `ReleaseStatusFilter = 'tutti' | 'launchable_now' | 'launchable_partially' | 'blocked_by_capacity_now'`
+
+**Componente `ReleaseStatusBadge`:** badge colorato per i 3 stati:
+- `launchable_now` → verde "Lanciabile"
+- `launchable_partially` → ambra "Parziale"
+- `blocked_by_capacity_now` → rosso "Bloccato"
+
+**`DriverFilterBar` estesa** con un secondo gruppo di bottoni "Rilascio:" dopo il separatore del horizon filter. Il filtro è visibile sempre ma agisce solo sui candidati `by_article` con `release_status` valorizzato (i `by_customer_order_line` vengono esclusi quando il filtro è attivo).
+
+**Colonna "Rilascio ora"** in fondo alla tabella (ultima colonna):
+- per `by_article` con `release_status != null`: badge + `release_qty_now_max` in font-mono sotto
+- per `by_customer_order_line` o senza capacity: "—"
+
+**Filtro nel `useMemo` filtered:** `releaseStatusFilter !== 'tutti'` esclude `by_customer_order_line` e filtra `by_article` per `release_status`.
+
+**Esito build:** `✓ built in 7.08s` — exit code 0.

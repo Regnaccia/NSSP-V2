@@ -1,7 +1,7 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-15
+2026-04-16
 
 ## Stato generale
 
@@ -92,7 +92,7 @@ Sono oggi disponibili:
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-039`
+- `ARCH/` fino a `DL-ARCH-V2-040`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -128,12 +128,11 @@ Punti ormai stabili:
 
 Completati:
 
-- `TASK-V2-001` -> `TASK-V2-127`
+- `TASK-V2-001` -> `TASK-V2-133`
 
 ## Task aperti
 
-- `TASK-V2-128` contratto Core planning `need vs release now` nel ramo `by_article`
-- `TASK-V2-129` visibilita UI planning del nuovo split `need vs release now`
+- `TASK-V2-134` note fragment dedicato `FASCI xN` per la logica proposal multi-bar
 
 La backlog attiva non e piu una semplice sequenza di task proposal, ma e organizzata nei due stream:
 
@@ -200,8 +199,6 @@ Ultimi task chiusi rilevanti:
 I prossimi stream corretti sono:
 
 1. `Domain Rebase`
-   - eseguire `TASK-V2-128`
-   - eseguire `TASK-V2-129`
    - fissare il contratto `Production Proposals` in termini di policy bundle:
      - `proposal_base_qty_policy`
      - `proposal_lot_policy`
@@ -209,6 +206,7 @@ I prossimi stream corretti sono:
      - `proposal_customer_guardrail_policy`
      - `proposal_note_policy`
    - rileggere ogni nuovo task planning/proposal contro il baseline di [DL-ARCH-V2-039.md](/c:/Users/Alberto.REGNANI/Desktop/NSSP/NSSP/V2/docs/decisions/ARCH/DL-ARCH-V2-039.md#L1)
+   - chiudere `TASK-V2-134` per riallineare il `note_fragment` della multi-bar a `FASCI xN`
 2. `Backbone Hardening`
    - strategia strutturale `MAG_REALE`
    - refresh fail-fast e freshness

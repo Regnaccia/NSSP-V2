@@ -19,6 +19,7 @@ from nssp_v2.core.production_proposals.config import get_proposal_logic_config
 from nssp_v2.core.production_proposals.logic import (
     compute_full_bar_qty,
     compute_full_bar_qty_v2_capacity_floor,
+    compute_multi_bar_qty_v1_capacity_floor,
     compute_note_fragment,
     compute_proposed_qty,
     merge_logic_params,
@@ -161,9 +162,10 @@ def _resolve_full_bar_proposed_qty(
     params_snapshot: dict,
     logic_key: str = "proposal_full_bar_v1",
 ) -> tuple[Decimal, dict, bool, str | None]:
-    """Calcola proposed_qty per le logiche full-bar e arricchisce params_snapshot con _bars_required.
+    """Calcola proposed_qty per le logiche full-bar/multi-bar e arricchisce params_snapshot.
 
-    Gestisce: proposal_full_bar_v1, proposal_full_bar_v2_capacity_floor.
+    Gestisce: proposal_full_bar_v1, proposal_full_bar_v2_capacity_floor,
+              proposal_multi_bar_v1_capacity_floor.
     Restituisce (proposed_qty, params_snapshot_aggiornato, used_fallback, fallback_reason).
     In caso di fallback: used_fallback=True, fallback_reason e il codice motivo.
     In caso di successo: used_fallback=False, fallback_reason=None.
@@ -172,6 +174,9 @@ def _resolve_full_bar_proposed_qty(
       1. sync_art.materiale_grezzo_codice  → codice del materiale grezzo
       2. CoreArticoloConfig del materiale  → raw_bar_length_mm
     occorrente/scarto restano sul finito.
+
+    bar_multiple (solo proposal_multi_bar_v1_capacity_floor, TASK-V2-131):
+      letto da params_snapshot["bar_multiple"] (= article_params articolo-specifico).
     """
     resolved_code = _resolve_sync_articolo_code(session, item.article_code) or item.article_code
 
@@ -204,20 +209,43 @@ def _resolve_full_bar_proposed_qty(
     )
     capacity_effective_qty = stock_metric.capacity_effective_qty if stock_metric else None
 
-    _bar_fn = (
-        compute_full_bar_qty_v2_capacity_floor
-        if logic_key == "proposal_full_bar_v2_capacity_floor"
-        else compute_full_bar_qty
-    )
-    result = _bar_fn(
-        required_qty_total=required_qty_total,
-        customer_shortage_qty=item.customer_shortage_qty,
-        availability_qty=item.availability_qty,
-        capacity_effective_qty=capacity_effective_qty,
-        raw_bar_length_mm=raw_bar_length_mm,
-        occorrente=occorrente,
-        scarto=scarto,
-    )
+    if logic_key == "proposal_multi_bar_v1_capacity_floor":
+        # bar_multiple: intero articolo-specifico obbligatorio (TASK-V2-131)
+        bar_multiple_raw = params_snapshot.get("bar_multiple")
+        try:
+            bar_multiple = int(bar_multiple_raw) if bar_multiple_raw is not None else None
+        except (TypeError, ValueError):
+            bar_multiple = None
+        result = compute_multi_bar_qty_v1_capacity_floor(
+            required_qty_total=required_qty_total,
+            customer_shortage_qty=item.customer_shortage_qty,
+            availability_qty=item.availability_qty,
+            capacity_effective_qty=capacity_effective_qty,
+            raw_bar_length_mm=raw_bar_length_mm,
+            occorrente=occorrente,
+            scarto=scarto,
+            bar_multiple=bar_multiple,
+        )
+    elif logic_key == "proposal_full_bar_v2_capacity_floor":
+        result = compute_full_bar_qty_v2_capacity_floor(
+            required_qty_total=required_qty_total,
+            customer_shortage_qty=item.customer_shortage_qty,
+            availability_qty=item.availability_qty,
+            capacity_effective_qty=capacity_effective_qty,
+            raw_bar_length_mm=raw_bar_length_mm,
+            occorrente=occorrente,
+            scarto=scarto,
+        )
+    else:
+        result = compute_full_bar_qty(
+            required_qty_total=required_qty_total,
+            customer_shortage_qty=item.customer_shortage_qty,
+            availability_qty=item.availability_qty,
+            capacity_effective_qty=capacity_effective_qty,
+            raw_bar_length_mm=raw_bar_length_mm,
+            occorrente=occorrente,
+            scarto=scarto,
+        )
 
     if result.used_fallback:
         return result.proposed_qty, params_snapshot, True, result.fallback_reason
@@ -242,7 +270,7 @@ def _workspace_row_from_candidate(
     required_qty_total = _canonical_required_qty_total(item)
 
     fallback_reason: str | None = None
-    if requested_logic_key in ("proposal_full_bar_v1", "proposal_full_bar_v2_capacity_floor"):
+    if requested_logic_key in ("proposal_full_bar_v1", "proposal_full_bar_v2_capacity_floor", "proposal_multi_bar_v1_capacity_floor"):
         proposed_qty, params_snapshot, used_fallback, fallback_reason = _resolve_full_bar_proposed_qty(
             session, item, required_qty_total, params_snapshot, logic_key=requested_logic_key
         )
