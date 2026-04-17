@@ -211,6 +211,121 @@ Parametri previsti per V1:
 - il rounding finale e parametrico
 - la strategy deve restare sostituibile, ma il profilo sopra e il riferimento V1 concordato
 
+### Strategy aggiuntive introdotte dopo l'analisi dei dati reali
+
+Dopo l'analisi dei dati reali (`2026-04-17`) sono state aggiunte due strategy ulteriori al registry.
+Le strategy coesistono nel codice; una sola e attiva alla volta tramite `monthly_base_strategy_key`.
+
+---
+
+#### `monthly_stock_base_weighted_v2`
+
+Identica a `v1` nella struttura (multi-finestra, z-score, percentile), ma sostituisce la media
+semplice delle stime per finestra con una **media pesata**.
+
+Motivazione:
+
+- in `v1` la finestra 12m e la finestra 3m pesano uguale
+- per articoli con trend in corso (crescita o calo) la media semplice diluisce il segnale recente
+- pesi crescenti verso le finestre piu recenti seguono meglio il mercato
+
+Parametri aggiuntivi rispetto a `v1`:
+
+| Parametro | Default | Significato |
+|-----------|---------|-------------|
+| `window_weights` | `[1, 2, 3]` | Peso per ogni finestra (allineato a `windows_months`) |
+
+Comportamento:
+
+- result = `sum(stima_i * peso_i) / sum(pesi_validi)`
+- finestre che non superano la validazione (`min_nonzero_months`) sono escluse sia dalla somma che dal denominatore
+- tutti gli altri parametri (`percentile`, `zscore_threshold`, ecc.) identici a `v1`
+
+---
+
+#### `monthly_stock_base_segmented_v1`
+
+Approccio radicalmente diverso da `v1`/`v2`: classifica ogni articolo per continuita della
+domanda nel periodo di lookback e applica una **formula diversa per segmento**.
+
+Motivazione:
+
+- l'analisi dei dati reali ha mostrato che il 47.6% degli articoli nel perimetro e dormante
+  (zero movimenti in 12 mesi), il 45% ha domanda intermittente (1-7 mesi su 12)
+- per gli articoli intermittenti il zero-fill (riempire i mesi vuoti con 0 e calcolare il percentile)
+  abbassa sistematicamente la stima: tratta l'assenza di vendite come "consumo zero" invece che come
+  "questo articolo non e stato toccato questo mese"
+- la domanda giusta per un articolo intermittente non e "quanto vendo per mese?" ma
+  "quanto ho venduto in totale nel periodo, distribiuto sui mesi?"
+
+Classificazione articoli (in base ai mesi con `quantita_scaricata > 0` nel `lookback_months`):
+
+| Segmento | Condizione | Formula |
+|----------|-----------|---------|
+| Dormante | `active_months == 0` | `None` |
+| Intermittente | `1 <= active_months < regular_threshold` | `total_qty / lookback_months * intermittent_factor` |
+| Regolare | `regular_threshold <= active_months < continuous_threshold` | `total_qty / lookback_months * regular_factor` |
+| Continuo | `active_months >= continuous_threshold` | percentile con rilevamento trend |
+
+Per gli articoli **continui**, si rileva il trend confrontando la media degli ultimi 3 mesi
+con la media del periodo intero:
+
+- `trend_ratio = mean_3m / mean_full`
+- se `trend_ratio > trend_ratio_threshold` → trend crescente → usa finestra 3m
+- se `trend_ratio < 1 / trend_ratio_threshold` → trend decrescente → usa finestra 6m
+- altrimenti → stabile → usa finestra `lookback_months` intera
+
+Parametri configurabili:
+
+| Parametro | Default | Significato |
+|-----------|---------|-------------|
+| `lookback_months` | `12` | Periodo di lookback totale |
+| `continuous_threshold` | `8` | Soglia mesi per classificare "continuo" |
+| `regular_threshold` | `3` | Soglia mesi per classificare "regolare" |
+| `percentile_continuous` | `70` | Percentile applicato agli articoli continui |
+| `zscore_threshold` | `2.0` | Soglia outlier z-score (solo articoli continui) |
+| `regular_factor` | `1.2` | Moltiplicatore throughput per articoli regolari |
+| `intermittent_factor` | `1.0` | Moltiplicatore throughput per articoli intermittenti |
+| `trend_ratio_threshold` | `1.5` | Ratio 3m/full sopra cui scatta il trend crescente |
+| `min_movements` | `3` | Soglia globale righe movimento |
+| `rounding_scale` | `None` | Cifre decimali risultato finale |
+
+---
+
+### Registry e dispatch delle strategy
+
+Le strategy ammesse sono definite in un registry chiuso nel codice:
+
+```python
+KNOWN_MONTHLY_BASE_STRATEGIES = [
+    "monthly_stock_base_from_sales_v1",
+    "monthly_stock_base_weighted_v2",
+    "monthly_stock_base_segmented_v1",
+]
+```
+
+Il routing avviene tramite `_MONTHLY_BASE_DISPATCH` in `queries.py`: una dict che mappa
+`strategy_key → funzione`. La funzione riceve `monthly_sales`, `params`, `total_movements`
+e restituisce `Decimal | None`.
+
+Una strategy non presente nel dispatch fa fallback a `v1` (comportamento sicuro).
+
+### Configurazione via UI admin
+
+La configurazione delle strategy segue lo stesso pattern delle logiche proposal
+(`AdminProposalLogicPage`):
+
+- colonna sinistra: elenco delle strategy note con badge "Attiva"
+- colonna destra: descrizione della strategy selezionata, textarea JSON per i parametri,
+  pulsante "Imposta come strategy attiva"
+- i parametri capacity (logica fissa `capacity_from_containers_v1`) hanno una sezione JSON separata
+
+I parametri di default per ogni strategy sono precompilati dalla UI al momento della selezione
+(da `stockLogicMeta.ts`). Il backend salva i parametri come JSON grezzo in
+`core_stock_logic_config.monthly_base_params_json`.
+
+---
+
 ## 7. Capacity
 
 La V1 introduce:

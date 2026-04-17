@@ -558,9 +558,9 @@ def test_multi_bar_missing_bar_multiple_zero():
 
 
 def test_multi_bar_note_fragment():
-    """note_fragment per multi_bar e BAR xN come per le altre logiche bar."""
+    """note_fragment per multi_bar e FASCI xN (semanticamente distinto da BAR xN)."""
     fragment = compute_note_fragment("proposal_multi_bar_v1_capacity_floor", {"_bars_required": 3})
-    assert fragment == "BAR x3"
+    assert fragment == "FASCI x3"
 
 
 def test_multi_bar_note_fragment_fallback():

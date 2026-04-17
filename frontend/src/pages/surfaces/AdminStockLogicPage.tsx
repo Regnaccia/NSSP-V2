@@ -1,16 +1,27 @@
 /**
- * Surface Admin — pagina configurazione logiche stock V1 (TASK-V2-095).
+ * Surface Admin — configurazione logiche stock (TASK-V2-095).
+ *
+ * Layout a 2 colonne identico ad AdminProposalLogicPage:
+ * - sinistra: elenco strategy con badge attiva/inattiva
+ * - destra: dettaglio strategy selezionata — descrizione, azione "Imposta come attiva",
+ *           textarea JSON parametri monthly_base, sezione capacity params separata
+ *
+ * Contratto:
+ * - una sola strategy e attiva alla volta (monthly_base_strategy_key)
+ * - i parametri sono il JSON grezzo salvato in core_stock_logic_config.monthly_base_params_json
+ * - la logica capacity e fissa (capacity_from_containers_v1), solo i suoi parametri sono editabili
  *
  * Consuma:
  *   GET /api/admin/stock-logic/config  — configurazione attiva + registry strategy
- *   PUT /api/admin/stock-logic/config  — aggiorna strategy, monthly params, capacity params
+ *   PUT /api/admin/stock-logic/config  — aggiorna strategy, params monthly, params capacity
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
+import { stockStrategyMeta, stockStrategyParamsTemplate } from '@/lib/stockLogicMeta'
 
-// ─── Tipi ────────────────────────────────────────────────────────────────────
+// ─── Tipi ─────────────────────────────────────────────────────────────────────
 
 interface StockLogicConfigResponse {
   monthly_base_strategy_key: string
@@ -22,19 +33,7 @@ interface StockLogicConfigResponse {
   known_strategies: string[]
 }
 
-// ─── Helpers UI ───────────────────────────────────────────────────────────────
-
-const inputCls = 'w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50'
-const btnPrimary = 'py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity'
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium">{label}</label>
-      {children}
-    </div>
-  )
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function extractError(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -44,274 +43,291 @@ function extractError(err: unknown, fallback: string): string {
   return fallback
 }
 
-// ─── Costanti strategy ────────────────────────────────────────────────────────
-
-const V1_STRATEGY_KEY = 'monthly_stock_base_from_sales_v1'
-
-const V1_PARAM_DEFAULTS: Record<string, string> = {
-  windows_months: '12,6,3',
-  percentile: '50',
-  zscore_threshold: '2.0',
-  min_movements: '0',
-  min_nonzero_months: '1',
-  rounding_scale: '',
-}
-
-function parseWindowsMonths(raw: string): number[] | undefined {
-  const parts = raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0)
-  return parts.length > 0 ? parts : undefined
-}
-
-// ─── Pagina principale ────────────────────────────────────────────────────────
+// ─── Componente principale ────────────────────────────────────────────────────
 
 export default function AdminStockLogicPage() {
   const [config, setConfig] = useState<StockLogicConfigResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
-  // Campi form strategy + params V1
-  const [strategyKey, setStrategyKey] = useState('')
-  const [windowsMonths, setWindowsMonths] = useState('')
-  const [percentile, setPercentile] = useState('')
-  const [zscoreThreshold, setZscoreThreshold] = useState('')
-  const [minMovements, setMinMovements] = useState('')
-  const [minNonzeroMonths, setMinNonzeroMonths] = useState('')
-  const [roundingScale, setRoundingScale] = useState('')
+  // Stato editing
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [monthlyParamsJson, setMonthlyParamsJson] = useState('{}')
+  const [capacityParamsJson, setCapacityParamsJson] = useState('{}')
+  const [activeKey, setActiveKey] = useState('')
 
-  // Parametri logica capacity fissa (TASK-V2-094)
-  const [maxContainerWeightKg, setMaxContainerWeightKg] = useState('')
-
-  const loadConfig = () => {
+  useEffect(() => {
     setLoading(true)
-    apiClient.get<StockLogicConfigResponse>('/admin/stock-logic/config')
-      .then(r => {
-        const c = r.data
-        setConfig(c)
-        setStrategyKey(c.monthly_base_strategy_key)
-        const p = c.monthly_base_params
-        setWindowsMonths(Array.isArray(p.windows_months) ? (p.windows_months as number[]).join(',') : '')
-        setPercentile(p.percentile !== undefined ? String(p.percentile) : '')
-        setZscoreThreshold(p.zscore_threshold !== undefined ? String(p.zscore_threshold) : '')
-        setMinMovements(p.min_movements !== undefined ? String(p.min_movements) : '')
-        setMinNonzeroMonths(p.min_nonzero_months !== undefined ? String(p.min_nonzero_months) : '')
-        setRoundingScale(p.rounding_scale !== undefined && p.rounding_scale !== null ? String(p.rounding_scale) : '')
-        const cp = c.capacity_logic_params
-        setMaxContainerWeightKg(cp.max_container_weight_kg !== undefined ? String(cp.max_container_weight_kg) : '')
-      })
+    apiClient
+      .get<StockLogicConfigResponse>('/admin/stock-logic/config')
+      .then((r) => applyConfig(r.data))
       .catch(() => toast.error('Impossibile caricare la configurazione logiche stock'))
       .finally(() => setLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function applyConfig(data: StockLogicConfigResponse) {
+    setConfig(data)
+    setActiveKey(data.monthly_base_strategy_key)
+    setCapacityParamsJson(JSON.stringify(data.capacity_logic_params, null, 2))
+    const key = selectedKey && data.known_strategies.includes(selectedKey)
+      ? selectedKey
+      : data.monthly_base_strategy_key
+    setSelectedKey(key)
+    setMonthlyParamsJson(
+      key === data.monthly_base_strategy_key
+        ? JSON.stringify(data.monthly_base_params, null, 2)
+        : (stockStrategyParamsTemplate(key) ?? '{}')
+    )
   }
 
-  useEffect(() => { loadConfig() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Aggiorna params editor quando cambia la strategy selezionata
+  useEffect(() => {
+    if (!config || !selectedKey) return
+    if (selectedKey === config.monthly_base_strategy_key) {
+      setMonthlyParamsJson(JSON.stringify(config.monthly_base_params, null, 2))
+    } else {
+      // Precompila con i default della strategy
+      setMonthlyParamsJson(stockStrategyParamsTemplate(selectedKey) ?? '{}')
+    }
+  }, [selectedKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const buildMonthlyParams = (): Record<string, unknown> => {
-    const params: Record<string, unknown> = {}
-    const wm = parseWindowsMonths(windowsMonths)
-    if (wm) params.windows_months = wm
-    const p = parseInt(percentile, 10)
-    if (!isNaN(p)) params.percentile = p
-    const z = parseFloat(zscoreThreshold)
-    if (!isNaN(z)) params.zscore_threshold = z
-    const mm = parseInt(minMovements, 10)
-    if (!isNaN(mm)) params.min_movements = mm
-    const mn = parseInt(minNonzeroMonths, 10)
-    if (!isNaN(mn)) params.min_nonzero_months = mn
-    const rs = parseInt(roundingScale, 10)
-    if (!isNaN(rs)) params.rounding_scale = rs
-    return params
-  }
+  const selectedMeta = useMemo(
+    () => (selectedKey ? stockStrategyMeta(selectedKey) : null),
+    [selectedKey],
+  )
 
-  const buildCapacityParams = (): Record<string, unknown> => {
-    const params: Record<string, unknown> = {}
-    const v = parseFloat(maxContainerWeightKg)
-    if (!isNaN(v) && v > 0) params.max_container_weight_kg = v
-    return params
-  }
+  const selectedIsActive = selectedKey === activeKey
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
+  async function saveConfig(overrides: { newStrategyKey?: string } = {}) {
+    if (!config || !selectedKey) return
+
+    let parsedMonthly: Record<string, unknown>
+    let parsedCapacity: Record<string, unknown>
+    try {
+      parsedMonthly = JSON.parse(monthlyParamsJson || '{}') as Record<string, unknown>
+    } catch {
+      toast.error('Parametri monthly base: JSON non valido')
+      return
+    }
+    try {
+      parsedCapacity = JSON.parse(capacityParamsJson || '{}') as Record<string, unknown>
+    } catch {
+      toast.error('Parametri capacity: JSON non valido')
+      return
+    }
+
+    const strategyKey = overrides.newStrategyKey ?? activeKey
+
     setSaving(true)
-    setSaveMsg(null)
     try {
       const { data } = await apiClient.put<StockLogicConfigResponse>('/admin/stock-logic/config', {
         monthly_base_strategy_key: strategyKey,
-        monthly_base_params: buildMonthlyParams(),
-        capacity_logic_params: buildCapacityParams(),
+        monthly_base_params: parsedMonthly,
+        capacity_logic_params: parsedCapacity,
       })
-      setConfig(data)
-      setSaveMsg({ ok: true, text: 'Configurazione salvata' })
-      setTimeout(() => setSaveMsg(null), 3000)
+      applyConfig(data)
+      toast.success('Configurazione salvata')
     } catch (err: unknown) {
-      setSaveMsg({ ok: false, text: extractError(err, 'Errore nel salvataggio') })
+      toast.error(extractError(err, 'Errore nel salvataggio'))
     } finally {
       setSaving(false)
     }
   }
 
-  const formatDate = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+  function handleSetActive() {
+    if (!selectedKey || selectedIsActive) return
+    setActiveKey(selectedKey)
+    void saveConfig({ newStrategyKey: selectedKey })
+  }
+
+  function handleSaveParams(e: React.FormEvent) {
+    e.preventDefault()
+    void saveConfig()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-6 py-4 border-b shrink-0">
+          <h1 className="text-base font-semibold">Logiche stock</h1>
+        </div>
+        <div className="flex items-center justify-center flex-1 text-sm text-muted-foreground">
+          Caricamento...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-6 py-4 border-b shrink-0">
-        <h1 className="text-base font-semibold">Logiche stock V1</h1>
+        <h1 className="text-base font-semibold">Logiche stock</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           Strategy di calcolo base mensile e parametri della logica capacity.
+          Una sola strategy è attiva alla volta.
         </p>
       </div>
 
-      {/* Contenuto */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Caricamento...</p>
-        ) : (
-          <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
+      {/* Layout 2 colonne */}
+      <div className="flex flex-1 overflow-hidden">
 
-            {/* Strategy monthly_stock_base_qty */}
-            <section className="border rounded-lg p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Strategy — base mensile consumo</h2>
-                <div className="flex items-center gap-2">
-                  {config?.is_default && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Default di sistema</span>
-                  )}
-                  {config?.updated_at && (
-                    <span className="text-xs text-muted-foreground">Aggiornato: {formatDate(config.updated_at)}</span>
-                  )}
-                </div>
-              </div>
+        {/* Colonna sinistra — elenco strategy */}
+        <div className="w-72 shrink-0 border-r flex flex-col overflow-hidden">
+          <div className="px-4 py-3 border-b bg-muted/30">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Strategy disponibili
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y">
+            {(config?.known_strategies ?? []).map((key) => {
+              const meta = stockStrategyMeta(key)
+              const isActive = key === activeKey
+              const isSelected = key === selectedKey
 
-              <Field label="Strategy attiva">
-                <select
-                  value={strategyKey}
-                  onChange={e => setStrategyKey(e.target.value)}
-                  disabled={saving}
-                  className={inputCls}
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedKey(key)}
+                  className={`w-full text-left px-4 py-3 flex flex-col gap-0.5 transition-colors ${
+                    isSelected
+                      ? 'bg-foreground/5 border-l-2 border-l-foreground'
+                      : 'hover:bg-muted/40 border-l-2 border-l-transparent'
+                  }`}
                 >
-                  {(config?.known_strategies ?? [V1_STRATEGY_KEY]).map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {strategyKey === V1_STRATEGY_KEY && (
-                <div className="space-y-3 pt-2 border-t">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Parametri strategy V1</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Finestre mesi (windows_months)">
-                      <input
-                        type="text"
-                        value={windowsMonths}
-                        onChange={e => setWindowsMonths(e.target.value)}
-                        placeholder={V1_PARAM_DEFAULTS.windows_months}
-                        disabled={saving}
-                        className={inputCls}
-                      />
-                      <p className="text-xs text-muted-foreground">Valori interi separati da virgola (es. 12,6,3)</p>
-                    </Field>
-                    <Field label="Percentile">
-                      <input
-                        type="number"
-                        min="0" max="100"
-                        value={percentile}
-                        onChange={e => setPercentile(e.target.value)}
-                        placeholder={V1_PARAM_DEFAULTS.percentile}
-                        disabled={saving}
-                        className={inputCls}
-                      />
-                      <p className="text-xs text-muted-foreground">0–100 (default 50 = mediana)</p>
-                    </Field>
-                    <Field label="Z-score threshold">
-                      <input
-                        type="number"
-                        step="0.1" min="0"
-                        value={zscoreThreshold}
-                        onChange={e => setZscoreThreshold(e.target.value)}
-                        placeholder={V1_PARAM_DEFAULTS.zscore_threshold}
-                        disabled={saving}
-                        className={inputCls}
-                      />
-                      <p className="text-xs text-muted-foreground">Soglia outlier (default 2.0)</p>
-                    </Field>
-                    <Field label="Min movimenti (min_movements)">
-                      <input
-                        type="number"
-                        min="0" step="1"
-                        value={minMovements}
-                        onChange={e => setMinMovements(e.target.value)}
-                        placeholder={V1_PARAM_DEFAULTS.min_movements}
-                        disabled={saving}
-                        className={inputCls}
-                      />
-                      <p className="text-xs text-muted-foreground">0 = disabilitato</p>
-                    </Field>
-                    <Field label="Min mesi non zero (min_nonzero_months)">
-                      <input
-                        type="number"
-                        min="0" step="1"
-                        value={minNonzeroMonths}
-                        onChange={e => setMinNonzeroMonths(e.target.value)}
-                        placeholder={V1_PARAM_DEFAULTS.min_nonzero_months}
-                        disabled={saving}
-                        className={inputCls}
-                      />
-                    </Field>
-                    <Field label="Arrotondamento (rounding_scale)">
-                      <input
-                        type="number"
-                        min="0" step="1"
-                        value={roundingScale}
-                        onChange={e => setRoundingScale(e.target.value)}
-                        placeholder="nessuno"
-                        disabled={saving}
-                        className={inputCls}
-                      />
-                      <p className="text-xs text-muted-foreground">Decimali ROUND_HALF_UP (vuoto = nessuno)</p>
-                    </Field>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{meta.label}</span>
+                    {isActive && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        Attiva
+                      </span>
+                    )}
                   </div>
+                  <span className="text-[11px] font-mono text-muted-foreground/70">{key}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {config?.updated_at && (
+            <div className="px-4 py-2 border-t bg-muted/20 text-[11px] text-muted-foreground">
+              Aggiornato: {new Date(config.updated_at).toLocaleString('it-IT')}
+            </div>
+          )}
+        </div>
+
+        {/* Colonna destra — dettaglio strategy selezionata */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {!selectedKey || !selectedMeta ? (
+            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+              Seleziona una strategy dalla lista.
+            </div>
+          ) : (
+            <div className="max-w-2xl space-y-6">
+
+              {/* Intestazione strategy */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-base font-semibold">{selectedMeta.label}</h2>
+                  {selectedIsActive && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      Attiva
+                    </span>
+                  )}
+                  {config?.is_default && selectedIsActive && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                      Default di sistema
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-mono text-muted-foreground">Key: {selectedKey}</p>
+                <p className="text-sm text-muted-foreground mt-1">{selectedMeta.description}</p>
+              </div>
+
+              {/* Azione attivazione */}
+              {!selectedIsActive && (
+                <div className="border rounded-lg p-4 bg-muted/20">
+                  <h3 className="text-sm font-semibold mb-2">Attivazione</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Impostando questa strategy come attiva, il sistema userà i parametri
+                    qui configurati per calcolare <code className="font-mono">monthly_stock_base_qty</code> di tutti gli articoli.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSetActive}
+                    disabled={saving}
+                    className="py-1.5 px-3 rounded-md text-sm font-medium border hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors disabled:opacity-50"
+                  >
+                    Imposta come strategy attiva
+                  </button>
                 </div>
               )}
-            </section>
 
-            {/* Capacity logic — logica fissa, parametri configurabili */}
-            <section className="border rounded-lg p-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold">Logica capacity — parametri</h2>
-                <span className="text-xs bg-secondary px-2 py-0.5 rounded font-mono">{config?.capacity_logic_key ?? 'capacity_from_containers_v1'}</span>
-                <span className="text-xs text-muted-foreground">(logica fissa — non switchabile)</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Formula: <code className="font-mono">capacity = max_container_weight_kg × contenitori / (peso_grammi / 1000)</code>.
-                La logica è fissa (DL-ARCH-V2-030 §2); solo i parametri sono configurabili.
-              </p>
-              <Field label="Peso massimo contenitore (max_container_weight_kg) [kg]">
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={maxContainerWeightKg}
-                  onChange={e => setMaxContainerWeightKg(e.target.value)}
-                  placeholder="es. 25"
+              {/* Parametri monthly base */}
+              <form onSubmit={handleSaveParams} className="space-y-3 border rounded-lg p-4">
+                <div>
+                  <h3 className="text-sm font-semibold">Parametri monthly base</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    JSON salvato in <code className="font-mono">monthly_base_params_json</code>.
+                    {!selectedIsActive && (
+                      <span className="ml-1 text-amber-600">
+                        Salvando si imposta anche questa strategy come attiva.
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <textarea
+                  value={monthlyParamsJson}
+                  onChange={(e) => setMonthlyParamsJson(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 min-h-52"
                   disabled={saving}
-                  className={`${inputCls} max-w-xs`}
+                  spellCheck={false}
                 />
-                <p className="text-xs text-muted-foreground">Peso lordo massimo per contenitore in kg (es. 25)</p>
-              </Field>
-            </section>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="py-1.5 px-4 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {saving ? 'Salvataggio...' : 'Salva parametri'}
+                </button>
+              </form>
 
-            {/* Azioni */}
-            <div className="flex items-center gap-3">
-              <button type="submit" disabled={saving} className={btnPrimary}>
-                {saving ? 'Salvataggio...' : 'Salva configurazione'}
-              </button>
-              {saveMsg && (
-                <p className={`text-xs ${saveMsg.ok ? 'text-green-600' : 'text-red-600'}`}>{saveMsg.text}</p>
-              )}
+              {/* Parametri capacity — sempre visibili, indipendenti dalla strategy */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold">Parametri capacity</h3>
+                    <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded">
+                      {config?.capacity_logic_key ?? 'capacity_from_containers_v1'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">(logica fissa)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Formula: <code className="font-mono">capacity = max_container_weight_kg × contenitori / (peso_grammi / 1000)</code>.
+                    Salvato in <code className="font-mono">capacity_logic_params_json</code>.
+                  </p>
+                </div>
+                <textarea
+                  value={capacityParamsJson}
+                  onChange={(e) => setCapacityParamsJson(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 min-h-24"
+                  disabled={saving}
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveConfig()}
+                  disabled={saving}
+                  className="py-1.5 px-4 bg-foreground text-background rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {saving ? 'Salvataggio...' : 'Salva parametri capacity'}
+                </button>
+              </div>
+
             </div>
-          </form>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

@@ -34,6 +34,8 @@ from nssp_v2.core.stock_policy.config_model import CoreStockLogicConfig
 # Strategy ammesse per monthly_stock_base_qty — registry chiuso nel codice
 KNOWN_MONTHLY_BASE_STRATEGIES: list[str] = [
     "monthly_stock_base_from_sales_v1",
+    "monthly_stock_base_weighted_v2",
+    "monthly_stock_base_segmented_v1",
 ]
 
 # Logica capacity fissa — non switchabile (DL-ARCH-V2-030 §2)

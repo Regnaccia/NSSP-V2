@@ -44,6 +44,8 @@ from nssp_v2.core.stock_policy.logic import (
     compute_trigger_stock_qty,
     estimate_capacity_from_containers_v1,
     estimate_monthly_stock_base_from_sales_v1,
+    estimate_monthly_stock_base_weighted_v2,
+    estimate_monthly_stock_base_segmented_v1,
     resolve_capacity_effective,
 )
 from nssp_v2.core.stock_policy.read_models import StockMetricsItem
@@ -52,6 +54,26 @@ from nssp_v2.sync.articoli.models import SyncArticolo
 from nssp_v2.sync.mag_reale.models import SyncMagReale
 
 _DEFAULT_WINDOWS_MONTHS = [12, 6, 3]
+
+_MONTHLY_BASE_DISPATCH = {
+    "monthly_stock_base_from_sales_v1": estimate_monthly_stock_base_from_sales_v1,
+    "monthly_stock_base_weighted_v2": estimate_monthly_stock_base_weighted_v2,
+    "monthly_stock_base_segmented_v1": estimate_monthly_stock_base_segmented_v1,
+}
+
+
+def _estimate_monthly_base(
+    strategy_key: str,
+    monthly_sales: dict,
+    params: dict,
+    total_movements: int,
+) -> "Decimal | None":
+    """Dispatch alla funzione di stima corretta in base alla strategy_key."""
+    fn = _MONTHLY_BASE_DISPATCH.get(strategy_key)
+    if fn is None:
+        # Fallback sicuro alla v1 se la strategy non e nel dispatch
+        fn = estimate_monthly_stock_base_from_sales_v1
+    return fn(monthly_sales, params, total_movements=total_movements)
 
 
 def _months_ago(months: int) -> datetime:
@@ -192,8 +214,8 @@ def list_stock_metrics_v1(session: Session) -> list[StockMetricsItem]:
         # Calcolo metriche
         monthly_sales = sales_map.get(canonical, {})
         total_movements = movements_map.get(canonical, 0)
-        monthly_base = estimate_monthly_stock_base_from_sales_v1(
-            monthly_sales, params, total_movements=total_movements
+        monthly_base = _estimate_monthly_base(
+            config.monthly_base_strategy_key, monthly_sales, params, total_movements
         )
         capacity_calculated = estimate_capacity_from_containers_v1(
             art.contenitori_magazzino,

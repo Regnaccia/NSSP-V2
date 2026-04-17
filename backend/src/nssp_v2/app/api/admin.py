@@ -218,13 +218,9 @@ def update_warning_config(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Tipo warning non ammesso: {warning_type}. Ammessi: {KNOWN_WARNING_TYPES}",
         )
-    unknown = [a for a in body.visible_to_areas if a not in KNOWN_AREAS]
-    if unknown:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Aree non ammesse: {unknown}. Ammesse: {KNOWN_AREAS}",
-        )
-    return set_warning_config(session, warning_type, body.visible_to_areas)
+    # Filtra aree non ammesse (non rifiuta: il contratto dichiarato e "accettate ma ignorate")
+    valid_areas = [a for a in body.visible_to_areas if a in KNOWN_AREAS]
+    return set_warning_config(session, warning_type, valid_areas)
 
 
 # ─── Stock logic config (TASK-V2-090) ─────────────────────────────────────────

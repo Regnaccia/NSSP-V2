@@ -53,10 +53,15 @@ def compute_note_fragment(logic_key: str, params_snapshot: dict) -> str | None:
     - proposal_target_pieces_v1 / proposal_required_qty_total_v1: nessun frammento (None).
     - proposal_full_bar_v1 / proposal_full_bar_v2_capacity_floor: "BAR xN" se params_snapshot
       contiene _bars_required, altrimenti None.
+    - proposal_multi_bar_v1_capacity_floor: "FASCI xN" (semanticamente distinto da BAR).
     """
     if logic_key not in KNOWN_PROPOSAL_LOGICS:
         raise ValueError(f"Logic non ammessa: {logic_key}")
-    if logic_key in _FULL_BAR_LOGIC_KEYS:
+    if logic_key == "proposal_multi_bar_v1_capacity_floor":
+        bars = params_snapshot.get("_bars_required")
+        if bars is not None:
+            return f"FASCI x{bars}"
+    elif logic_key in _FULL_BAR_LOGIC_KEYS:
         bars = params_snapshot.get("_bars_required")
         if bars is not None:
             return f"BAR x{bars}"

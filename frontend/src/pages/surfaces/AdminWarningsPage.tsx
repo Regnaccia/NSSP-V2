@@ -54,7 +54,9 @@ function WarningTypePanel({
   config: WarningTypeConfigItem
   onSaved: (updated: WarningTypeConfigItem) => void
 }) {
-  const [selected, setSelected] = useState<string[]>(config.visible_to_areas)
+  const [selected, setSelected] = useState<string[]>(
+    config.visible_to_areas.filter((a) => (KNOWN_AREAS as readonly string[]).includes(a))
+  )
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
 
@@ -83,7 +85,7 @@ function WarningTypePanel({
   }
 
   const handleReset = () => {
-    setSelected(config.visible_to_areas)
+    setSelected(config.visible_to_areas.filter((a) => (KNOWN_AREAS as readonly string[]).includes(a)))
     setDirty(false)
   }
 

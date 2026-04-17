@@ -1,7 +1,7 @@
 # TASK-V2-134 - Core proposal multi bar note fragment FASCI
 
 ## Status
-Todo
+Completed
 
 ## Date
 2026-04-16
@@ -121,3 +121,29 @@ python -m pytest V2/backend/tests/core/test_core_production_proposals.py V2/back
 ```
 
 Atteso: exit code `0`.
+
+## Implementation Log
+
+### `core/production_proposals/logic.py`
+
+`compute_note_fragment` modificato: aggiunta condizione dedicata per `proposal_multi_bar_v1_capacity_floor`
+prima del branch `_FULL_BAR_LOGIC_KEYS`.
+
+```python
+if logic_key == "proposal_multi_bar_v1_capacity_floor":
+    bars = params_snapshot.get("_bars_required")
+    if bars is not None:
+        return f"FASCI x{bars}"
+elif logic_key in _FULL_BAR_LOGIC_KEYS:
+    bars = params_snapshot.get("_bars_required")
+    if bars is not None:
+        return f"BAR x{bars}"
+```
+
+Le logiche `proposal_full_bar_v1` e `proposal_full_bar_v2_capacity_floor` continuano a restituire `BAR xN`.
+
+### `tests/core/test_core_proposal_full_bar_v1.py`
+
+`test_multi_bar_note_fragment`: aggiornata asserzione da `BAR x3` → `FASCI x3`.
+
+**Esito:** `59 passed` in 1.98s.
