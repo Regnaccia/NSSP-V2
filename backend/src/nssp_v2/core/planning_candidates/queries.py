@@ -1,7 +1,8 @@
 """
 Query Core slice `planning_candidates` V2 (TASK-V2-062, TASK-V2-065, TASK-V2-068,
-TASK-V2-071, TASK-V2-074, TASK-V2-085, TASK-V2-100, DL-ARCH-V2-025, DL-ARCH-V2-027,
-DL-ARCH-V2-028, DL-ARCH-V2-030, DL-ARCH-V2-031).
+TASK-V2-071, TASK-V2-074, TASK-V2-085, TASK-V2-100, TASK-V2-145,
+DL-ARCH-V2-025, DL-ARCH-V2-027, DL-ARCH-V2-028, DL-ARCH-V2-030, DL-ARCH-V2-031,
+DL-ARCH-V2-042).
 
 Branching:
 - by_article (effective_aggrega = True o None): logica V1 retrocompatibile, anchorata a
@@ -14,7 +15,7 @@ Regole comuni:
 - produzioni completate (forza_completata=True) escluse dalla supply in entrambe le modalita
 - ordinamento finale: required_qty_minimum decrescente (maggiore scopertura sopra — UIX_SPEC)
 
-Ramo by_article (TASK-V2-085 — stock policy integrata):
+Ramo by_article (TASK-V2-085 — stock policy integrata; TASK-V2-145 — rebase Core):
 - stock_effective = max(inventory_qty, 0): clamp giacenza fisica (DL-ARCH-V2-028 §1)
 - availability_qty = stock_effective - set_aside - committed (valore clamped, non raw)
 - incoming_supply_qty: aggregata da sync_produzioni_attive per codice articolo
@@ -24,7 +25,7 @@ Ramo by_article (TASK-V2-085 — stock policy integrata):
     - fav < 0 (shortage cliente) → reason_code = "future_availability_negative"
     - OPPURE fav < trigger_stock_qty (trigger scorta) → reason_code = "stock_below_trigger"
 - breakdown per articolo by_article:
-    - customer_shortage_qty = max(-fav, 0)
+    - customer_shortage_qty = max(-fav, 0)  [TASK-V2-145: usa fav completo, non capped per horizon]
     - stock_horizon_availability_qty = stock_eff - set_aside - capped_committed + incoming
       dove capped_committed = impegni con data_consegna entro oggi + effective_stock_months * 30 gg
     - stock_replenishment_qty = max(target_stock_qty - max(stock_horizon_avail, 0), 0) — TASK-V2-101
@@ -40,7 +41,7 @@ Ramo by_customer_order_line:
 - reason_code = "line_demand_uncovered"
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -75,9 +76,14 @@ from nssp_v2.core.planning_mode import PlanningMode, resolve_planning_mode
 from nssp_v2.core.planning_candidates.read_models import (
     PlanningCandidateActiveWarning,
     PlanningCandidateItem,
+    PlanningOpenOrderLine,
 )
 from nssp_v2.core.produzioni.models import CoreProduzioneOverride
 from nssp_v2.core.warnings import filter_warnings_by_areas, list_warnings_v1
+# production_proposals.config e production_proposals.logic vengono importati lazy
+# dentro le funzioni che li usano per evitare circular import:
+# production_proposals.queries -> planning_candidates -> production_proposals.config (ok)
+# ma production_proposals.__init__ -> production_proposals.queries -> planning_candidates (circular)
 from nssp_v2.sync.articoli.models import SyncArticolo
 from nssp_v2.sync.clienti.models import SyncCliente
 from nssp_v2.sync.destinazioni.models import SyncDestinazione
@@ -209,6 +215,9 @@ class _ArticoloInfo:
     misura: str | None         # misura_articolo da SyncArticolo (ART_MISURA)
     effective_gestione_scorte: bool | None  # prerequisito stock policy (TASK-V2-099)
     effective_stock_months: Decimal | None  # look-ahead scorta per capping impegni (TASK-V2-101)
+    # Configurazione proposal — usata per il preview lato planning (TASK-V2-151)
+    proposal_logic_key: str | None = None
+    proposal_logic_article_params: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -279,6 +288,8 @@ def _load_articoli_info(session: Session) -> list[_ArticoloInfo]:
             misura=(art.misura_articolo or "").strip() or None,
             effective_gestione_scorte=effective_gestione,
             effective_stock_months=effective_stock_months,
+            proposal_logic_key=config.proposal_logic_key if config is not None else None,
+            proposal_logic_article_params=dict(config.proposal_logic_article_params_json or {}) if config is not None else {},
         ))
     return result
 
@@ -628,6 +639,336 @@ def _earliest_delivery_from_lines(
     return min(dates)
 
 
+# ─── Proposal preview (TASK-V2-151) ──────────────────────────────────────────
+
+@dataclass
+class _SyncArticoloProposalData:
+    """Dati SyncArticolo necessari per il preview full-bar (pre-caricati in batch)."""
+    occorrente: Decimal | None
+    scarto: Decimal | None
+    raw_material_code: str | None
+
+
+def _load_sync_articolo_proposal_data(
+    session: Session,
+    article_codes: set[str],
+) -> dict[str, _SyncArticoloProposalData]:
+    """Batch-load dati SyncArticolo (occorrente, scarto, raw_material_code) per il preview proposal."""
+    if not article_codes:
+        return {}
+    rows = session.query(SyncArticolo).filter(
+        func.upper(func.trim(SyncArticolo.codice_articolo)).in_(article_codes)
+    ).all()
+    result: dict[str, _SyncArticoloProposalData] = {}
+    for art in rows:
+        key = art.codice_articolo.strip().upper()
+        raw_mat = (art.materiale_grezzo_codice or "").strip() or None
+        result[key] = _SyncArticoloProposalData(
+            occorrente=art.quantita_materiale_grezzo_occorrente,
+            scarto=art.quantita_materiale_grezzo_scarto,
+            raw_material_code=raw_mat,
+        )
+    return result
+
+
+def _load_raw_material_bar_lengths(
+    session: Session,
+    raw_material_codes: set[str],
+) -> dict[str, Decimal | None]:
+    """Batch-load raw_bar_length_mm dai CoreArticoloConfig dei materiali grezzi."""
+    if not raw_material_codes:
+        return {}
+    cfgs = session.query(CoreArticoloConfig).filter(
+        func.upper(CoreArticoloConfig.codice_articolo).in_(raw_material_codes)
+    ).all()
+    return {
+        cfg.codice_articolo.strip().upper(): cfg.raw_bar_length_mm
+        for cfg in cfgs
+    }
+
+
+_FULL_BAR_LOGIC_KEYS: frozenset[str] = frozenset({
+    "proposal_full_bar_v1",
+    "proposal_full_bar_v2_capacity_floor",
+    "proposal_multi_bar_v1_capacity_floor",
+})
+
+_LOGIC_LABELS: dict[str, str] = {
+    "proposal_target_pieces_v1": "Target pezzi",
+    "proposal_required_qty_total_v1": "Pezzi (alias)",
+    "proposal_full_bar_v1": "Barre intere",
+    "proposal_full_bar_v2_capacity_floor": "Barre intere v2",
+    "proposal_multi_bar_v1_capacity_floor": "Fasci",
+}
+
+
+@dataclass(frozen=True)
+class _ProposalPreview:
+    proposal_status: str
+    proposal_qty_computed: Decimal
+    requested_proposal_logic_key: str
+    effective_proposal_logic_key: str
+    proposal_fallback_reason: str | None
+    proposal_reason_summary: str
+    proposal_local_warnings: list[str]
+    note_fragment: str | None
+
+
+def _compute_proposal_preview_v1(
+    item: "PlanningCandidateItem",
+    article_info: "_ArticoloInfo | None",
+    logic_config: object,
+    sync_proposal_data: dict[str, _SyncArticoloProposalData],
+    raw_bar_lengths: dict[str, "Decimal | None"],
+) -> _ProposalPreview:
+    """Preview proposta per il pannello destra `Proposal` — contratto TASK-V2-151.
+
+    Calcolo lightweight senza persistenza workspace:
+    - logica target_pieces: triviale (qty = required_qty_total, senza query aggiuntive)
+    - logica full-bar/multi-bar: usa dati pre-caricati in batch (occorrente, scarto, raw_bar_length_mm)
+    - capacity_effective_qty: ricostruita da stock_effective_qty + capacity_headroom_now_qty
+      (esatta per stock >= 0; stima conservativa per stock < 0)
+
+    Non modifica primary_driver, reason_code, release_status del candidate.
+    Importa production_proposals.logic lazy per evitare circular import.
+    """
+    # Lazy imports per evitare circular import (planning_candidates <-> production_proposals)
+    from nssp_v2.core.production_proposals.logic import (  # noqa: PLC0415
+        compute_full_bar_qty as _compute_full_bar_qty,
+        compute_full_bar_qty_v2_capacity_floor as _compute_full_bar_v2,
+        compute_multi_bar_qty_v1_capacity_floor as _compute_multi_bar_v1,
+        merge_logic_params as _merge_logic_params,
+    )
+
+    req_total: Decimal = item.required_qty_total if item.required_qty_total is not None else item.required_qty_minimum
+
+    # Resolve logica richiesta
+    article_logic_key: str | None = article_info.proposal_logic_key if article_info else None
+    requested_logic_key: str = article_logic_key or logic_config.default_logic_key
+    global_params: dict = dict(logic_config.logic_params_by_key.get(requested_logic_key, {}))
+    article_params: dict = article_info.proposal_logic_article_params if article_info else {}
+    params_snapshot: dict = _merge_logic_params(global_params, article_params)
+
+    effective_logic_key: str = requested_logic_key
+    fallback_reason: str | None = None
+    note_fragment: str | None = None
+    local_warnings: list[str] = []
+    proposed_qty: Decimal = req_total
+
+    if requested_logic_key in _FULL_BAR_LOGIC_KEYS:
+        sync_data = sync_proposal_data.get(item.article_code)
+        raw_material_code = sync_data.raw_material_code if sync_data else None
+        occorrente = sync_data.occorrente if sync_data else None
+        scarto = sync_data.scarto if sync_data else None
+        raw_bar_length_mm = raw_bar_lengths.get(raw_material_code) if raw_material_code else None
+
+        if raw_bar_length_mm is None:
+            local_warnings.append("missing_raw_bar_length")
+
+        # Ricostruzione capacity_effective_qty (approssimazione)
+        if item.capacity_headroom_now_qty is not None and item.stock_effective_qty is not None:
+            capacity_effective_qty: Decimal | None = item.stock_effective_qty + item.capacity_headroom_now_qty
+        else:
+            capacity_effective_qty = None
+
+        if requested_logic_key == "proposal_multi_bar_v1_capacity_floor":
+            bar_multiple_raw = params_snapshot.get("bar_multiple")
+            try:
+                bar_multiple = int(bar_multiple_raw) if bar_multiple_raw is not None else None
+            except (TypeError, ValueError):
+                bar_multiple = None
+            fb_result = _compute_multi_bar_v1(
+                required_qty_total=req_total,
+                customer_shortage_qty=item.customer_shortage_qty,
+                availability_qty=item.availability_qty,
+                capacity_effective_qty=capacity_effective_qty,
+                raw_bar_length_mm=raw_bar_length_mm,
+                occorrente=occorrente,
+                scarto=scarto,
+                bar_multiple=bar_multiple,
+            )
+        elif requested_logic_key == "proposal_full_bar_v2_capacity_floor":
+            fb_result = _compute_full_bar_v2(
+                required_qty_total=req_total,
+                customer_shortage_qty=item.customer_shortage_qty,
+                availability_qty=item.availability_qty,
+                capacity_effective_qty=capacity_effective_qty,
+                raw_bar_length_mm=raw_bar_length_mm,
+                occorrente=occorrente,
+                scarto=scarto,
+            )
+        else:
+            fb_result = _compute_full_bar_qty(
+                required_qty_total=req_total,
+                customer_shortage_qty=item.customer_shortage_qty,
+                availability_qty=item.availability_qty,
+                capacity_effective_qty=capacity_effective_qty,
+                raw_bar_length_mm=raw_bar_length_mm,
+                occorrente=occorrente,
+                scarto=scarto,
+            )
+
+        if fb_result.used_fallback:
+            effective_logic_key = "proposal_target_pieces_v1"
+            fallback_reason = fb_result.fallback_reason
+            proposed_qty = req_total
+        else:
+            proposed_qty = fb_result.proposed_qty
+            bars = fb_result.bars_required
+            if requested_logic_key == "proposal_multi_bar_v1_capacity_floor":
+                note_fragment = f"FASCI x{bars}"
+            else:
+                note_fragment = f"BAR x{bars}"
+
+    # ordine_linea_mancante: errore bloccante export.
+    # Applicabile solo ai candidate by_customer_order_line: in questa modalita ogni riga ha
+    # un line_reference esplicito e l'export EasyJob richiede la riga ordine collegata.
+    # Per by_article la mancanza di line_reference e normale (aggregato): non e un errore (TASK-V2-155).
+    ordine_linea_mancante = (
+        item.planning_mode == "by_customer_order_line"
+        and item.line_reference is None
+    )
+
+    if ordine_linea_mancante:
+        proposal_status = "Error"
+    elif fallback_reason is not None or local_warnings:
+        proposal_status = "Need review"
+    else:
+        proposal_status = "Valid for export"
+
+    logic_label = _LOGIC_LABELS.get(effective_logic_key, effective_logic_key)
+    if ordine_linea_mancante:
+        reason_summary = "Riga ordine mancante — non esportabile"
+    elif fallback_reason:
+        reason_summary = f"{logic_label} (fallback: {fallback_reason}) — qty: {proposed_qty:.0f}"
+    elif note_fragment:
+        reason_summary = f"{logic_label} — {note_fragment} — qty: {proposed_qty:.0f}"
+    else:
+        reason_summary = f"{logic_label} — qty: {proposed_qty:.0f}"
+
+    return _ProposalPreview(
+        proposal_status=proposal_status,
+        proposal_qty_computed=proposed_qty,
+        requested_proposal_logic_key=requested_logic_key,
+        effective_proposal_logic_key=effective_logic_key,
+        proposal_fallback_reason=fallback_reason,
+        proposal_reason_summary=reason_summary,
+        proposal_local_warnings=local_warnings,
+        note_fragment=note_fragment,
+    )
+
+
+def _compute_priority_score_v1_basic(
+    nearest_delivery_date: date | None,
+    customer_shortage_qty: Decimal | None,
+    stock_replenishment_qty: Decimal | None,
+    stock_effective_qty: Decimal | None,
+    target_stock_qty: Decimal | None,
+    release_status: str | None,
+    active_warnings_count: int,
+) -> tuple[float, str]:
+    """Punteggio di priorita V1 Basic — contratto DL-ARCH-V2-044, TASK-V2-149.
+
+    Formula additiva (clampata 0..100):
+        priority_score = time_urgency + customer_pressure + stock_pressure
+                         - release_penalty - warning_penalty
+
+    Componenti:
+    - time_urgency (0–35): fasce step-function sulla data rilevante.
+    - customer_pressure (0–40): severita shortage cliente per quantita.
+    - stock_pressure (0–24): ratio stock_effective_qty / target_stock_qty.
+    - release_penalty (0–18): sottrazione per release status sfavorevole.
+    - warning_penalty (0–12): sottrazione per warning attivi.
+
+    Non sostituisce primary_driver, reason_code, reason_text o release_status.
+    Ritorna (score, band) dove band in ('low', 'medium', 'high', 'critical').
+    """
+    today = date.today()
+
+    # ── time_urgency ──────────────────────────────────────────────────────────
+    time_urgency = 0.0
+    if nearest_delivery_date is not None:
+        days_ahead = (nearest_delivery_date - today).days
+        if days_ahead <= 7:
+            time_urgency = 35.0
+        elif days_ahead <= 15:
+            time_urgency = 28.0
+        elif days_ahead <= 30:
+            time_urgency = 20.0
+        elif days_ahead <= 60:
+            time_urgency = 10.0
+        else:
+            time_urgency = 4.0
+
+    # ── customer_pressure ─────────────────────────────────────────────────────
+    customer_pressure = 0.0
+    shortage = float(customer_shortage_qty or 0)
+    if shortage > 0:
+        customer_pressure = 20.0
+        if shortage >= 1000:
+            customer_pressure += 20.0
+        elif shortage >= 500:
+            customer_pressure += 15.0
+        elif shortage >= 100:
+            customer_pressure += 10.0
+        else:
+            customer_pressure += 5.0
+    customer_pressure = min(customer_pressure, 40.0)
+
+    # ── stock_pressure ────────────────────────────────────────────────────────
+    stock_pressure = 0.0
+    replenishment = float(stock_replenishment_qty or 0)
+    target = float(target_stock_qty or 0)
+    if replenishment > 0 and target > 0:
+        stock_eff = float(stock_effective_qty or 0)
+        ratio = stock_eff / target
+        if ratio >= 1.0:
+            stock_pressure = 0.0
+        elif ratio >= 0.75:
+            stock_pressure = 4.0
+        elif ratio >= 0.50:
+            stock_pressure = 8.0
+        elif ratio >= 0.25:
+            stock_pressure = 14.0
+        elif ratio >= 0.0:
+            stock_pressure = 20.0
+        else:
+            stock_pressure = 24.0
+
+    # ── release_penalty ───────────────────────────────────────────────────────
+    if release_status == "launchable_partially":
+        release_penalty = 8.0
+    elif release_status == "blocked_by_capacity_now":
+        release_penalty = 18.0
+    else:
+        release_penalty = 0.0
+
+    # ── warning_penalty ───────────────────────────────────────────────────────
+    if active_warnings_count == 0:
+        warning_penalty = 0.0
+    elif active_warnings_count == 1:
+        warning_penalty = 4.0
+    elif active_warnings_count <= 3:
+        warning_penalty = 8.0
+    else:
+        warning_penalty = 12.0
+
+    raw = time_urgency + customer_pressure + stock_pressure - release_penalty - warning_penalty
+    score = round(max(0.0, min(100.0, raw)), 2)
+
+    # ── band ──────────────────────────────────────────────────────────────────
+    if score >= 75:
+        band = "critical"
+    elif score >= 50:
+        band = "high"
+    elif score >= 25:
+        band = "medium"
+    else:
+        band = "low"
+
+    return score, band
+
+
 # ─── Step 2b: supply collegata per by_customer_order_line ────────────────────
 
 def _compute_linked_supply_by_line(
@@ -751,13 +1092,12 @@ def _list_by_article_candidates(
         target_qty = metrics.target_stock_qty if metrics else None
 
         fav = future_availability_v1(ctx)
-
-        # Condizione candidatura estesa con stock policy (TASK-V2-085)
-        if not is_planning_candidate_with_stock_v1(fav, trigger_qty):
-            continue
-
         assert fav is not None
-        # Breakdown stock-driven (DL-ARCH-V2-030 §9, TASK-V2-101)
+
+        line_data = open_commitments_with_dates.get(avail.article_code, [])
+
+        # Rebase Core (TASK-V2-145, DL-ARCH-V2-042 §3): customer_shortage_qty basata su fav completo.
+        # customer_horizon_days non influenza piu la candidatura — vive nel layer priority_score / UI.
         shortage = customer_shortage_qty_v1(fav)
 
         # Stock horizon (DL-ARCH-V2-031 §4): capping impegni SOLO su effective_stock_months.
@@ -766,7 +1106,6 @@ def _list_by_article_candidates(
             if art.effective_stock_months is not None:
                 lookahead_days = int(round(float(art.effective_stock_months) * 30))
                 lookahead_date = date.today() + timedelta(days=lookahead_days)
-                line_data = open_commitments_with_dates.get(avail.article_code, [])
                 capped_committed = _capped_commitments_from_lines(line_data, lookahead_date)
             else:
                 capped_committed = avail.committed_qty
@@ -776,8 +1115,14 @@ def _list_by_article_candidates(
         else:
             stock_horizon_avail = avail_eff  # no stock policy: nessun capping
 
+        stock_trigger_active = (
+            trigger_qty is not None and stock_horizon_avail < trigger_qty
+        )
+        if shortage <= Decimal("0") and not stock_trigger_active:
+            continue
+
         # Reason code: shortage cliente prioritario; stock trigger come secondo motivo
-        if fav < Decimal("0"):
+        if shortage > Decimal("0"):
             reason_code = "future_availability_negative"
             reason_text = "Disponibilita futura negativa anche considerando la supply in corso"
         else:
@@ -822,6 +1167,22 @@ def _list_by_article_candidates(
             rel_max = None
             rel_status = None
 
+        # Ordini aperti per questo articolo — sottosezione Ordini aperti (TASK-V2-143).
+        # Filtra dal readability_contexts le righe di questo articolo con open_qty > 0,
+        # ordinando per requested_delivery_date crescente (None in fondo).
+        open_lines = [
+            PlanningOpenOrderLine(
+                order_reference=ctx.order_reference,
+                line_reference=ctx.line_reference,
+                requested_delivery_date=ctx.requested_delivery_date,
+                requested_destination_display=ctx.requested_destination_display,
+                open_qty=ctx.open_qty,
+            )
+            for ctx in readability_contexts.values()
+            if ctx.article_code == avail.article_code and ctx.open_qty > Decimal("0")
+        ]
+        open_lines.sort(key=lambda ln: (ln.requested_delivery_date is None, ln.requested_delivery_date or date.min))
+
         candidates.append((req, PlanningCandidateItem(
             source_candidate_id=f"by_article::{avail.article_code}",
             article_code=avail.article_code,
@@ -838,15 +1199,19 @@ def _list_by_article_candidates(
             misura=art.misura,
             required_qty_minimum=req,
             computed_at=avail.computed_at,
-            # by_article
+            # by_article — giacenza effettiva e disponibilità (TASK-V2-143)
+            stock_effective_qty=stock_eff,
             availability_qty=avail_eff,
             customer_open_demand_qty=demand_qty,
             incoming_supply_qty=incoming_qty,
             future_availability_qty=fav,
+            # ordini aperti per articolo (TASK-V2-143)
+            open_order_lines=open_lines,
             # stock policy breakdown (TASK-V2-085)
             customer_shortage_qty=shortage,
             stock_replenishment_qty=replenishment,
             required_qty_total=req_total,
+            target_stock_qty=target_qty,
             primary_driver=primary_driver,
             # customer horizon (TASK-V2-100, TASK-V2-102)
             is_within_customer_horizon=within_horizon,
@@ -1022,13 +1387,56 @@ def list_planning_candidates_v1(
         is_admin=is_admin,
     )
 
+    # Pre-load per proposal preview (TASK-V2-151): 2 query batch aggiuntive.
+    # Lazy import per evitare circular import (planning_candidates <-> production_proposals)
+    from nssp_v2.core.production_proposals.config import get_proposal_logic_config as _get_proposal_logic_config  # noqa: PLC0415
+    proposal_logic_config = _get_proposal_logic_config(session)
+    articoli_info_map = {a.article_code: a for a in articoli}
+    candidate_codes = {item.article_code for _, item in (candidates_ba + candidates_col)}
+    sync_proposal_data = _load_sync_articolo_proposal_data(session, candidate_codes)
+    raw_material_codes = {
+        d.raw_material_code
+        for d in sync_proposal_data.values()
+        if d.raw_material_code
+    }
+    raw_bar_lengths = _load_raw_material_bar_lengths(session, raw_material_codes)
+
     all_candidates = candidates_ba + candidates_col
     all_candidates.sort(key=lambda t: t[0], reverse=True)
     result: list[PlanningCandidateItem] = []
     for _, item in all_candidates:
         warnings = active_warnings_by_article.get(item.article_code, [])
+        # priority_score_v1_basic iniettato qui: ha accesso a warnings definitivi (TASK-V2-149,
+        # DL-ARCH-V2-044). Usa nearest_delivery_date (by_article) o requested_delivery_date
+        # (by_customer_order_line). Non modifica primary_driver / reason_code / release_status.
+        nearest = item.nearest_delivery_date or item.requested_delivery_date
+        score, band = _compute_priority_score_v1_basic(
+            nearest_delivery_date=nearest,
+            customer_shortage_qty=item.customer_shortage_qty,
+            stock_replenishment_qty=item.stock_replenishment_qty,
+            stock_effective_qty=item.stock_effective_qty,
+            target_stock_qty=item.target_stock_qty,
+            release_status=item.release_status,
+            active_warnings_count=len(warnings),
+        )
+        # Proposal preview iniettato qui: contratto read-only per la scheda destra
+        # `Proposal` del workspace planning (TASK-V2-151).
+        art_info = articoli_info_map.get(item.article_code)
+        proposal_preview = _compute_proposal_preview_v1(
+            item, art_info, proposal_logic_config, sync_proposal_data, raw_bar_lengths
+        )
         result.append(item.model_copy(update={
             "active_warnings": warnings,
             "active_warning_codes": [w.code for w in warnings],
+            "priority_score": score,
+            "priority_band": band,
+            "proposal_status": proposal_preview.proposal_status,
+            "proposal_qty_computed": proposal_preview.proposal_qty_computed,
+            "requested_proposal_logic_key": proposal_preview.requested_proposal_logic_key,
+            "effective_proposal_logic_key": proposal_preview.effective_proposal_logic_key,
+            "proposal_fallback_reason": proposal_preview.proposal_fallback_reason,
+            "proposal_reason_summary": proposal_preview.proposal_reason_summary,
+            "proposal_local_warnings": proposal_preview.proposal_local_warnings,
+            "note_fragment": proposal_preview.note_fragment,
         }))
     return result

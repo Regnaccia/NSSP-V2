@@ -16,7 +16,7 @@ Il punto corretto del flusso e:
 Easy facts
 -> ODE canonical facts
 -> ODE Planning Candidates
--> selezione operatore in Planning Candidates
+-> selezione operatore nel workspace planning unificato
 -> ODE Proposal Workspace temporaneo
 -> export XLSX
 -> ODE Exported Proposal History
@@ -33,7 +33,7 @@ Nel baseline architetturale post-rebase, `Production Proposals` resta downstream
 
 La V1 deve:
 
-- partire da candidate selezionati esplicitamente in `Planning Candidates`
+- partire da candidate selezionati esplicitamente nel workspace planning unificato
 - congelare uno snapshot temporaneo dei candidate selezionati
 - permettere override quantitativi prima dell'export
 - esportare le righe del workspace come file `xlsx` compatibile con EasyJob
@@ -52,6 +52,7 @@ Resta:
 - luogo corretto in cui distinguere:
   - bisogno eventuale
   - quantita lanciabile ora
+- surface operativa primaria del flusso umano
 
 Aggiunge:
 
@@ -67,8 +68,8 @@ Non introduce:
 
 Diventa:
 
-- `workspace` temporaneo quando aperto da planning
-- storico persistente degli export quando aperto senza `workspace_id`
+- `workspace` temporaneo come dominio/backend downstream del planning
+- storico persistente degli export quando aperto in modalita history
 
 Regola di confine:
 
@@ -76,6 +77,23 @@ Regola di confine:
 - `Production Proposals` risponde a `what do we release/export?`
 
 La semantica `release now` non deve nascere solo come side effect di una proposal logic.
+
+### 3B. Unified Planning Workspace target
+
+La direction post-rebase non e mantenere `Planning Candidates` e `Production Proposals` come due superfici operative parallele.
+
+Target surface:
+
+- `Planning Candidates` / `Unified Planning Workspace`
+  - sinistra: lista sintetica candidate
+  - centro: dettaglio candidate
+  - destra: `proposal workspace panel`
+
+Regole:
+
+- la proposal viene lavorata come pannello contestuale al candidate
+- `Production Proposals` non resta la pagina operativa primaria
+- lo storico export/reconcile resta in una surface separata
 
 ## 4. Workspace temporaneo
 
@@ -526,8 +544,8 @@ Azioni nuove:
 
 Modalita:
 
-- `workspace mode` se aperta con `workspace_id`
-- `history mode` altrimenti
+- `workspace mode` come supporto/backing surface del pannello proposal unificato
+- `history mode` per storico export e reconcile
 
 Workspace mode espone:
 
@@ -588,4 +606,4 @@ Questa distinzione e intenzionale:
 
 ## 15. Principio guida finale
 
-> `Planning Candidates` resta la sola inbox live del bisogno. `Production Proposals` diventa un workspace temporaneo generato da selezione umana, e solo l'export produce lo storico persistente e riconciliabile via `ODE_REF`.
+> `Planning Candidates` resta la sola inbox live del bisogno e diventa la surface operativa primaria. `Production Proposals` sopravvive come `workspace` temporaneo downstream e come storico export separato; solo l'export produce lo storico persistente e riconciliabile via `ODE_REF`.

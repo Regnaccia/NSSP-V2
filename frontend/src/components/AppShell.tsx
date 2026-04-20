@@ -28,8 +28,7 @@ interface SurfaceFunction {
 const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
   admin: [
     { path: '/admin/utenti', label: 'Utenti' },
-    { path: '/admin/stock-logic', label: 'Logiche stock' },
-    { path: '/admin/proposal-logic', label: 'Logiche proposal' },
+    { path: '/admin/logic-config', label: 'Logic Config' },
     { path: '/admin/warnings', label: 'Warning Config' },
   ],
   logistica: [
@@ -39,11 +38,12 @@ const SURFACE_FUNCTIONS: Record<string, SurfaceFunction[]> = {
     { path: '/produzione/articoli', label: 'Articoli' },
     { path: '/produzione/famiglie', label: 'Famiglie' },
     { path: '/produzione/produzioni', label: 'Produzioni' },
-    { path: '/produzione/criticita', label: 'Criticità (legacy)' },
     { path: '/produzione/planning-candidates', label: 'Planning' },
+    { path: '/produzione/planning-workspace', label: 'Workspace (β)' },
     { path: '/produzione/proposals', label: 'Proposals' },
-    { path: '/produzione/warnings', label: 'Avvertimenti' },
   ],
+  // Warnings: surface root trasversale — nessuna funzione secondaria (TASK-V2-135)
+  warnings: [],
 }
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────

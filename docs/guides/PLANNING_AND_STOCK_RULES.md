@@ -305,24 +305,55 @@ e non la stessa quantita customer-driven senza cap temporale.
 
 ## 10. Customer Horizon
 
-Il customer-driven puo introdurre un primo orizzonte semplice separato dalla stock policy.
+**Rebase (DL-ARCH-V2-043, TASK-V2-145)**: `customer_horizon_days` e stato rimosso dal calcolo Core.
 
-Configurazione iniziale prevista:
+Da questo punto in avanti:
 
-- `customer_horizon_days`
+- `customer_shortage_qty` usa la domanda cliente aperta reale completa (`fav` completo)
+- `customer_horizon_days` non puo piu abbassare `customer_shortage_qty` ne alterare il `primary_driver`
 
-Semantica V1:
+Uso residuo ammesso di `customer_horizon_days`:
 
-- basata solo su `data_consegna`
-- nessun lead time
-- nessun tempo ciclo
-- nessuna capacita
+- filtro visivo nella surface planning
+- segnale nella componente `priority_score` (proximity data cliente)
+- flag `is_within_customer_horizon` come indicatore di presentazione
 
-Il Core non deve scartare i candidate fuori orizzonte.
+Il Core espone:
 
-Deve invece poter esporre:
+- `is_within_customer_horizon`: True/False/None
+- `nearest_delivery_date`: prima data ordine cliente, per la UI
 
-- `is_within_customer_horizon`
+La classificazione planning e ora lineare e non dipende dall'orizzonte:
+
+- `Cliente` se `customer_shortage_qty > 0`
+- `Cliente + Scorta` se entrambe le componenti > 0
+- `Scorta` se solo `stock_replenishment_qty > 0`
+
+## 10.1 Priority Score
+
+Il `priority_score` e il layer separato che tratta l'urgenza.
+
+Regola fondamentale (DL-ARCH-V2-042):
+
+- `priority_score` e separato da `primary_driver`, `reason_code`, `release_status`
+- non sostituisce nessuno di questi
+- non ridefinisce il bisogno
+
+Baseline V1 (`_compute_priority_score_v1`):
+
+- proximity data cliente (0-40 pt): piu vicina e la data, piu alto il punteggio
+- severita shortage (0-40 pt): basata su `required_qty_minimum`, satura a 1000 unita
+- release feasibility (0-15 pt): `launchable_now` > `launchable_partially` > assente
+- warnings (0-5 pt): bonus se l'articolo ha warning attivi
+
+Input temporali ammessi nel punteggio:
+
+- `nearest_delivery_date` (per by_article)
+- `requested_delivery_date` (per by_customer_order_line)
+
+Input non ammessi nel Core (solo nel punteggio):
+
+- filtri orizzonte che abbassano le quantita di bisogno
 
 ## 11. Warnings Collegati
 
@@ -382,3 +413,5 @@ Regole:
 - `docs/decisions/ARCH/DL-ARCH-V2-029.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-030.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-031.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-042.md` (priority_score come layer separato)
+- `docs/decisions/ARCH/DL-ARCH-V2-043.md` (customer_horizon rimosso dal Core)

@@ -8,6 +8,7 @@
 La review e stata materializzata come baseline operativa in:
 
 - `docs/decisions/ARCH/DL-ARCH-V2-039.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-042.md`
 - `docs/roadmap/REBASE_V2_BACKLOG_2026-04-15.md`
 
 ## Scope

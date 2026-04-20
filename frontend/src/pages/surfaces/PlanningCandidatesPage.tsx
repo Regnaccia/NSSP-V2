@@ -27,7 +27,7 @@
  * - filtro release_status nella barra driver
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
@@ -1055,7 +1055,7 @@ export default function PlanningCandidatesPage() {
   // Filtri driver + horizon (TASK-V2-102)
   const [driverFilter, setDriverFilter] = useState<DriverFilter>('tutti')
   const [soloEntroHorizon, setSoloEntroHorizon] = useState(false)
-  const [horizonDays, setHorizonDays] = useState(30)
+  const [horizonDays, setHorizonDays] = useState(365)
   // Filtro release status (TASK-V2-129)
   const [releaseStatusFilter, setReleaseStatusFilter] = useState<ReleaseStatusFilter>('tutti')
   const [famiglieConfig, setFamiglieConfig] = useState<FamigliaItem[]>([])
@@ -1068,15 +1068,10 @@ export default function PlanningCandidatesPage() {
   const [sortKey, setSortKey] = useState<SortKey>('required_qty_minimum')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
-  const horizonDaysRef = useRef(horizonDays)
-  horizonDaysRef.current = horizonDays
-
   const loadCandidates = () => {
     setLoadStatus('loading')
     return apiClient
-      .get<PlanningCandidateItem[]>('/produzione/planning-candidates', {
-        params: { horizon_days: horizonDaysRef.current },
-      })
+      .get<PlanningCandidateItem[]>('/produzione/planning-candidates')
       .then((r) => {
         setItems(r.data)
         setLoadStatus('idle')
@@ -1095,13 +1090,6 @@ export default function PlanningCandidatesPage() {
       .then((r) => setFamiglieConfig(r.data))
       .catch(() => {})
   }, [])
-
-  // Ri-fetcha quando horizonDays cambia (debounced 600ms)
-  useEffect(() => {
-    const t = setTimeout(() => loadCandidates(), 600)
-    return () => clearTimeout(t)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [horizonDays])
 
   /**
    * Refresh semantico backend (DL-ARCH-V2-022).
@@ -1174,13 +1162,14 @@ export default function PlanningCandidatesPage() {
         return i.release_status === releaseStatusFilter
       })
       .filter((i) => {
-        // Filtro customer horizon: usa is_within_customer_horizon calcolato dal server con horizon_days
+        // Filtro customer horizon: filtro locale di vista / priorita, non di candidatura Core (TASK-V2-145)
         if (driverFilter === 'scorta') return true
         if (!soloEntroHorizon) return true
-        if (i.planning_mode === 'by_customer_order_line') {
-          return isDateWithinHorizon(i.requested_delivery_date, horizonDays)
-        }
-        return i.is_within_customer_horizon === true
+        const requestedDate =
+          i.planning_mode === 'by_customer_order_line'
+            ? i.requested_delivery_date
+            : resolveRequestedDate(i) ?? i.nearest_delivery_date
+        return isDateWithinHorizon(requestedDate, horizonDays)
       })
   }, [items, soloInProduzione, filterCodice, filterDesc, famigliaFilter, driverFilter, soloEntroHorizon, horizonDays, releaseStatusFilter])
 
@@ -1273,7 +1262,6 @@ export default function PlanningCandidatesPage() {
       const { data } = await apiClient.post<ProposalWorkspaceGenerateResult>(
         '/produzione/planning-candidates/generate-proposals-workspace',
         { source_candidate_ids: selectedSourceIds },
-        { params: { horizon_days: horizonDaysRef.current } },
       )
       toast.success(
         `Workspace creato: ${data.created_count} righe${data.skipped_missing_count > 0 ? `, ${data.skipped_missing_count} saltate` : ''}`,

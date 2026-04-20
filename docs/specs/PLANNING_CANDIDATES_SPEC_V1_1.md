@@ -31,7 +31,7 @@ Produce una lista:
 
 - spiegabile
 - non duplicata
-- utilizzabile come input del futuro modulo `Production Proposals`
+- utilizzabile come input del `ProposalWorkspace` downstream
 
 ## 3. Scope
 
@@ -42,7 +42,7 @@ Produce una lista:
 - distingue aggregazione e non aggregazione
 - espone una reason esplicita per cui il candidate compare
 - separa il bisogno eventuale dalla quantita lanciabile ora
-- prepara il passaggio verso `Production Proposals`
+- prepara il passaggio verso il `Unified Planning Workspace`, che include il pannello proposal contestuale
 
 ### Il modulo NON FA
 
@@ -105,6 +105,54 @@ Ogni candidate deve esporre in modo esplicito:
 per spiegare perche la riga e mostrata.
 
 La reason non deve essere implicita nella sola presenza della riga.
+
+### 5.5 Assi semantici del candidate
+
+Nel baseline del rebase il candidate deve essere leggibile su assi distinti:
+
+- `need detection`
+- `release feasibility`
+- `priority`
+
+Traduzione minima attesa nel modello:
+
+- `primary_driver`
+- `reason_code`
+- `reason_text`
+- `customer_shortage_qty`
+- `stock_replenishment_qty`
+- `required_qty_total`
+- `required_qty_eventual`
+- `release_qty_now_max`
+- `release_status`
+- `priority_score`
+
+Regola:
+
+- il punteggio di priorita non deve sostituire o nascondere la reason del candidate
+- `priority_score` e un layer separato di ordinamento e urgenza
+
+#### Contratto V1 del punteggio
+
+La baseline iniziale e fissata come:
+
+- `priority_score_policy_key = priority_score_v1_basic`
+
+Regole:
+
+- una sola policy attiva globale
+- nessuna governance admin dedicata in V1
+- formula additiva spiegabile per componenti:
+  - `time_urgency`
+  - `customer_pressure`
+  - `stock_pressure`
+  - `release_penalty`
+  - `warning_penalty`
+
+Vincolo V1:
+
+- `stock_pressure` deve essere **ratio-based** sulla posizione stock rispetto al target
+- non deve usare una semplice scala assoluta di quantita
 
 ## 6. Copertura da produzioni attive
 
@@ -343,6 +391,46 @@ Questo flag serve a:
 - distinguere i fabbisogni cliente prossimi da quelli lontani
 - abilitare filtri UI semplici senza rompere il modello base
 
+### 9.3B Orizzonte cliente come filtro operativo UI/priorita
+
+La UI puo esporre un filtro operativo denominato:
+
+- `Orizzonte cliente`
+
+Default iniziale:
+
+- `365 giorni`
+
+Regola semantica:
+
+- il filtro `Orizzonte cliente` non modifica il Core planning
+- non altera:
+  - `customer_shortage_qty`
+  - `stock_replenishment_qty`
+  - `required_qty_total`
+- serve solo a:
+  - evidenziare ordini vicini
+  - filtrare la vista
+  - alimentare il ranking / `priority_score`
+
+### 9.3C Direzione target del rebase
+
+Il target del rebase planning e esplicitamente quello adottato da `DL-ARCH-V2-043`:
+
+- la componente `customer` deve rappresentare la domanda cliente aperta reale
+- la componente `stock` deve rappresentare il buffer/target di scorta
+- la priorita temporale deve vivere principalmente nel layer `priority_score`
+
+Conseguenza target:
+
+- il tempo non dovrebbe ridefinire da solo il driver `customer` vs `stock`
+- `customer_horizon_days` e ammesso solo come:
+  - input di ranking
+  - filtro UI/workspace
+  - spiegazione del contesto
+
+Non e piu ammesso usarlo come fondamento della semantica `customer_shortage_qty`.
+
 ### 9.2 By Customer Order Line
 
 - un candidate per riga ordine cliente
@@ -389,6 +477,7 @@ La vista deve poter offrire almeno:
 - `Tutti`
 - `Solo fabbisogno cliente`
 - `Solo scorta`
+- `Orizzonte cliente`
 
 Regole minime dei filtri:
 
@@ -396,6 +485,10 @@ Regole minime dei filtri:
   - `primary_driver = customer`
 - `Solo scorta`:
   - `primary_driver = stock`
+- `Orizzonte cliente`:
+  - agisce solo sulla presentazione / priorita
+  - non altera il Core planning
+  - deve essere presentato con naming esplicito, non come generico filtro `entro X giorni`
 
 ### 10.6 Precedenza di visualizzazione nei casi misti
 
@@ -423,9 +516,33 @@ Conseguenza:
 - un articolo misto compare nella scheda `customer`
 - non deve comparire anche nella scheda `stock`
 
-La vista deve anche poter filtrare i candidate cliente per orizzonte temporale:
+La vista deve anche poter filtrare visivamente i candidate cliente per orizzonte temporale:
 
 - `solo entro customer horizon`
+
+### 10.6B Priority score
+
+La surface planning deve poter esporre un:
+
+- `priority_score`
+
+come segnale di ordinamento e urgenza.
+
+Regole:
+
+- `priority_score` non sostituisce:
+  - `primary_driver`
+  - `reason_code`
+  - `release_status`
+- il punteggio deve restare spiegabile
+- la baseline iniziale puo essere semplice e affinata nel tempo
+
+Input iniziali ammessi:
+
+- prossimita della prima data cliente rilevante
+- severita della componente cliente
+- `release_status`
+- warning presenti
 
 ### 10.7 Data richiesta in tabella
 
@@ -644,14 +761,37 @@ line_future_coverage_qty
 
 Output -> input per:
 
-- `Production Proposals`
+- `ProposalWorkspace` downstream del planning
 - futuri moduli di scheduling
 
 Nota di confine:
 
 - `Planning Candidates` rileva il bisogno
-- `Production Proposal` trasforma il bisogno in decisione operativa persistente
+- il `proposal workspace panel` trasforma il bisogno in decisione operativa pre-export
+- lo storico export persistente vive separato dalla surface operativa primaria
 - la specifica del modulo proposal vive separatamente in `docs/specs/PRODUCTION_PROPOSALS_SPEC_V1_0.md`
+
+## 13B. Target surface post-rebase
+
+La direzione UX del rebase non e mantenere due pagine operative sorelle:
+
+- `Planning Candidates`
+- `Production Proposals`
+
+La surface operativa target e un `Unified Planning Workspace`:
+
+- colonna sinistra:
+  - inbox sintetica dei candidate
+- colonna centrale:
+  - dettaglio del candidate attivo
+- colonna destra:
+  - `proposal workspace panel`
+
+Regola:
+
+- `Planning Candidates` resta la inbox live e il nome del modulo operativo principale
+- la proposal viene resa come pannello contestuale, non come seconda inbox primaria
+- lo storico export/reconcile resta separato
 
 ## 14. Principio guida finale
 

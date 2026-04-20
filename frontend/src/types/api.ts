@@ -244,6 +244,15 @@ export interface PlanningActiveWarningItem {
   message: string
 }
 
+/** Riga ordine aperta nel ramo by_article — sottosezione Ordini aperti (TASK-V2-143) */
+export interface PlanningOpenOrderLine {
+  order_reference: string
+  line_reference: number
+  requested_delivery_date: string | null
+  requested_destination_display: string | null
+  open_qty: string
+}
+
 /** Planning candidate — by_article (V1) o by_customer_order_line (V2, TASK-V2-071, TASK-V2-074) */
 export interface PlanningCandidateItem {
   source_candidate_id: string
@@ -275,8 +284,14 @@ export interface PlanningCandidateItem {
   primary_driver: PlanningPrimaryDriver | null
   requested_destination_display: string | null
   computed_at: string
+  /** Punteggio di priorita V1 Basic (DL-ARCH-V2-044, TASK-V2-149) — separato da primary_driver / reason_code / release_status */
+  priority_score: number | null
+  /** Banda sintetica derivata da priority_score: low | medium | high | critical */
+  priority_band: 'low' | 'medium' | 'high' | 'critical' | null
 
   // ─── by_article (null per by_customer_order_line) ────────────────────────
+  /** Giacenza effettiva di planning = max(inventory_qty, 0) — TASK-V2-143 */
+  stock_effective_qty: string | null
   /** Quota libera effettiva = max(on_hand,0) - set_aside - committed — null per by_customer_order_line */
   availability_qty: string | null
   /** Domanda cliente aggregata per articolo — null per by_customer_order_line */
@@ -291,7 +306,9 @@ export interface PlanningCandidateItem {
   stock_replenishment_qty: string | null
   /** Totale = customer_shortage + stock_replenishment — null se no stock policy o by_customer_order_line */
   required_qty_total: string | null
-  /** True se data_consegna più vicina ≤ today + customer_horizon_days. Null se nessuna data o by_customer_order_line */
+  /** Target scorta dalla stock policy — usato per stock_pressure ratio-based (DL-ARCH-V2-044) — null se no policy */
+  target_stock_qty: string | null
+  /** Flag compat legacy: prossimita temporale server-side. La UI planning usa filtri data locali (TASK-V2-145). */
   is_within_customer_horizon: boolean | null
   earliest_customer_delivery_date: string | null
   /** Data_consegna più vicina (ISO date string) tra le righe ordine. Null se nessuna data o by_customer_order_line */
@@ -306,6 +323,27 @@ export interface PlanningCandidateItem {
   release_qty_now_max: string | null
   /** Stato di rilascio immediato — null se no capacity o by_customer_order_line */
   release_status: 'launchable_now' | 'launchable_partially' | 'blocked_by_capacity_now' | null
+
+  /** Righe ordine aperte per articolo, ordinate per data — by_article only (TASK-V2-143) */
+  open_order_lines: PlanningOpenOrderLine[]
+
+  // ─── Proposal preview (TASK-V2-151) — contratto read-only per scheda destra ─
+  /** Error | Need review | Valid for export */
+  proposal_status: 'Error' | 'Need review' | 'Valid for export' | null
+  /** Quantità calcolata dalla logica proposal effettiva */
+  proposal_qty_computed: string | null
+  /** Logica proposal richiesta sull'articolo */
+  requested_proposal_logic_key: string | null
+  /** Logica proposal effettivamente applicata (può differire in caso di fallback) */
+  effective_proposal_logic_key: string | null
+  /** Motivo del fallback se la logica richiesta non era applicabile */
+  proposal_fallback_reason: string | null
+  /** Sommario leggibile del calcolo proposal */
+  proposal_reason_summary: string | null
+  /** Warning locali proposta (distinti dai warning canonici) */
+  proposal_local_warnings: string[]
+  /** Frammento testuale per la nota EasyJob (es. "BAR x3", "FASCI x2") */
+  note_fragment: string | null
 
   // ─── by_customer_order_line (null per by_article) ────────────────────────
   /** Numero ordine cliente — null per by_article */

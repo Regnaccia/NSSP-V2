@@ -49,6 +49,9 @@ Authoritative reference:
 
 - `docs/decisions/ARCH/DL-ARCH-V2-039.md`
 - `docs/decisions/ARCH/DL-ARCH-V2-040.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-041.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-042.md`
+- `docs/decisions/ARCH/DL-ARCH-V2-043.md`
 - `docs/roadmap/REBASE_V2_BACKLOG_2026-04-15.md`
 
 ## Core Product Idea
@@ -198,14 +201,25 @@ Current behavior:
 - planning now has distinct temporal semantics:
   - `is_within_customer_horizon`
   - stock-driven cap on commitments within stock horizon, separato dal filtro customer
+- by-article rows now also expose:
+  - `stock_effective_qty` (giacenza effettiva = max(inventory_qty, 0))
+  - `open_order_lines` (lista righe ordine aperte con data e qty, ordinate per data)
+  - `nearest_delivery_date`
+- `priority_score` introdotto nel read model come layer separato da `primary_driver` / `reason_code` / `release_status`:
+  - baseline V1: proximity data cliente + severita shortage + release_status + warnings
 
-Rebase note:
+Rebase note (TASK-V2-145, DL-ARCH-V2-042, DL-ARCH-V2-043):
 
+- `customer_horizon_days` rimosso dal calcolo Core di `customer_shortage_qty`
+  - la componente cliente usa ora la domanda aperta reale completa (`fav` completo)
+  - `customer_horizon_days` resta solo come filtro UI / segnale di priorita
+- classificazione planning e ora lineare senza filtri temporali che alterano il driver
 - first `need vs release now` split is already active in the `by_article` branch:
   - `required_qty_eventual`
   - `capacity_headroom_now_qty`
   - `release_qty_now_max`
   - `release_status`
+- next UX direction is not a richer separate proposal page, but a unified planning workspace with proposal panel on the right and separate export history
 
 ### 7. Produzione - Warnings
 
@@ -248,6 +262,11 @@ Current behavior:
 
 Rebase note:
 
+- this page should no longer be treated as the future primary operator surface
+- target UX is:
+  - unified planning workspace
+  - proposal panel contextually attached to the active candidate
+  - separate export history surface
 - current `proposal_logic_key` remains valid as compatibility surface
 - future proposal design must reason in policy axes:
   - base qty
@@ -466,6 +485,11 @@ Not implemented yet:
 Currently open in the active roadmap:
 
 - `TASK-V2-134` multi-bar note fragment `FASCI xN`
+- `TASK-V2-135` Warnings come modulo root di navigazione
+- `TASK-V2-136` pagina admin unificata Logic Config a 3 colonne
+- `TASK-V2-146` docs cleanup e archive alignment
+- `TASK-V2-147` rimozione surface legacy Criticita dalla navigazione primaria
+- `TASK-V2-148` review compatibilita legacy prima del code cleanup
 
 Deferred in the active roadmap:
 
@@ -478,17 +502,18 @@ Operational note:
 
 ## What Is The Next Logical Reasoning Area
 
-The immediate next reasoning area is evolving `Production Proposals` and the rebase backlog beyond the first slices, on top of a planning + stock slice that is now coherent also on:
+The planning Core rebase is now complete (TASK-V2-145):
 
-- distinct `customer horizon` / `stock horizon`
-- primary-driver classification
-- stock-only minimum quantity semantics
-- requested delivery date readability
-- unified descriptive model
-- full order-line description
-- requested destination display
-- active article warnings in planning
-- quick edit path to article configuration
+- `customer_horizon_days` removed from `customer_shortage_qty` calculation
+- `priority_score` introduced as separate layer in the read model
+- `open_order_lines` and `stock_effective_qty` added to the by_article branch
+- classification is now linear: `customer` / `customer+stock` / `stock`
+
+The immediate next reasoning areas are:
+
+1. **Navigation cleanup** — remove `Criticita Articoli` from primary navigation (TASK-V2-147)
+2. **Compatibility review** — audit legacy alias and code before removal (TASK-V2-148)
+3. **Workspace UX evolution** — proposal panel on the right column of the planning workspace (downstream of DL-ARCH-V2-041)
 
 The current proposal slice already covers:
 
@@ -523,6 +548,11 @@ Recommended reading order for another AI agent:
    - `DL-ARCH-V2-031`
    - `DL-ARCH-V2-032`
    - `DL-ARCH-V2-033`
+   - `DL-ARCH-V2-039` (rebase baseline)
+   - `DL-ARCH-V2-040` (need vs release now)
+   - `DL-ARCH-V2-041` (unified planning workspace)
+   - `DL-ARCH-V2-042` (priority_score layer)
+   - `DL-ARCH-V2-043` (customer_horizon fuori dal Core)
 6. relevant specs in `docs/specs/`
 
 ## Practical Summary
@@ -537,5 +567,7 @@ If another AI agent must start reasoning today, the correct mental model is:
 - stock policy governance, enabled flag and invalid-capacity warning are already active
 - first temporal horizons in planning are already active and separated correctly
 - planning mixed cases now classify to a single `primary_driver`
+- `customer_horizon_days` has been removed from Core planning and is now only a UI filter / priority signal
+- `priority_score` is now a distinct layer in the planning read model (baseline V1)
 - `Production Proposals` is now open in a first operational slice
-- the next major evolution is refining proposal logic, workflow and downstream execution semantics
+- the next major evolution is navigation cleanup, compatibility review, and evolving the workspace UX (proposal panel on the right)

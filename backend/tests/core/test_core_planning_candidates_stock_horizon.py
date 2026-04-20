@@ -271,8 +271,10 @@ def test_stock_horizon_riduce_replenishment(session: Session):
     assert len(candidates) == 1
     c = candidates[0]
 
-    # customer_shortage usa fav completo (non cappato)
-    assert c.customer_shortage_qty == Decimal("50")  # max(-(-50),0) = 50
+    # Rebase TASK-V2-145:
+    # customer_shortage usa fav completo, non il customer horizon.
+    # fav = 100 - 150 = -50 -> shortage cliente = 50
+    assert c.customer_shortage_qty == Decimal("50")
     assert c.future_availability_qty == Decimal("-50")
 
     # stock_replenishment usa stock_horizon_avail (con capping a 60gg)
@@ -281,8 +283,8 @@ def test_stock_horizon_riduce_replenishment(session: Session):
     assert c.stock_replenishment_qty == Decimal("20")
 
 
-def test_stock_horizon_customer_shortage_invariata(session: Session):
-    """customer_shortage_qty usa fav completo, non il valore cappato."""
+def test_customer_horizon_non_riduce_customer_shortage_rispetto_al_totale(session: Session):
+    """Post-rebase: customer_shortage_qty usa fav completo, non il customer horizon."""
     _setup_stock_logic(session)
     _famiglia(session, stock_months=Decimal("2"), stock_trigger_months=Decimal("1"))
     _articolo(session)
@@ -299,7 +301,7 @@ def test_stock_horizon_customer_shortage_invariata(session: Session):
 
     candidates = list_planning_candidates_v1(session)
     assert len(candidates) == 1
-    # customer_shortage = max(-fav, 0) = max(70, 0) = 70 (usa fav completo)
+    # fav = 50 - 120 = -70 -> shortage 70 indipendentemente dall'orizzonte cliente
     assert candidates[0].customer_shortage_qty == Decimal("70")
 
 
@@ -346,11 +348,8 @@ def test_stock_horizon_nessun_ordine_nessun_capping(session: Session):
     assert candidates[0].stock_replenishment_qty == Decimal("20")
 
 
-def test_stock_horizon_effective_months_none_no_capping(session: Session):
-    """Se effective_stock_months=None (no stock policy), usa avail_eff senza capping.
-
-    In questo caso target=None e replenishment=None (no stock policy).
-    """
+def test_stock_horizon_effective_months_none_customer_shortage_resta_candidato(session: Session):
+    """Se effective_stock_months=None, la shortage cliente resta candidata anche fuori horizon."""
     # Famiglia senza stock_months -> effective_stock_months=None
     _famiglia(session, stock_months=None, stock_trigger_months=None)
     _articolo(session)
@@ -362,10 +361,9 @@ def test_stock_horizon_effective_months_none_no_capping(session: Session):
 
     candidates = list_planning_candidates_v1(session)
     assert len(candidates) == 1
-    c = candidates[0]
-    # shortage = 50, replenishment = None (no stock policy)
-    assert c.customer_shortage_qty == Decimal("50")
-    assert c.stock_replenishment_qty is None
+    assert candidates[0].customer_shortage_qty == Decimal("50")
+    assert candidates[0].stock_replenishment_qty is None
+    assert candidates[0].primary_driver == "customer"
 
 
 def test_customer_horizon_non_influenza_stock_replenishment(session: Session):
@@ -390,3 +388,95 @@ def test_customer_horizon_non_influenza_stock_replenishment(session: Session):
     assert len(r_long) == 1
     assert r_short[0].stock_replenishment_qty == Decimal("20")
     assert r_long[0].stock_replenishment_qty == Decimal("20")
+
+
+def test_customer_horizon_non_esclude_shortage_cliente_su_12x8x25(session: Session):
+    """Post-rebase: 12x8x25 resta candidato cliente anche con customer_horizon=30.
+
+    inventory = 4129
+    committed = 4400
+    fav = -271 -> shortage cliente = 271
+    Il customer_horizon incide solo su flag/ranking/UI, non sul Core shortage.
+    """
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("2"), stock_trigger_months=Decimal("1"))
+    _articolo(session, "12X8X25")
+    cfg = session.query(CoreArticoloConfig).filter_by(codice_articolo="12X8X25").one()
+    cfg.capacity_override_qty = Decimal("10000")
+    _add_movement(session, "12X8X25", Decimal("500"), datetime(2026, 4, 1))
+    _add_movement(session, "12X8X25", Decimal("500"), datetime(2026, 3, 1))
+    _add_movement(session, "12X8X25", Decimal("500"), datetime(2026, 2, 1))
+    _avail(session, codice="12X8X25", inventory=4129, committed=4400)
+    _riga(
+        session,
+        "12X8X25",
+        Decimal("400"),
+        datetime(_TODAY.year, _TODAY.month, _TODAY.day) + timedelta(days=4),
+        order_ref="CO1",
+        line_ref=1,
+    )
+    _riga(
+        session,
+        "12X8X25",
+        Decimal("2000"),
+        datetime(_TODAY.year, _TODAY.month, _TODAY.day) + timedelta(days=49),
+        order_ref="CO2",
+        line_ref=2,
+    )
+    _riga(
+        session,
+        "12X8X25",
+        Decimal("2000"),
+        datetime(_TODAY.year, _TODAY.month, _TODAY.day) + timedelta(days=79),
+        order_ref="CO3",
+        line_ref=3,
+    )
+    session.commit()
+
+    candidates = list_planning_candidates_v1(session, customer_horizon_days=30)
+    item = next(c for c in candidates if c.article_code == "12X8X25")
+    assert item.customer_shortage_qty == Decimal("271")
+    assert item.primary_driver == "customer"
+
+
+def test_customer_horizon_include_prima_scopertura_quando_entra_in_orizzonte(session: Session):
+    """Quando l'orizzonte include luglio, la shortage cliente deve diventare 271."""
+    _setup_stock_logic(session)
+    _famiglia(session, stock_months=Decimal("2"), stock_trigger_months=Decimal("1"))
+    _articolo(session, "12X8X25")
+    cfg = session.query(CoreArticoloConfig).filter_by(codice_articolo="12X8X25").one()
+    cfg.capacity_override_qty = Decimal("10000")
+    _add_movement(session, "12X8X25", Decimal("500"), datetime(2026, 4, 1))
+    _add_movement(session, "12X8X25", Decimal("500"), datetime(2026, 3, 1))
+    _add_movement(session, "12X8X25", Decimal("500"), datetime(2026, 2, 1))
+    _avail(session, codice="12X8X25", inventory=4129, committed=4400)
+    _riga(
+        session,
+        "12X8X25",
+        Decimal("400"),
+        datetime(_TODAY.year, _TODAY.month, _TODAY.day) + timedelta(days=4),
+        order_ref="CO1",
+        line_ref=1,
+    )
+    _riga(
+        session,
+        "12X8X25",
+        Decimal("2000"),
+        datetime(_TODAY.year, _TODAY.month, _TODAY.day) + timedelta(days=49),
+        order_ref="CO2",
+        line_ref=2,
+    )
+    _riga(
+        session,
+        "12X8X25",
+        Decimal("2000"),
+        datetime(_TODAY.year, _TODAY.month, _TODAY.day) + timedelta(days=79),
+        order_ref="CO3",
+        line_ref=3,
+    )
+    session.commit()
+
+    candidates = list_planning_candidates_v1(session, customer_horizon_days=90)
+    item = next(c for c in candidates if c.article_code == "12X8X25")
+    assert item.customer_shortage_qty == Decimal("271")
+    assert item.primary_driver == "customer"

@@ -1,7 +1,7 @@
 # ODE V2 - Stato Progetto
 
 ## Date
-2026-04-16
+2026-04-20
 
 ## Stato generale
 
@@ -50,9 +50,12 @@ Sono oggi disponibili:
   - `customer_shortage_qty`
   - `stock_replenishment_qty`
   - `required_qty_total`
-- primi horizon planning gia introdotti:
-  - `customer horizon` nel ramo customer-driven
-  - `stock horizon` nella sola componente scorta `by_article`
+- separazione esplicita tra:
+  - bisogno planning
+  - rilascio immediato
+  - priorita
+- `customer_horizon` declassato a segnale UI / ranking
+- `priority_score` introdotto nel read model planning come layer separato
 - refinement finale di planning completato:
   - `stock_effective = max(stock_calculated, 0)`
   - `reason_code` / `reason_text`
@@ -92,7 +95,7 @@ Sono oggi disponibili:
 
 Famiglie attive:
 
-- `ARCH/` fino a `DL-ARCH-V2-040`
+- `ARCH/` fino a `DL-ARCH-V2-044`
 - `UIX/` fino a `DL-UIX-V2-004`
 
 Supporti attivi:
@@ -129,10 +132,13 @@ Punti ormai stabili:
 Completati:
 
 - `TASK-V2-001` -> `TASK-V2-133`
+- `TASK-V2-137` -> `TASK-V2-155`
 
 ## Task aperti
 
 - `TASK-V2-134` note fragment dedicato `FASCI xN` per la logica proposal multi-bar
+- `TASK-V2-135` `Warnings` come modulo root di navigazione
+- `TASK-V2-136` pagina admin unificata `Logic Config` a `3 colonne`
 
 La backlog attiva non e piu una semplice sequenza di task proposal, ma e organizzata nei due stream:
 
@@ -169,7 +175,7 @@ Ultimi task chiusi rilevanti:
 - `TASK-V2-097` UI famiglie per `gestione_scorte_attiva`
 - `TASK-V2-098` UI articoli per override `gestione_scorte_attiva`
 - `TASK-V2-099` Core planning e stock policy riallineati a `effective_gestione_scorte_attiva`
-- `TASK-V2-100` customer horizon Core in `Planning Candidates`
+- `TASK-V2-100` customer horizon flag nel Core `Planning Candidates`
 - `TASK-V2-101` stock horizon cap sugli impegni della componente scorta
 - `TASK-V2-102` filtri UI `Planning Candidates` per driver e customer horizon
 - `TASK-V2-103` separazione Core tra `customer horizon` e `stock horizon`
@@ -184,6 +190,25 @@ Ultimi task chiusi rilevanti:
 - `TASK-V2-112` colonna `Warnings` nella tabella planning
 - `TASK-V2-113` quick config modal articolo dalla vista planning
 - `TASK-V2-114` bridge case-insensitive planning -> articoli per lookup e write config
+- `TASK-V2-137` shadow view planning con colonne sinistra e centrale
+- `TASK-V2-138` refinement UI della shadow view planning secondo la spec UX congelata
+- `TASK-V2-139` filtri workspace planning: scope, `Orizzonte cliente`, ricerche e sorting
+- `TASK-V2-140` blocco `Parametri di calcolo` e scheda destra `Planning / Scorte`
+- `TASK-V2-141` refinement wide-screen del blocco `Parametri di calcolo`
+- `TASK-V2-142` test core su `12x8x25`
+- `TASK-V2-143` ordini aperti e giacenza effettiva nella colonna centrale
+- `TASK-V2-144` blocco `Cliente / Ordine` visibile anche nei casi stock-only
+- `TASK-V2-145` rebase Core planning: `customer_horizon` fuori dal calcolo shortage e `priority_score` baseline
+- `TASK-V2-146` docs cleanup e archive alignment
+- `TASK-V2-147` rimozione della surface legacy `Criticita`
+- `TASK-V2-148` review delle compatibilita legacy prima del cleanup codice
+- `TASK-V2-149` contratto e implementazione di `priority_score_v1_basic`
+- `TASK-V2-150` blocco `Priority` nella colonna centrale del workspace planning
+- `TASK-V2-151` contratti Core/API per la scheda destra `Proposal`
+- `TASK-V2-152` UI della colonna destra `Proposal` V1
+- `TASK-V2-153` apertura automatica della colonna destra alla selezione del candidate
+- `TASK-V2-154` refinement layout della colonna destra `Proposal`
+- `TASK-V2-155` revisione del `proposal_status` bloccante su `line_reference`
 
 ## Task deferred
 
@@ -199,6 +224,14 @@ Ultimi task chiusi rilevanti:
 I prossimi stream corretti sono:
 
 1. `Domain Rebase`
+   - chiarire il target planning:
+     - bisogno semplice
+     - `priority_score` separato
+     - rimozione di `customer_horizon` dal Core
+   - materializzare il passaggio UX a `Unified Planning Workspace`:
+     - `Planning Candidates` come surface primaria
+     - `proposal workspace panel` contestuale
+     - storico export separato
    - fissare il contratto `Production Proposals` in termini di policy bundle:
      - `proposal_base_qty_policy`
      - `proposal_lot_policy`
@@ -206,6 +239,10 @@ I prossimi stream corretti sono:
      - `proposal_customer_guardrail_policy`
      - `proposal_note_policy`
    - rileggere ogni nuovo task planning/proposal contro il baseline di [DL-ARCH-V2-039.md](/c:/Users/Alberto.REGNANI/Desktop/NSSP/NSSP/V2/docs/decisions/ARCH/DL-ARCH-V2-039.md#L1)
+2. `Project Cleanup`
+   - riallineare docs e archive
+   - togliere dalla navigation le surface legacy non piu operative
+   - censire compatibilita/alias prima di rimuovere codice
    - chiudere `TASK-V2-134` per riallineare il `note_fragment` della multi-bar a `FASCI xN`
 2. `Backbone Hardening`
    - strategia strutturale `MAG_REALE`

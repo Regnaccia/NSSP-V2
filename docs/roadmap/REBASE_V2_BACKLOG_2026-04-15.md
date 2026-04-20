@@ -28,8 +28,29 @@ Ordine raccomandato:
 Output attesi:
 
 - distinzione chiara `need vs release now`
+- modello `Planning Candidates` semplificato e piu lineare
+- `priority_score` introdotto come layer di priorita separato dal bisogno
 - logiche proposal ripensate come bundle di policy
 - ownership dati stabile tra finito, grezzo, famiglia e admin
+
+### 1A. Planning Candidate Rebase
+
+Sub-stream dedicato dentro `Domain Rebase`.
+
+Principi:
+
+- il Core planning deve restare semplice e stabile
+- il tempo non deve ridefinire da solo il driver del candidate
+- urgenza e ordinamento devono crescere in un layer separato di `priority_score`
+
+Output attesi:
+
+- separazione esplicita tra:
+  - `need detection`
+  - `release feasibility`
+  - `priority`
+- rimozione di `customer_horizon_days` dal calcolo Core planning
+- baseline iniziale di `priority_score` spiegabile
 
 ### 2. Backbone Hardening
 
@@ -71,6 +92,7 @@ Ogni nuovo task planning deve dichiarare esplicitamente se modifica:
 
 - `need detection`
 - `release feasibility`
+- `priority scoring`
 - oppure solo la presentazione/readability
 
 Non sono piu ammessi task che parlano genericamente di "quantita planning" senza dire quale semantica stanno toccando.
@@ -99,8 +121,12 @@ Ogni nuovo task deve classificare l'output come:
 
 La sequenza corretta da questo punto in avanti e:
 
-1. fissare il contratto `Planning Candidates` con split `required_qty_eventual / release_qty_now_max / release_status`
-2. fissare il contratto proposal in termini di policy bundle
-3. solo dopo aprire nuovi task implementativi sui comportamenti quantitativi
+1. fissare il target di rebase di `Planning Candidates` come:
+   - modello semplice del bisogno
+   - `priority_score` separato
+2. rimuovere `customer_horizon_days` dal calcolo Core e mantenerlo solo come filtro UI / ranking
+3. fissare il contratto `Planning Candidates` con split `required_qty_eventual / release_qty_now_max / release_status`
+4. fissare il contratto proposal in termini di policy bundle
+5. solo dopo aprire nuovi task implementativi sui comportamenti quantitativi
 
 Il `backbone hardening` non va mescolato dentro i task planning/proposal salvo dipendenza tecnica esplicita.

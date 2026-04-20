@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from '@/app/authStore'
+import { apiClient } from '@/api/client'
+import type { Surface } from '@/types/api'
 import AppShell from '@/components/AppShell'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import Login from '@/pages/Login'
@@ -8,6 +11,8 @@ import AdminHome from '@/pages/surfaces/AdminHome'
 import AdminStockLogicPage from '@/pages/surfaces/AdminStockLogicPage'
 import AdminProposalLogicPage from '@/pages/surfaces/AdminProposalLogicPage'
 import AdminWarningsPage from '@/pages/surfaces/AdminWarningsPage'
+import AdminLogicConfigPage from '@/pages/surfaces/AdminLogicConfigPage'
+import PlanningWorkspacePage from '@/pages/surfaces/PlanningWorkspacePage'
 import LogisticaHome from '@/pages/surfaces/LogisticaHome'
 import MagazzinoHome from '@/pages/surfaces/MagazzinoHome'
 import ProduzioneHome from '@/pages/surfaces/ProduzioneHome'
@@ -33,9 +38,31 @@ function HomeRedirect() {
   return <Navigate to={surfaces[0].path} replace />
 }
 
+/**
+ * Aggiorna le superfici disponibili chiamando /auth/me al boot dell'app.
+ * Garantisce che le sessioni persistite in localStorage riflettano
+ * la logica backend corrente (es. nuove surface cross-role come /warnings).
+ */
+function SessionRefresh() {
+  const { isAuthenticated, updateSurfaces } = useAuthStore()
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    apiClient
+      .get<{ available_surfaces: Surface[] }>('/auth/me')
+      .then((r) => updateSurfaces(r.data.available_surfaces))
+      .catch(() => {
+        // Sessione scaduta o errore di rete: non agisce, lascia la redirect di auth
+      })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <SessionRefresh />
       <Routes>
         {/* Pubblica */}
         <Route path="/login" element={<Login />} />
@@ -96,6 +123,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminWarningsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/logic-config"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminLogicConfigPage />
               </ProtectedRoute>
             }
           />
@@ -175,10 +210,20 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          {/* Planning Workspace — shadow view (TASK-V2-137) */}
           <Route
-            path="/produzione/warnings"
+            path="/produzione/planning-workspace"
             element={
               <ProtectedRoute roles={['produzione']}>
+                <PlanningWorkspacePage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Warnings — surface root trasversale (TASK-V2-135) */}
+          <Route
+            path="/warnings"
+            element={
+              <ProtectedRoute roles={['admin', 'produzione', 'magazzino', 'logistica']}>
                 <WarningsPage />
               </ProtectedRoute>
             }

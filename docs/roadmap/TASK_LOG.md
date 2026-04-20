@@ -150,3 +150,21 @@ Per dettagli tecnici, verifiche e completion contract restano autoritativi i sin
 | `TASK-V2-132` | Completed | Label human-friendly e template JSON guidato delle proposal logic nella schermata articoli |
 | `TASK-V2-133` | Completed | Refactor UI `articoli` a 3 colonne con centro read-only e destra configurazione |
 | `TASK-V2-134` | Todo | Note fragment dedicato `FASCI xN` per la logica proposal multi-bar |
+| `TASK-V2-135` | Todo | Spostare `Warnings` a root navigation mantenendo i filtri per area/permessi |
+| `TASK-V2-136` | Todo | Unificare in admin la governance delle logiche in una pagina `Logic Config` a 3 colonne |
+| `TASK-V2-137` | Completed | Shadow view planning introdotta con colonne sinistra e centrale per il `Unified Planning Workspace` |
+| `TASK-V2-138` | Completed | Refinement della shadow view planning riallineato alla spec UX di sinistra e centro |
+| `TASK-V2-139` | Completed | Filtri della shadow view planning: scope, `Orizzonte cliente`, ricerche e sorting |
+| `TASK-V2-140` | Completed | Blocco `Parametri di calcolo` e scheda destra `Planning / Scorte` nel workspace planning |
+| `TASK-V2-141` | Completed | Refinement wide-screen del blocco `Parametri di calcolo` con griglia compatta |
+| `TASK-V2-142` | Completed | Test core sul caso reale `12x8x25` e fix del customer shortage su `Orizzonte cliente` |
+| `TASK-V2-143` | Completed | Refinement colonna centrale: ordini aperti con distinzione orizzonte e giacenza effettiva |
+| `TASK-V2-144` | Completed | Refinement colonna centrale: blocco `Cliente / Ordine` visibile anche nei casi stock-only |
+| `TASK-V2-145` | Completed | Rebase Core planning: `customer_horizon` fuori dal calcolo shortage e baseline `priority_score` |
+| `TASK-V2-149` | Completed | Contratto e implementazione di `priority_score_v1_basic` con `stock_pressure` ratio-based |
+| `TASK-V2-150` | Completed | Blocco `Priority` nella colonna centrale del workspace planning |
+| `TASK-V2-151` | Completed | Contratti Core/API per la scheda destra `Proposal` del workspace planning |
+| `TASK-V2-152` | Completed | UI della colonna destra `Proposal` V1 senza override |
+| `TASK-V2-153` | Completed | Apertura automatica della colonna destra del workspace planning alla selezione del candidate |
+| `TASK-V2-154` | Completed | Refinement layout della colonna destra `Proposal` per lettura operativa |
+| `TASK-V2-155` | Completed | Revisione del `proposal_status` bloccante su `line_reference` |

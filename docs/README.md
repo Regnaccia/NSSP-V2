@@ -99,6 +99,9 @@ Sottocartelle per tipo:
 | [decisions/ARCH/DL-ARCH-V2-038.md](decisions/ARCH/DL-ARCH-V2-038.md) | Nuova logica `proposal_full_bar_v2_capacity_floor`: prova `ceil`, poi `floor` sotto capienza, poi fallback a pezzi |
 | [decisions/ARCH/DL-ARCH-V2-039.md](decisions/ARCH/DL-ARCH-V2-039.md) | Baseline del rebase architetturale V2: moduli congelati, split `need vs release now`, policy axes proposal, ownership dati e separazione tra domain rebase e backbone hardening |
 | [decisions/ARCH/DL-ARCH-V2-040.md](decisions/ARCH/DL-ARCH-V2-040.md) | Primo contratto di rebase di `Planning Candidates`: split `required_qty_eventual / release_qty_now_max / release_status` nel ramo `by_article` |
+| [decisions/ARCH/DL-ARCH-V2-041.md](decisions/ARCH/DL-ARCH-V2-041.md) | Target UX post-rebase: `Unified Planning Workspace` come surface operativa primaria, proposal panel contestuale e storico export separato |
+| [decisions/ARCH/DL-ARCH-V2-042.md](decisions/ARCH/DL-ARCH-V2-042.md) | Target del rebase planning: Core candidato semplice, `priority_score` come layer separato di urgenza e declassamento di `customer_horizon` a compatibilita transitoria |
+| [decisions/ARCH/DL-ARCH-V2-043.md](decisions/ARCH/DL-ARCH-V2-043.md) | Chiusura della scelta di rebase: `customer_horizon` esce dal Core planning e resta solo come filtro UI / segnale di priorita |
 | [decisions/ARCH/DL-ARCH-V2-TEMPLATE.md](decisions/ARCH/DL-ARCH-V2-TEMPLATE.md) | Template minimo per nuovi Decision Log architetturali V2 |
 | [decisions/UIX/DL-UIX-V2-001.md](decisions/UIX/DL-UIX-V2-001.md) | Modello UI di navigazione multi-surface con layout persistente e sidebar basata su `available_surfaces` |
 | [decisions/UIX/DL-UIX-V2-002.md](decisions/UIX/DL-UIX-V2-002.md) | Pattern standard multi-colonna per menu configurazioni, con varianti a `2`, `3` o `4` colonne secondo il nesting del caso |
@@ -115,6 +118,7 @@ Sottocartelle per tipo:
 | File | Contenuto |
 |------|-----------|
 | [guides/BACKEND_BOOTSTRAP_AND_VERIFY.md](guides/BACKEND_BOOTSTRAP_AND_VERIFY.md) | Bootstrap locale backend/frontend, auth browser, admin, logistica, produzione/articoli, sync Easy read-only, catalogo famiglie e sync on demand backend-controlled |
+| [guides/COLLABORATION_RULES_REBASE.md](guides/COLLABORATION_RULES_REBASE.md) | Regole operative di collaborazione durante il rebase V2: classificazione delle idee, uso di task/test/DL, gestione dei casi reali e separazione tra bisogno, rilascio e priorita |
 | [guides/IMPLEMENTATION_PATTERNS.md](guides/IMPLEMENTATION_PATTERNS.md) | Pattern replicabili emersi dai primi slice reali V2, utili per accelerare nuovi stream di sviluppo |
 | [guides/PLANNING_AND_STOCK_RULES.md](guides/PLANNING_AND_STOCK_RULES.md) | Guida breve e normativa per le regole oggi stabili di `Planning Candidates`, stock policy V1, horizon iniziali e warning collegati |
 | [guides/UI_SURFACES_OVERVIEW.md](guides/UI_SURFACES_OVERVIEW.md) | Riepilogo delle schermate UI V2 per funzione, entita logiche usate, dati esposti e azioni principali |
@@ -143,6 +147,7 @@ La cartella `roadmap/` raccoglie stato e roadmap attiva della V2.
 | [roadmap/STATUS.md](roadmap/STATUS.md) | Snapshot di stato del progetto: perimetro completato, task aperti e prossima sequenza consigliata |
 | [roadmap/TASK_LOG.md](roadmap/TASK_LOG.md) | Log minimale dei task V2 svolti, con una sintesi breve per task |
 | [roadmap/REBASE_V2_BACKLOG_2026-04-15.md](roadmap/REBASE_V2_BACKLOG_2026-04-15.md) | Backlog di rebase della V2 dopo la review generale: stream `Domain Rebase`, stream `Backbone Hardening` e rilettura del cluster proposal `115-127` |
+| [roadmap/CLEANUP_PLAN_2026-04-17.md](roadmap/CLEANUP_PLAN_2026-04-17.md) | Piano di pulizia prudente della V2: distinzione tra eliminabile subito, archiviabile e compatibilita da tenere finche non verificate |
 
 I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 
@@ -230,6 +235,79 @@ I documenti oggi considerati piu vicini a V1 sono stati spostati in archivio:
 | [task/TASK-V2-073-fix-mag-reale-rebootstrap.md](task/TASK-V2-073-fix-mag-reale-rebootstrap.md) | Re-bootstrap completo di `sync_mag_reale` per eliminare movimenti fantasma e riallineare giacenza, availability e planning ai dati Easy corretti |
 | [task/TASK-V2-074-core-planning-candidates-final-refinement.md](task/TASK-V2-074-core-planning-candidates-final-refinement.md) | Refinement finale del Core `Planning Candidates`: clamp stock a zero, reason esplicita, descrizione ordine e misura |
 | [task/TASK-V2-075-ui-planning-candidates-final-refinement.md](task/TASK-V2-075-ui-planning-candidates-final-refinement.md) | Refinement finale della UI `Planning Candidates` per mostrare reason, misura e descrizione ordine nel ramo per-riga |
+| [task/TASK-V2-076-core-warnings-v1.md](task/TASK-V2-076-core-warnings-v1.md) | Primo slice Core `Warnings` V1: warning canonici unici con `visible_to_areas` e tipi iniziali `NEGATIVE_STOCK` |
+| [task/TASK-V2-077-admin-warning-visibility-config.md](task/TASK-V2-077-admin-warning-visibility-config.md) | Prima configurazione admin della warning visibility con `visible_to_areas` |
+| [task/TASK-V2-078-ui-warnings-surface-v1.md](task/TASK-V2-078-ui-warnings-surface-v1.md) | Prima surface UI `Warnings` con lista canonici filtrata per area corrente |
+| [task/TASK-V2-079-warning-badges-articoli-e-planning.md](task/TASK-V2-079-warning-badges-articoli-e-planning.md) | Badge warning in `articoli` e `Planning Candidates` — **deferred** |
+| [task/TASK-V2-080-deprecazione-surface-criticita-articoli.md](task/TASK-V2-080-deprecazione-surface-criticita-articoli.md) | Deprecazione formale della surface `Criticita Articoli`, ancora presente tecnicamente |
+| [task/TASK-V2-081-realign-warning-visibility-by-area.md](task/TASK-V2-081-realign-warning-visibility-by-area.md) | Riallineamento warning visibility al modello `visible_to_areas` definitivo |
+| [task/TASK-V2-082-warnings-surface-filter-by-current-area.md](task/TASK-V2-082-warnings-surface-filter-by-current-area.md) | Filtro della surface `Warnings` per area corrente dell'utente, con bypass `admin` |
+| [task/TASK-V2-083-model-stock-policy-defaults-and-overrides.md](task/TASK-V2-083-model-stock-policy-defaults-and-overrides.md) | Modello/config stock policy V1 con default famiglia e override articolo |
+| [task/TASK-V2-084-core-stock-policy-metrics-v1.md](task/TASK-V2-084-core-stock-policy-metrics-v1.md) | Core stock policy metrics V1: `monthly_stock_base_qty`, `target_stock_qty`, `trigger_stock_qty` |
+| [task/TASK-V2-085-planning-candidates-stock-driven-v1.md](task/TASK-V2-085-planning-candidates-stock-driven-v1.md) | Integrazione stock-driven nel ramo `by_article` di `Planning Candidates` con breakdown `customer_shortage_qty` / `stock_replenishment_qty` |
+| [task/TASK-V2-086-stock-logic-config-and-strategy-selection.md](task/TASK-V2-086-stock-logic-config-and-strategy-selection.md) | Configurazione interna logiche stock con `strategy_key` selezionabile e parametri tunabili |
+| [task/TASK-V2-087-hardening-monthly-stock-base-algorithm.md](task/TASK-V2-087-hardening-monthly-stock-base-algorithm.md) | Hardening algoritmo `monthly_stock_base_qty` con finestre multiple, percentile e filtro outlier |
+| [task/TASK-V2-088-stock-policy-final-alignment-before-planning.md](task/TASK-V2-088-stock-policy-final-alignment-before-planning.md) | Allineamento finale stock policy V1 prima dell'integrazione planning |
+| [task/TASK-V2-089-ui-articoli-stock-policy-metrics.md](task/TASK-V2-089-ui-articoli-stock-policy-metrics.md) | UI articoli per metriche e configurazioni stock policy |
+| [task/TASK-V2-090-admin-stock-logic-config.md](task/TASK-V2-090-admin-stock-logic-config.md) | Configurazione admin delle logiche stock V1 |
+| [task/TASK-V2-091-warning-invalid-stock-capacity.md](task/TASK-V2-091-warning-invalid-stock-capacity.md) | Nuovo warning canonico `INVALID_STOCK_CAPACITY` per articoli con stock policy ma capienza invalida |
+| [task/TASK-V2-092-fix-capacity-from-containers-v1-legacy-formula.md](task/TASK-V2-092-fix-capacity-from-containers-v1-legacy-formula.md) | Fix formula `capacity_from_containers_v1` allineata alla formula legacy |
+| [task/TASK-V2-093-ui-famiglie-stock-policy-defaults.md](task/TASK-V2-093-ui-famiglie-stock-policy-defaults.md) | UI famiglie per default stock policy |
+| [task/TASK-V2-094-admin-stock-logic-dedicated-section-and-capacity-params.md](task/TASK-V2-094-admin-stock-logic-dedicated-section-and-capacity-params.md) | Refinement admin stock logic con sezione dedicata e parametri capacity |
+| [task/TASK-V2-095-admin-stock-logic-separate-page.md](task/TASK-V2-095-admin-stock-logic-separate-page.md) | Pagina admin separata per la governance delle logiche stock |
+| [task/TASK-V2-096-model-stock-policy-enabled-defaults-and-overrides.md](task/TASK-V2-096-model-stock-policy-enabled-defaults-and-overrides.md) | Modello/config per il flag esplicito `gestione_scorte_attiva` con default famiglia e override articolo |
+| [task/TASK-V2-097-ui-famiglie-gestione-scorte-attiva.md](task/TASK-V2-097-ui-famiglie-gestione-scorte-attiva.md) | UI famiglie per la configurazione di `gestione_scorte_attiva` |
+| [task/TASK-V2-098-ui-articoli-override-gestione-scorte-attiva.md](task/TASK-V2-098-ui-articoli-override-gestione-scorte-attiva.md) | UI articoli per override del flag `gestione_scorte_attiva` |
+| [task/TASK-V2-099-core-stock-policy-and-planning-respect-enabled-flag.md](task/TASK-V2-099-core-stock-policy-and-planning-respect-enabled-flag.md) | Core planning e stock policy riallineati a `effective_gestione_scorte_attiva` |
+| [task/TASK-V2-100-core-customer-horizon-planning-candidates.md](task/TASK-V2-100-core-customer-horizon-planning-candidates.md) | Flag `is_within_customer_horizon` nel Core `Planning Candidates` |
+| [task/TASK-V2-101-core-stock-horizon-cap-on-commitments.md](task/TASK-V2-101-core-stock-horizon-cap-on-commitments.md) | Cap temporale sugli impegni della componente scorta basato su `stock horizon` |
+| [task/TASK-V2-102-ui-planning-candidates-driver-filters-and-horizon.md](task/TASK-V2-102-ui-planning-candidates-driver-filters-and-horizon.md) | Filtri UI `Planning Candidates` per driver e customer horizon |
+| [task/TASK-V2-103-core-separate-customer-and-stock-horizons.md](task/TASK-V2-103-core-separate-customer-and-stock-horizons.md) | Separazione Core tra `customer horizon` e `stock horizon` |
+| [task/TASK-V2-104-ui-planning-customer-horizon-filter-semantic-fix.md](task/TASK-V2-104-ui-planning-customer-horizon-filter-semantic-fix.md) | Fix semantico UI/API del filtro `customer horizon` |
+| [task/TASK-V2-105-planning-primary-driver-classification.md](task/TASK-V2-105-planning-primary-driver-classification.md) | Classificazione primaria `customer|stock` dei candidate `by_article` |
+| [task/TASK-V2-106-required-qty-minimum-for-stock-only-candidates.md](task/TASK-V2-106-required-qty-minimum-for-stock-only-candidates.md) | `required_qty_minimum` coerente nei candidate `stock-only` |
+| [task/TASK-V2-107-planning-candidates-requested-delivery-date.md](task/TASK-V2-107-planning-candidates-requested-delivery-date.md) | Data richiesta in `Planning Candidates` con semantica distinta tra riga ordine e ramo aggregato |
+| [task/TASK-V2-108-core-planning-candidates-readability-contracts.md](task/TASK-V2-108-core-planning-candidates-readability-contracts.md) | Contratti Core planning per descrizione completa, destinazione richiesta e leggibilita |
+| [task/TASK-V2-109-ui-planning-candidates-readability-refinement.md](task/TASK-V2-109-ui-planning-candidates-readability-refinement.md) | Refinement UI `Planning Candidates` per badge, misura, descrizioni e destinazioni |
+| [task/TASK-V2-110-unify-planning-candidate-description-model.md](task/TASK-V2-110-unify-planning-candidate-description-model.md) | Modello descrittivo unificato con `description_parts` e `display_description` |
+| [task/TASK-V2-111-core-planning-candidates-article-warnings-enrichment.md](task/TASK-V2-111-core-planning-candidates-article-warnings-enrichment.md) | Enrichment Core/API degli warning articolo in planning |
+| [task/TASK-V2-112-ui-planning-candidates-warnings-column.md](task/TASK-V2-112-ui-planning-candidates-warnings-column.md) | Colonna `Warnings` nella tabella planning |
+| [task/TASK-V2-113-ui-planning-candidates-article-quick-config-modal.md](task/TASK-V2-113-ui-planning-candidates-article-quick-config-modal.md) | Quick config modal articolo direttamente dalla vista planning |
+| [task/TASK-V2-114-core-articoli-case-insensitive-code-bridge.md](task/TASK-V2-114-core-articoli-case-insensitive-code-bridge.md) | Bridge case-insensitive planning -> articoli per lookup e write config |
+| [task/TASK-V2-115-core-proposal-export-preview-contracts.md](task/TASK-V2-115-core-proposal-export-preview-contracts.md) | Contratti Core per il preview export di `Production Proposals` |
+| [task/TASK-V2-116-ui-production-proposals-export-preview-table.md](task/TASK-V2-116-ui-production-proposals-export-preview-table.md) | Tabella UI `Production Proposals` come preview dell'export |
+| [task/TASK-V2-117-core-proposal-target-pieces-v1-logic.md](task/TASK-V2-117-core-proposal-target-pieces-v1-logic.md) | Logica proposal `proposal_target_pieces_v1` — baseline bundle `pieces` |
+| [task/TASK-V2-118-model-raw-bar-length-enable-and-article-config.md](task/TASK-V2-118-model-raw-bar-length-enable-and-article-config.md) | Modello `raw_bar_length_mm` e configurazione articolo/famiglia |
+| [task/TASK-V2-119-ui-famiglie-raw-bar-length-enable.md](task/TASK-V2-119-ui-famiglie-raw-bar-length-enable.md) | UI famiglie per abilitazione del campo `raw_bar_length_mm` |
+| [task/TASK-V2-120-ui-articoli-raw-bar-length-mm-and-proposal-logic.md](task/TASK-V2-120-ui-articoli-raw-bar-length-mm-and-proposal-logic.md) | UI articoli per `raw_bar_length_mm` e assegnazione logica proposal |
+| [task/TASK-V2-121-core-proposal-full-bar-v1-logic.md](task/TASK-V2-121-core-proposal-full-bar-v1-logic.md) | Logica proposal `proposal_full_bar_v1` — bundle `strict_capacity` con barra intera |
+| [task/TASK-V2-122-warning-missing-raw-bar-length.md](task/TASK-V2-122-warning-missing-raw-bar-length.md) | Warning canonico `MISSING_RAW_BAR_LENGTH` per articoli con logica barra senza lunghezza grezzo |
+| [task/TASK-V2-123-ui-articoli-hide-raw-bar-length-when-family-disabled.md](task/TASK-V2-123-ui-articoli-hide-raw-bar-length-when-family-disabled.md) | Nascondere `raw_bar_length_mm` nell'UI articoli quando la famiglia ha il flag disabilitato |
+| [task/TASK-V2-124-core-proposal-logic-diagnostics.md](task/TASK-V2-124-core-proposal-logic-diagnostics.md) | Diagnostica locale `Production Proposals`: logica richiesta, effettiva e fallback reason |
+| [task/TASK-V2-125-ui-production-proposals-logic-diagnostics.md](task/TASK-V2-125-ui-production-proposals-logic-diagnostics.md) | UI `Production Proposals` per mostrare la diagnostica logica proposal |
+| [task/TASK-V2-126-realign-raw-bar-length-to-raw-material-articles.md](task/TASK-V2-126-realign-raw-bar-length-to-raw-material-articles.md) | Correzione ownership `raw_bar_length_mm` verso il materiale grezzo associato |
+| [task/TASK-V2-127-core-proposal-full-bar-v2-capacity-floor-logic.md](task/TASK-V2-127-core-proposal-full-bar-v2-capacity-floor-logic.md) | Logica proposal `proposal_full_bar_v2_capacity_floor`: ceil, poi floor sotto capienza, poi fallback pezzi |
+| [task/TASK-V2-128-core-planning-need-vs-release-now-contract.md](task/TASK-V2-128-core-planning-need-vs-release-now-contract.md) | Primo split `need vs release now` nel Core planning: `required_qty_eventual / release_qty_now_max / release_status` |
+| [task/TASK-V2-129-ui-planning-need-vs-release-now-visibility.md](task/TASK-V2-129-ui-planning-need-vs-release-now-visibility.md) | Visibilita UI del contratto `need vs release now` |
+| [task/TASK-V2-130-ui-admin-proposal-logic-two-column-governance.md](task/TASK-V2-130-ui-admin-proposal-logic-two-column-governance.md) | UI admin proposal logic a 2 colonne con governance suite e parametri |
+| [task/TASK-V2-131-core-proposal-multi-bar-v1-logic.md](task/TASK-V2-131-core-proposal-multi-bar-v1-logic.md) | Logica proposal `proposal_multi_bar_v1_capacity_floor` |
+| [task/TASK-V2-132-ui-articoli-proposal-logic-friendly-labels.md](task/TASK-V2-132-ui-articoli-proposal-logic-friendly-labels.md) | Label human-friendly per le logiche proposal nella UI articoli |
+| [task/TASK-V2-133-ui-articoli-three-column-restructure.md](task/TASK-V2-133-ui-articoli-three-column-restructure.md) | Ristrutturazione UI articoli a 3 colonne |
+| [task/TASK-V2-134-core-proposal-multi-bar-note-fragment-fasci.md](task/TASK-V2-134-core-proposal-multi-bar-note-fragment-fasci.md) | `note_fragment` dedicato `FASCI xN` per la logica proposal multi-bar — **aperto** |
+| [task/TASK-V2-135-ui-warnings-root-navigation.md](task/TASK-V2-135-ui-warnings-root-navigation.md) | `Warnings` come modulo root di navigazione — **aperto** |
+| [task/TASK-V2-136-ui-admin-unified-logic-config-three-column.md](task/TASK-V2-136-ui-admin-unified-logic-config-three-column.md) | Pagina admin unificata `Logic Config` a 3 colonne — **aperto** |
+| [task/TASK-V2-137-ui-planning-unified-workspace-shadow-view-left-center.md](task/TASK-V2-137-ui-planning-unified-workspace-shadow-view-left-center.md) | Shadow view Planning Workspace con colonne sinistra e centrale |
+| [task/TASK-V2-138-ui-planning-workspace-left-center-refinement.md](task/TASK-V2-138-ui-planning-workspace-left-center-refinement.md) | Refinement UI della colonna sinistra e centrale del Planning Workspace |
+| [task/TASK-V2-139-ui-planning-workspace-filters-scope-customer-horizon-search.md](task/TASK-V2-139-ui-planning-workspace-filters-scope-customer-horizon-search.md) | Filtri workspace planning: scope, `Orizzonte cliente`, ricerche e sorting |
+| [task/TASK-V2-140-ui-planning-workspace-calculation-params-and-right-config.md](task/TASK-V2-140-ui-planning-workspace-calculation-params-and-right-config.md) | Blocco `Parametri di calcolo` e scheda destra `Planning / Scorte` |
+| [task/TASK-V2-141-ui-planning-workspace-calculation-params-compact-grid.md](task/TASK-V2-141-ui-planning-workspace-calculation-params-compact-grid.md) | Refinement wide-screen del blocco `Parametri di calcolo` in griglia compatta |
+| [task/TASK-V2-142-core-planning-customer-horizon-coverage-test-case.md](task/TASK-V2-142-core-planning-customer-horizon-coverage-test-case.md) | Test Core su caso reale `12x8x25` per `customer horizon` e copertura |
+| [task/TASK-V2-143-ui-planning-center-open-orders-and-stock-effective.md](task/TASK-V2-143-ui-planning-center-open-orders-and-stock-effective.md) | Ordini aperti e giacenza effettiva nella colonna centrale del Planning Workspace |
+| [task/TASK-V2-144-ui-planning-center-show-order-block-also-for-stock-only.md](task/TASK-V2-144-ui-planning-center-show-order-block-also-for-stock-only.md) | Blocco `Cliente / Ordine` visibile anche nei candidate `stock-only` |
+| [task/TASK-V2-145-core-planning-rebase-candidate-model-and-priority-score.md](task/TASK-V2-145-core-planning-rebase-candidate-model-and-priority-score.md) | Rebase Core planning: `customer_horizon` rimosso dal calcolo shortage e `priority_score` baseline V1 |
+| [task/TASK-V2-146-docs-cleanup-and-archive-alignment.md](task/TASK-V2-146-docs-cleanup-and-archive-alignment.md) | Pulizia documentale e riallineamento degli indici al baseline rebase — **in corso** |
+| [task/TASK-V2-147-ui-remove-legacy-criticality-navigation.md](task/TASK-V2-147-ui-remove-legacy-criticality-navigation.md) | Rimozione della surface legacy `Criticita` dalla navigazione primaria — **aperto** |
+| [task/TASK-V2-148-legacy-compatibility-review-before-code-removal.md](task/TASK-V2-148-legacy-compatibility-review-before-code-removal.md) | Review delle compatibilita legacy prima del code cleanup — **aperto** |
 | [task/TASK-V2-TEMPLATE.md](task/TASK-V2-TEMPLATE.md) | Template operativo per task di implementazione da affidare a Claude Code |
 
 ## Test

@@ -45,19 +45,37 @@ This document defines the first implementable slice of `Production Proposals` af
 - remains the only live inbox of need
 - supports selection
 - triggers workspace generation
+- is the target primary operator surface after the UX rebase
 - is also the right upstream place to distinguish:
   - eventual need
   - release-now feasibility
 
 ### Production Proposals
 
-- `workspace` mode: temporary execution-prep surface
+- `workspace` mode: temporary execution-prep domain surface, expected to be consumed from a unified planning workspace
 - `history` mode: exported persistent audit trail
 
 Boundary rule:
 
 - Planning answers `is there a need?`
 - Proposals answers `what do we release/export?`
+
+### Unified Planning Workspace Target
+
+Post-rebase UX target:
+
+- `Planning Candidates` becomes the primary unified operator workspace
+- left column:
+  - synthetic candidate inbox
+- center column:
+  - candidate detail
+- right column:
+  - proposal workspace panel
+
+Rule:
+
+- proposal preparation should no longer require a separate primary page transition
+- exported history remains a separate surface
 
 ## Canonical Input
 
@@ -373,4 +391,4 @@ UI rendering rule for `descrizione`:
 
 ## Final Principle
 
-`Planning Candidates` detects and triages live need. `Production Proposals` prepares export from a temporary frozen workspace. Only exported rows become persistent business history.
+`Planning Candidates` detects and triages live need and becomes the primary operator workspace. `Production Proposals` survives as temporary frozen workspace domain + exported history. Only exported rows become persistent business history.

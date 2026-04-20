@@ -1,7 +1,8 @@
 """
 Read model Core slice `planning_candidates` V2 (TASK-V2-062, TASK-V2-065, TASK-V2-069,
-TASK-V2-071, TASK-V2-074, TASK-V2-085, TASK-V2-100, DL-ARCH-V2-025, DL-ARCH-V2-027,
-DL-ARCH-V2-028, DL-ARCH-V2-030, DL-ARCH-V2-031).
+TASK-V2-071, TASK-V2-074, TASK-V2-085, TASK-V2-100, TASK-V2-143, TASK-V2-145,
+DL-ARCH-V2-025, DL-ARCH-V2-027, DL-ARCH-V2-028, DL-ARCH-V2-030, DL-ARCH-V2-031,
+DL-ARCH-V2-042).
 
 Regole:
 - i read model sono frozen (immutabili)
@@ -45,6 +46,23 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from nssp_v2.core.planning_mode import PlanningMode
+
+
+class PlanningOpenOrderLine(BaseModel):
+    """Riga ordine aperta esposta nella sottosezione `Ordini aperti` — by_article only (TASK-V2-143).
+
+    open_qty = max(ordered_qty - set_aside_qty - fulfilled_qty, 0).
+    Righe con open_qty = 0 non vengono incluse.
+    Ordinate per requested_delivery_date crescente (None in fondo).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    order_reference: str
+    line_reference: int
+    requested_delivery_date: date | None
+    requested_destination_display: str | None
+    open_qty: Decimal
 
 
 class PlanningCandidateActiveWarning(BaseModel):
@@ -110,8 +128,18 @@ class PlanningCandidateItem(BaseModel):
     primary_driver: Literal["customer", "stock"] | None = None
     requested_destination_display: str | None = None
     computed_at: datetime
+    # Punteggio di priorita (DL-ARCH-V2-042 §4–5, DL-ARCH-V2-044, TASK-V2-149): layer separato da
+    # primary_driver / reason_code / release_status.
+    # V1 basic: time_urgency + customer_pressure + stock_pressure - release_penalty - warning_penalty.
+    priority_score: float | None = None
+    # Banda sintetica di priorita derivata dallo score (DL-ARCH-V2-044 §6).
+    priority_band: Literal["low", "medium", "high", "critical"] | None = None
 
     # ─── by_article (None per by_customer_order_line) ─────────────────────────
+    # Giacenza effettiva di planning = max(inventory_qty, 0) — TASK-V2-143, DL-ARCH-V2-028 §1.
+    # Diversa da availability_qty (che sottrae set_aside e committed).
+    # None per by_customer_order_line.
+    stock_effective_qty: Decimal | None = None
     availability_qty: Decimal | None = None
     customer_open_demand_qty: Decimal | None = None
     incoming_supply_qty: Decimal | None = None
@@ -125,6 +153,9 @@ class PlanningCandidateItem(BaseModel):
     customer_shortage_qty: Decimal | None = None
     stock_replenishment_qty: Decimal | None = None
     required_qty_total: Decimal | None = None
+    # Target scorta calcolato dalla stock policy — usato per stock_pressure ratio-based
+    # nel priority_score V1 (DL-ARCH-V2-044 §5). None se policy non configurata.
+    target_stock_qty: Decimal | None = None
 
     # ─── by_article customer horizon (TASK-V2-100, DL-ARCH-V2-031 §3) ──────
     # True  se la data_consegna piu vicina delle righe ordine <= today + customer_horizon_days.
@@ -147,6 +178,25 @@ class PlanningCandidateItem(BaseModel):
     capacity_headroom_now_qty: Decimal | None = None
     release_qty_now_max: Decimal | None = None
     release_status: Literal["launchable_now", "launchable_partially", "blocked_by_capacity_now"] | None = None
+
+    # ─── Ordini aperti by_article — sottosezione (TASK-V2-143) ─────────────────
+    # Lista righe ordine con open_qty > 0, ordinate per requested_delivery_date.
+    # Solo per by_article; lista vuota per by_customer_order_line.
+    open_order_lines: list[PlanningOpenOrderLine] = Field(default_factory=list)
+
+    # ─── Proposal preview (TASK-V2-151) ──────────────────────────────────────────
+    # Contratto read-only per alimentare la scheda destra `Proposal` del workspace planning.
+    # Calcolato al volo sui candidate — nessun workspace persistente richiesto.
+    # Vocabolario proposal_status: Error | Need review | Valid for export.
+    # proposal_local_warnings: segnali locali proposta, distinti dai warning canonici.
+    proposal_status: Literal["Error", "Need review", "Valid for export"] | None = None
+    proposal_qty_computed: Decimal | None = None
+    requested_proposal_logic_key: str | None = None
+    effective_proposal_logic_key: str | None = None
+    proposal_fallback_reason: str | None = None
+    proposal_reason_summary: str | None = None
+    proposal_local_warnings: list[str] = Field(default_factory=list)
+    note_fragment: str | None = None
 
     # ─── by_customer_order_line (None per by_article) ─────────────────────────
     order_reference: str | None = None

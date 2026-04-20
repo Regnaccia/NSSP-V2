@@ -14,7 +14,7 @@ Copertura:
 - ordinamento finale: required_qty_minimum decrescente (merge dei due rami)
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -1094,3 +1094,127 @@ class TestReleaseNowIntegrazione:
         assert c.capacity_headroom_now_qty is None
         assert c.release_qty_now_max is None
         assert c.release_status is None
+
+
+# ─── Test rebase: customer_horizon_days non influenza customer_shortage_qty (TASK-V2-145) ───
+
+class TestRebaseCustomerHorizon:
+    """Verifica il rebase Core: customer_shortage_qty basata su fav completo, non su impegni capped.
+
+    Pre-rebase: customer_shortage_qty usava solo impegni entro customer_horizon_days.
+    Post-rebase: customer_shortage_qty = max(-fav, 0) usando committed_qty completo da CoreAvailability.
+    """
+
+    def test_shortage_basata_su_fav_completo(self, session):
+        """customer_shortage_qty e max(-fav, 0) indipendentemente dal valore di customer_horizon_days."""
+        # availability = stock_eff - set_aside - committed = 0 - 0 - 20 = -20
+        # fav = -20 + 0 = -20 → shortage = 20
+        _avail(session, "ART001", Decimal("-20"),
+               inventory_qty=Decimal("0"),
+               committed_qty=Decimal("20"))
+        _art(session, "ART001")
+
+        result = list_planning_candidates_v1(session, customer_horizon_days=5)
+        assert len(result) == 1
+        assert result[0].customer_shortage_qty == Decimal("20")
+
+    def test_shortage_invariata_al_variare_di_horizon_days(self, session):
+        """Lo stesso candidate ha lo stesso customer_shortage_qty con horizon=5 e horizon=365."""
+        _avail(session, "ART001", Decimal("-10"),
+               inventory_qty=Decimal("0"),
+               committed_qty=Decimal("10"))
+        _art(session, "ART001")
+
+        result_short = list_planning_candidates_v1(session, customer_horizon_days=5)
+        result_long = list_planning_candidates_v1(session, customer_horizon_days=365)
+
+        assert len(result_short) == 1
+        assert len(result_long) == 1
+        assert result_short[0].customer_shortage_qty == result_long[0].customer_shortage_qty
+
+    def test_candidato_con_riga_oltre_horizon_ma_fav_negativo(self, session):
+        """Riga ordine con data lontana (oltre qualsiasi horizon ragionevole): candidate presente.
+
+        Pre-rebase: con horizon=30gg e delivery a 120gg, l'ordine non sarebbe contato
+        nel capping → customer_horizon_avail = 0 → shortage = 0 → NOT candidate.
+        Post-rebase: shortage = max(-fav, 0) = 10 → candidate.
+        """
+        future_date = date.today() + timedelta(days=120)
+        _avail(session, "ART001", Decimal("-10"),
+               inventory_qty=Decimal("0"),
+               committed_qty=Decimal("10"))
+        _art(session, "ART001")
+        session.add(SyncRigaOrdineCliente(
+            order_reference="ORD001",
+            line_reference=1,
+            article_code="ART001",
+            ordered_qty=Decimal("10"),
+            continues_previous_line=None,
+            expected_delivery_date=future_date,
+            synced_at=_NOW,
+        ))
+        session.flush()
+
+        result = list_planning_candidates_v1(session, customer_horizon_days=30)
+        assert len(result) == 1
+        assert result[0].customer_shortage_qty == Decimal("10")
+
+
+# ─── Test priority_score (TASK-V2-145, DL-ARCH-V2-042) ───────────────────────
+
+class TestPriorityScore:
+    """Verifica la presenza e la logica base di priority_score nel read model (TASK-V2-145)."""
+
+    def test_priority_score_presente_nel_read_model(self, session):
+        """priority_score e sempre valorizzato nel read model (non None)."""
+        _avail(session, "ART001", Decimal("-5"))
+        _art(session, "ART001")
+
+        result = list_planning_candidates_v1(session)
+        assert len(result) == 1
+        c = result[0]
+        assert c.priority_score is not None
+        assert isinstance(c.priority_score, float)
+
+    def test_priority_score_separato_da_reason_e_release(self, session):
+        """priority_score coesiste con reason_code, primary_driver e release_status."""
+        _avail(session, "ART001", Decimal("-5"))
+        _art(session, "ART001")
+
+        result = list_planning_candidates_v1(session)
+        c = result[0]
+        # Tutti e quattro i campi sono distinti e autonomi (DL-ARCH-V2-042 §1)
+        assert c.priority_score is not None
+        assert c.reason_code is not None
+        assert c.primary_driver is not None
+        # release_status puo essere None se nessuna capacity configurata
+
+    def test_priority_score_maggiore_con_shortage_piu_elevato(self, session):
+        """required_qty_minimum piu alta produce priority_score piu alto."""
+        _avail(session, "ART001", Decimal("-5"))
+        _art(session, "ART001")
+        _avail(session, "ART002", Decimal("-100"))
+        _art(session, "ART002")
+
+        result = list_planning_candidates_v1(session)
+        item1 = next(c for c in result if c.article_code == "ART001")
+        item2 = next(c for c in result if c.article_code == "ART002")
+        assert item2.priority_score > item1.priority_score
+
+    def test_priority_score_presente_per_by_customer_order_line(self, session):
+        """priority_score valorizzato anche nel ramo by_customer_order_line."""
+        _art_col(session, "ART001")
+        _riga_ordine(session, "ART001", ordered_qty=Decimal("10"))
+
+        result = list_planning_candidates_v1(session)
+        assert len(result) == 1
+        assert result[0].priority_score is not None
+        assert isinstance(result[0].priority_score, float)
+
+    def test_priority_score_non_negativo(self, session):
+        """priority_score e sempre >= 0."""
+        _avail(session, "ART001", Decimal("-1"))
+        _art(session, "ART001")
+
+        result = list_planning_candidates_v1(session)
+        assert result[0].priority_score >= 0.0

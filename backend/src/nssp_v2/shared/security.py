@@ -44,10 +44,21 @@ def decode_access_token(token: str) -> dict:
     )
 
 
+# Ruoli operativi: utenti con almeno uno di questi vedono la surface Avvertimenti (TASK-V2-135)
+_OPERATIONAL_ROLES: frozenset[str] = frozenset(["admin", "produzione", "magazzino", "logistica"])
+
+
 def get_available_surfaces(roles: list[str]) -> list[dict[str, str]]:
-    """Calcola le superfici disponibili dall'insieme di ruoli utente."""
-    return [
+    """Calcola le superfici disponibili dall'insieme di ruoli utente.
+
+    Surface trasversale: Avvertimenti (/warnings) viene iniettata per qualsiasi
+    utente con almeno un ruolo operativo, senza richiedere un ruolo dedicato.
+    """
+    result = [
         {"role": role, **_SURFACE_MAP[role]}
         for role in roles
         if role in _SURFACE_MAP
     ]
+    if any(r in _OPERATIONAL_ROLES for r in roles):
+        result.append({"role": "warnings", "path": "/warnings", "label": "Avvertimenti"})
+    return result

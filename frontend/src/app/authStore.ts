@@ -29,6 +29,7 @@ interface AuthState {
     access_mode: string
     available_surfaces: Surface[]
   }) => void
+  updateSurfaces: (surfaces: Surface[]) => void
   logout: () => void
 }
 
@@ -52,6 +53,7 @@ export const useAuthStore = create<AuthState>()(
           available_surfaces: session.available_surfaces,
           isAuthenticated: true,
         }),
+      updateSurfaces: (surfaces) => set({ available_surfaces: surfaces }),
       logout: () =>
         set({
           token: null,

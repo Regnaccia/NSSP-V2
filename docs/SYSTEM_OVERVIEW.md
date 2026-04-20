@@ -14,6 +14,9 @@ Nota di baseline:
 - la guida architetturale autoritativa per i prossimi slice e:
   - `DL-ARCH-V2-039`
   - `DL-ARCH-V2-040`
+  - `DL-ARCH-V2-041`
+  - `DL-ARCH-V2-042`
+  - `DL-ARCH-V2-043`
 
 ## Architettura attiva
 
@@ -244,15 +247,23 @@ Disponibile:
     - `Solo scorta`
   - filtro `customer horizon`
 
-Non ancora disponibile:
+- `priority_score` introdotto nel read model come layer separato:
+  - baseline V1: proximity data cliente + severita shortage + release_status + warnings
+- nel ramo `by_article` esposto anche:
+  - `stock_effective_qty` (giacenza effettiva = max(inventory_qty, 0))
+  - `open_order_lines` (lista righe ordine aperte con data e qty, ordinate per data)
+  - `nearest_delivery_date`
 
-- scoring
-- policy di aggregazione avanzata
+Rebase completato (TASK-V2-145, DL-ARCH-V2-042, DL-ARCH-V2-043):
 
-Rebase target:
+- `customer_horizon_days` rimosso dal calcolo Core di `customer_shortage_qty`
+- la componente cliente usa ora la domanda aperta reale completa (`fav` completo)
+- `customer_horizon_days` resta solo come filtro UI / segnale di priorita
+- classificazione planning e ora lineare: `Cliente` / `Cliente+Scorta` / `Scorta`
 
-- estendere il contratto `need vs release now` oltre il primo slice `by_article`
-- non usare piu una sola quantita implicita per need e rilascio
+Rebase target residuo:
+
+- far evolvere la surface verso un `Unified Planning Workspace` a 3 colonne, con proposal panel contestuale
 
 ### Warnings
 
@@ -306,6 +317,7 @@ Rebase target:
   - `proposal_capacity_policy`
   - `proposal_customer_guardrail_policy`
   - `proposal_note_policy`
+- la surface non resta la pagina operativa primaria: il target UX e un pannello proposal dentro il workspace planning unificato, con storico export separato
 
 ### Criticita Articoli
 
@@ -364,6 +376,8 @@ Nota:
 - bridge case-insensitive planning -> articoli per lookup e write config
 - proposal logic config con suite globale `admin` + override articolo
 - `Production Proposals` come workspace temporaneo downstream di `Planning Candidates`, con persistenza solo all'export
+- `priority_score` come layer separato da `primary_driver` / `reason_code` / `release_status`
+- `customer_horizon_days` declassato da calcolo Core a filtro UI / segnale di ranking
 
 ## Stato attuale
 
@@ -382,6 +396,11 @@ Il perimetro quantitativo e planning V1/V2 di base e operativo:
 Task aperti correnti:
 
 - `TASK-V2-134` `note_fragment` dedicato `FASCI xN` per la logica proposal multi-bar
+- `TASK-V2-135` Warnings come modulo root di navigazione
+- `TASK-V2-136` pagina admin unificata Logic Config a 3 colonne
+- `TASK-V2-146` docs cleanup e archive alignment
+- `TASK-V2-147` rimozione surface legacy Criticita dalla navigazione primaria
+- `TASK-V2-148` review compatibilita legacy prima del code cleanup
 
 Task deferred:
 
